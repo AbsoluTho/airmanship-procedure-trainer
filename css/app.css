@@ -133,3 +133,83 @@ button{font:inherit;color:inherit}
 .fb:disabled{opacity:.45;cursor:not-allowed}
 .fb:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 @media (max-width:760px){.side{max-width:none}.mark{font-size:20px}}
+/* ECAM behind the MCDU: E/WD above SD (reference photos), together the size of the MCDU */
+#mcduHome{position:relative}
+#mcduHome .ecam{display:none}
+#mcduHome.ecam-on .ecam{display:flex}
+#mcduHome.ecam-on>.mcdu{display:none}
+.ecam{width:100%;aspect-ratio:563/880;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(#3a4250,#2a313c);border-radius:10px;user-select:none;-webkit-user-select:none;overflow:hidden}
+.ecdu{position:relative;width:86.9%;flex:none}
+.ecdu.ewd{aspect-ratio:676/619}.ecdu.sdu{aspect-ratio:676/597}
+.ecdu img{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none}
+#ewd{position:absolute;left:11.243%;top:13.247%;width:77.219%;height:82.391%;display:block;background:#000}
+#sd{position:absolute;left:11.391%;top:11.390%;width:77.071%;height:82.747%;display:block;background:#000}
+/* MCDU / ECAM switch: same place in both views (top centre) */
+.dutoggle{position:absolute;z-index:3;top:1.1%;left:50%;transform:translateX(-50%);border:1px solid rgba(255,255,255,.35);border-radius:999px;background:rgba(18,24,32,.85);color:#9fe3ff;font:600 11px/1 "IBM Plex Mono",ui-monospace,monospace;letter-spacing:.06em;padding:5px 12px;cursor:pointer}
+.dutoggle:hover{background:rgba(30,40,54,.95)}
+/* ECAM control panel over the lower half of the ND, and its on/off button in the ND's lower right corner */
+.ecp-pan{position:absolute;z-index:2;left:3%;width:94%;bottom:14.132%;aspect-ratio:676/248;border-radius:6px;overflow:hidden;box-shadow:0 4px 14px rgba(0,0,0,.6)}
+.ecp-pan[hidden]{display:none}
+.ecp-pan img{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none}
+.ecp-k{position:absolute;border:0;background:transparent;padding:0;cursor:pointer;border-radius:4px}
+.ecp-k:active{background:rgba(255,255,255,.12)}
+.ecp-k i{position:absolute;left:30%;width:40%;top:9%;height:11%;border-radius:2px;background:transparent}
+.ecp-k.lit i{background:#f4f6fa;box-shadow:0 0 6px rgba(255,255,255,.9)}
+.ecp-btn{position:absolute;z-index:3;right:2.2%;bottom:2.4%;border:1px solid rgba(255,255,255,.35);border-radius:999px;background:rgba(18,24,32,.85);color:#9fe3ff;font:600 10px/1 "IBM Plex Mono",ui-monospace,monospace;letter-spacing:.06em;padding:4px 9px;cursor:pointer}
+.ecp-btn[aria-pressed="true"]{background:#1f4f72;color:#fff}
+
+/* SD pages ported from FlyByWire (their classes and sizes, scoped to the overlay) */
+#sdsvg{position:absolute;left:11.391%;top:11.390%;width:77.071%;height:82.747%;display:block;pointer-events:none;font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;overflow:hidden}
+#sdsvg text{fill:#fff;stroke:none}
+#sdsvg .p-crz text.Title{font-size:24px;text-decoration:underline;text-anchor:middle}
+#sdsvg .p-crz text.SubTitle{font-size:22px;text-decoration:underline;text-anchor:middle}
+#sdsvg .p-crz text.Standard{font-size:17px}#sdsvg .p-crz text.Medium{font-size:16px}#sdsvg .p-crz text.Large{font-size:20px}
+#sdsvg .p-crz text.Cyan,#sdsvg .p-wheel text.Cyan{fill:#00ffff}#sdsvg .p-crz text.Green,#sdsvg .p-wheel text.Green{fill:#00ff00}#sdsvg .p-crz text.Center,#sdsvg .p-wheel text.Center{text-anchor:middle}
+#sdsvg .p-crz .WingPlaneSym{stroke:#787878;stroke-width:2;fill:none}#sdsvg .p-crz .VsIndicator{stroke:#00ff00;stroke-width:2;fill:none}
+#sdsvg .PageTitle{font-size:24px;text-decoration:underline;fill:#fff}
+#sdsvg .p-eng .TextCenter{text-anchor:middle;dominant-baseline:central}#sdsvg .p-eng .FontSmall{font-size:16px}#sdsvg .p-eng .FontMedium{font-size:18px}#sdsvg .p-eng .FontLarge{font-size:20px}
+#sdsvg .p-eng .Indicator{stroke:#fff;stroke-width:1}#sdsvg .p-eng .GaugeMarking{stroke:#fff;stroke-width:2}#sdsvg .NoFill{fill:none}
+#sdsvg .p-eng .FillCyan{fill:#00ffff}#sdsvg .p-eng .FillGreen{fill:#00ff00}#sdsvg .p-eng .FillWhite{fill:#fff}#sdsvg .p-eng .FillAmber{fill:#e68000}
+#sdsvg .p-eng .AmberHeavy{stroke:#e68000;stroke-width:6}#sdsvg .p-eng .AmberLine{stroke:#e68000;stroke-width:2}#sdsvg .p-eng .WhiteLine{stroke:#fff;stroke-width:2}#sdsvg .p-eng .RedLine{stroke:#ff0000;stroke-width:2}#sdsvg .p-eng .GreenLine{stroke:#00ff00;stroke-width:2}
+#sdsvg .p-door .MainShape{fill:transparent;stroke:#787878;stroke-width:2}#sdsvg .p-door .DoorShape{fill:transparent;stroke:#00ff00;stroke-width:2}
+#sdsvg .p-door .Title{font-size:24px;fill:#fff}#sdsvg .p-door .Slide{font-size:16px}#sdsvg .p-door .Oxygen{font-size:20px}#sdsvg .p-door .Unit{font-size:18px;fill:#00ffff}#sdsvg .p-door .Value{font-size:20px;fill:#00ff00}
+#sdsvg .p-fuel .FuelUsed{font-size:19px;text-anchor:middle}#sdsvg .p-fuel .EngineNumber{font-size:30px;text-anchor:middle}#sdsvg .p-fuel .EngineLine{stroke:#787878;stroke-width:3}
+#sdsvg .p-fuel .UsedQuantity{font-size:25px;text-anchor:middle;fill:#00ff00}#sdsvg .p-fuel .ThickShape{stroke:#787878;stroke-width:4;fill:none}#sdsvg .p-fuel text.White{fill:#fff}
+#sdsvg .p-fuel .FlowShape,#sdsvg .p-fuel .ValveGreen,#sdsvg .p-fuel .PumpActive{fill-opacity:0;stroke:#00ff00;stroke-width:2}#sdsvg .p-fuel .ValveAmber,#sdsvg .p-fuel .PumpInactive{fill-opacity:0;stroke:#e68000;stroke-width:2}
+#sdsvg .p-fuel .GreenLine{stroke:#00ff00;stroke-width:2;fill:none}#sdsvg .p-fuel .WhiteLine{stroke:#fff;stroke-width:2;fill:none}
+#sdsvg .p-fuel .TankQuantity{fill:#00ff00;font-size:22px;text-anchor:end;dominant-baseline:central}#sdsvg .p-fuel .Unit,#sdsvg .p-fuel .UnitTemp{fill:#00ffff;font-size:16px}#sdsvg .p-fuel .UnitTemp{letter-spacing:-2px}
+#sdsvg .p-fuel .FuelFlowLabel{font-size:17px;text-anchor:middle}#sdsvg #FuelFlowColon{font-size:16px}#sdsvg #FuelFlowValue{fill:#00ff00;font-size:16px;text-anchor:end;dominant-baseline:middle}#sdsvg #FuelFlowUnit{fill:#00ffff;font-size:16px;dominant-baseline:middle}
+#sdsvg #FobLabel,#sdsvg #FobColon{font-size:22px}#sdsvg #FobValue{fill:#00ff00;font-size:22px;text-anchor:end;dominant-baseline:middle}#sdsvg #FobUnit{fill:#00ffff;font-size:16px;dominant-baseline:middle}
+#sdsvg .ecam-common-styles text.Standard{font-size:22px}#sdsvg .ecam-common-styles text.Medium{font-size:20px}#sdsvg .ecam-common-styles text.Large{font-size:26px}#sdsvg .ecam-common-styles text.Title{font-size:36px}
+#sdsvg .ecam-common-styles text.End{text-anchor:end}#sdsvg .ecam-common-styles text.UnderlineWhite{text-decoration:underline}
+#sdsvg .ecam-common-styles .GreenLine{stroke:#00ff00;stroke-width:2;fill:none;stroke-linejoin:round;stroke-linecap:round}#sdsvg .ecam-common-styles .WhiteLine{stroke:#fff;stroke-width:2;fill:none}
+#sdsvg .ecam-common-styles .ThickGreyLine{stroke:#787878;stroke-width:4;fill:none;stroke-linecap:round}#sdsvg .ecam-common-styles .AmberLine{stroke:#e68000;stroke-width:2;fill:none}
+#sdsvg .sdv2 text,#sdsvg .sdv2 tspan,#sdsvg .sdv2 .Fill{fill:currentColor;stroke:none}#sdsvg .sdv2 :not(text):not(tspan):not(.Fill):not(g):not(svg){fill:none;stroke:currentColor}
+#sdsvg .sdv2 .Green{color:#00ff00}#sdsvg .sdv2 .Cyan{color:#00ffff}#sdsvg .sdv2 .White{color:#fff}#sdsvg .sdv2 .Grey{color:#787878}#sdsvg .sdv2 .Amber{color:#e68000}
+#sdsvg .sdv2 .F22{font-size:22px}#sdsvg .sdv2 .F25{font-size:25px}#sdsvg .sdv2 .F26{font-size:26px}#sdsvg .sdv2 .F28{font-size:28px}#sdsvg .sdv2 .F29{font-size:29px}#sdsvg .sdv2 .F36{font-size:36px}
+#sdsvg .sdv2 .LS1{letter-spacing:1px}#sdsvg .sdv2 .Center{text-anchor:middle}#sdsvg .sdv2 .End{text-anchor:end}#sdsvg .sdv2 .Underline{text-decoration:underline}
+#sdsvg .sdv2 .LineRound{stroke-linecap:round}#sdsvg .sdv2 .LineJoinRound{stroke-linejoin:round}#sdsvg .sdv2 .SW2{stroke-width:2px}#sdsvg .sdv2 .SW3{stroke-width:3px}#sdsvg .sdv2 .SW6{stroke-width:6px}
+/* SD batch 2 (FlyByWire A32NX page styles, scoped per page) */
+#sdsvg .GaugeComponent .Gauge{stroke:#fff;stroke-width:2;fill:none}#sdsvg .GaugeComponent .GaugeText{stroke:#fff;font-size:17px}#sdsvg .GaugeComponent .GaugeIndicator{stroke:#00ff00;stroke-width:3;fill:none}
+#sdsvg .p-bleed .PageTitle{font-size:28px}#sdsvg .p-bleed text{fill:#fff}#sdsvg .p-bleed text.Small{font-size:14px}#sdsvg .p-bleed text.Standard{font-size:17px}#sdsvg .p-bleed text.Medium{font-size:18px}#sdsvg .p-bleed text.Large{font-size:20px}#sdsvg .p-bleed text.Huge{font-size:26px}
+#sdsvg .p-bleed text.Cyan{fill:#00ffff}#sdsvg .p-bleed text.Green{fill:#00ff00}#sdsvg .p-bleed text.Amber{fill:#e68000}#sdsvg .p-bleed text.Center{text-anchor:middle}#sdsvg .p-bleed text.End{text-anchor:end}
+#sdsvg .p-bleed .GreyStroke{fill:none;stroke:#787878}#sdsvg .p-bleed .WhiteStroke{fill:none;stroke:#fff}#sdsvg .p-bleed .Stroke2{stroke-width:2}#sdsvg .p-bleed .Stroke3{stroke-width:3}#sdsvg .p-bleed .LineCapRound{stroke-linecap:round}
+#sdsvg .p-bleed .GreenLine{stroke:#00ff00!important;stroke-width:2;fill:none}#sdsvg .p-bleed .AmberLine{stroke:#e68000!important;stroke-width:2;fill:none}#sdsvg .p-bleed .WhiteLine{stroke:#fff!important;stroke-width:2;fill:none}#sdsvg .p-bleed .BackgroundFill{fill:#040404!important}
+#sdsvg .p-press text{fill:#fff}#sdsvg .p-press text.Standard{font-size:17px}#sdsvg .p-press text.Medium{font-size:16px}#sdsvg .p-press text.Large{font-size:20px}#sdsvg .p-press text.Huge{font-size:24px}
+#sdsvg .p-press text.Cyan{fill:#00ffff}#sdsvg .p-press text.Green{fill:#00ff00}#sdsvg .p-press text.Amber{fill:#e68000}#sdsvg .p-press text.Red{fill:#ff0000}#sdsvg .p-press text.Center{text-anchor:middle}#sdsvg .p-press text.End{text-anchor:end}
+#sdsvg .p-press .Red{stroke:#ff0000!important}#sdsvg .p-press .Amber{stroke:#e68000!important}#sdsvg .p-press .AmberLine{stroke:#e68000!important;stroke-width:2;fill:none}#sdsvg .p-press .GreenLine{stroke:#00ff00!important;stroke-width:2;fill:none}
+#sdsvg .p-press .AirPressureShape{stroke:#787878;stroke-width:2;fill:none}#sdsvg .p-press .WhiteCircle{fill:#040404;stroke:#fff;stroke-width:2}#sdsvg .p-press text.GaugeText{stroke:none;fill:#fff}
+#sdsvg .p-press text.GreenTextPulse{animation:sdPulseF 2s cubic-bezier(.4,0,.6,1) infinite}#sdsvg .p-press .GreenIndicatorPulse{animation:sdPulseS 2s cubic-bezier(.4,0,.6,1) infinite;stroke-width:3}
+@keyframes sdPulseF{0%,100%{fill:#00ff00}50%{fill:#008000}}@keyframes sdPulseS{0%,100%{stroke:#00ff00}50%{stroke:#008000}}
+#sdsvg .p-press .GreenLine,#sdsvg .p-bleed .GreenLine{stroke-linecap:square}
+#sdsvg .p-elec .Box{stroke:#787878;fill:none;stroke-width:2.5px}#sdsvg .p-elec path{stroke:#fff;stroke-width:2.25px;stroke-linecap:square;stroke-linejoin:miter;fill:none}#sdsvg .p-elec path.Green{stroke:#00ff00}#sdsvg .p-elec path.Amber{stroke:#e68000}
+#sdsvg .p-elec rect.Bus{fill:#787878}#sdsvg .p-elec text{fill:#fff;font-size:19px}#sdsvg .p-elec text.ExtraLarge{font-size:26px}#sdsvg .p-elec text.QuiteLarge{font-size:24px}#sdsvg .p-elec text.Large{font-size:22px}#sdsvg .p-elec text.Small{font-size:16.875px}#sdsvg .p-elec text.ExtraSmall{font-size:15px}
+#sdsvg .p-elec text.Middle{text-anchor:middle}#sdsvg .p-elec text.Right{text-anchor:end}#sdsvg .p-elec text.Green{fill:#00ff00}#sdsvg .p-elec text.Amber{fill:#e68000}#sdsvg .p-elec text.Cyan{fill:#00ffff}
+#sdsvg .ecam-common-styles text.MediumLarge{font-size:24px}#sdsvg .ecam-common-styles text.Huge{font-size:30px}#sdsvg .ecam-common-styles text.Cyan{fill:#00ffff}#sdsvg .ecam-common-styles text.Green{fill:#00ff00}#sdsvg .ecam-common-styles text.Amber{fill:#e68000}#sdsvg .ecam-common-styles text.Center{text-anchor:middle}
+#sdsvg .ecam-common-styles .Hide{display:none}#sdsvg .ecam-common-styles .LightGreyLine{stroke:#787878;stroke-width:2;stroke-linejoin:round;stroke-linecap:round;fill:none}
+#sdsvg .ecam-common-styles .GreenLine.FillGreen{fill:#00ff00}#sdsvg .ecam-common-styles .AmberLine{stroke-linejoin:round;stroke-linecap:round}#sdsvg .ecam-common-styles .WhiteLine{stroke-linejoin:round;stroke-linecap:round}
+#sdsvg .p-apu .Box{stroke:#787878;fill:none;stroke-width:2.5px}#sdsvg .p-apu .NoFill{fill:none}#sdsvg .p-apu .AmberHeavy{stroke:#e68000;stroke-width:4}#sdsvg .p-apu text{fill:#eee}#sdsvg .p-apu text.FontNormal{font-size:19px}#sdsvg .p-apu text.FontLarger{font-size:22px}#sdsvg .p-apu text.FontTitle{font-size:24px}
+#sdsvg .p-apu text.Left{text-anchor:start}#sdsvg .p-apu text.Center{text-anchor:middle}#sdsvg .p-apu text.Right{text-anchor:end}#sdsvg .p-apu text.Green{fill:#00ff00}#sdsvg .p-apu text.Amber{fill:#e68000}#sdsvg .p-apu text.Cyan{fill:#00ffff}#sdsvg .p-apu text.GaugeText{stroke:none;fill:#fff}
+#sdsvg .p-apu .Line{stroke-width:2px}#sdsvg .p-apu .Line.White{stroke:#fff}#sdsvg .p-apu .Line.Grey{stroke:#787878}#sdsvg .p-apu .Line.Amber{stroke:#e68000}#sdsvg .p-apu .Line.Red{stroke:#ff0000}#sdsvg .p-apu .Line.Green{stroke:#00ff00}
+#sdsvg .p-apu .Circle{fill:none;stroke-width:2.5px}#sdsvg .p-apu .Circle.Green{stroke:#00ff00}#sdsvg .p-apu .Circle.Amber{stroke:#e68000}
+#sdsvg .sdv2 .SW4{stroke-width:4px}#sdsvg .p-sts .EWDWarn{font-size:26px;letter-spacing:1px;white-space:pre}

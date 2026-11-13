@@ -143,7 +143,11 @@ P.FPLN={render(){const p=cur(),rows=fplnRows(p),ds=p?dists(p):[];
     put(ln,0,id.slice(0,7),col);if(tm)put(ln,8,tm,col);else put(ln,8,'----','w');
     if(r.k==='orig'){rput(ln,'---/'+String(DB.apt[r.id].elev).padStart(6),col)}
     else{const sp=r.spd?String(r.spd):'---',al=r.alt?fAlt(r.alt):'-----';
-      const st=24-(4+1+6);put(ln,st,sp.padStart(4),r.spd?'m':'w');put(ln,st+4,'/','w');put(ln,st+5,al.padStart(6),r.alt?'m':'w')}}
+      const st=24-(4+1+6);put(ln,st,sp.padStart(4),r.spd?'m':'w');put(ln,st+4,'/','w');
+      /* with predictions: the predicted altitude, after a magenta star (constraint met) or an amber star (missed) */
+      const vq=r.alt&&tcum&&p===S.active&&!S.tmpy&&!S.secMode&&typeof vPred==='function'?(vPred()||{wp:{}}).wp[r.ix]:null;
+      if(vq){const a=Math.round(vq.alt/10)*10,t=a>13000?'FL'+String(Math.round(a/100)).padStart(3,'0'):String(a);put(ln,st+5,('*'+t).padStart(6),'g');put(ln,st+5+Math.max(0,6-t.length-1),'*',vq.met?'m':'a')}
+      else put(ln,st+5,al.padStart(6),r.alt?'m':'w')}}
   if(!tmpyFoot()&&p){const di=idxK(p,'dest'),d=p.legs[di];
     let tot=0;ds.forEach((x,ix)=>{if(ix<=di&&x)tot+=x});if(flying()&&p===S.active)tot=Math.max(0,FL.path.sThr-FL.s);   /* distance to the runway counts down in flight */
     put(12,1,'DEST','w','S');put(12,8,flying()?'UTC':'TIME','w','S');rput(12,'DIST','w','S',17);rput(12,'EFOB','w','S',24);

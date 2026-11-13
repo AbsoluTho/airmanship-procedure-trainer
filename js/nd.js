@@ -35,13 +35,13 @@ function holdPts(F,crsT,right){const L=3.5,rt=1.5,t=crsT*D2R,sg=right?1:-1;
   return pts}
 function planGeo(p,base){const G={lines:[],wpts:[],rwys:[]};let prev=null,vr=0;
   const crs=t=>{const m=String(t||'').match(/(\d{3})/);return m?+m[1]:null};
-  p.legs.forEach(l=>{const col=l.seg==='map'?'b':base;
+  p.legs.forEach((l,ix)=>{const col=l.seg==='map'?'b':base;
     if(l.k==='orig'||l.k==='dest'){const ap=DB.apt[l.id],r=l.rwy&&ap.rwy[l.rwy],pos=r?r.pos:ap.pos;vr=ap.var||0;
       if(l.k==='dest'&&prev)G.lines.push({pts:[prev,pos],col});
       G.rwys.push({id:l.id,rwy:l.rwy,pos,crsT:r?r.crs+vr:null,len:r?r.len/1852:0});prev=pos;return}
     if(l.k==='wpt'){const pos=DB.wpt[l.id];if(!pos){prev=null;return}
       if(prev)G.lines.push({pts:l.lbl==='ARC'&&l.ctr&&DB.wpt[l.ctr]?arcPts(prev,pos,DB.wpt[l.ctr]):[prev,pos],col});
-      G.wpts.push({id:l.id,pos,col,alt:l.alt,spd:l.spd});prev=pos;return}
+      G.wpts.push({id:l.id,pos,col,alt:l.alt,spd:l.spd,ix});prev=pos;return}
     if(l.k==='tp'){prev=l.pos;return}
     if(l.k==='ca'&&prev){const o=p.legs[0],ap=DB.apt[o.id],r=ap.rwy[o.rwy];if(!r){prev=null;return}
       const q=dst(r.pos,r.crs+vr,r.len/1852+l.aal/320);G.lines.push({pts:[prev,q],col});prev=q;return}
@@ -98,8 +98,10 @@ function drawND(g,W,H,powered){g.save();g.setTransform(1,0,0,1,0,0);g.fillStyle=
     for(const[id,ap]of Object.entries(DB.apt)){if(used.has(id))continue;const[x,y]=pj(ap.pos);star(x,y,'m');label(id,x+16,y+2,'m')}}
   for(const[G,tm]of geos)for(const w of G.wpts){const[x,y]=pj(w.pos);if(!inMap(x,y,30))continue;
     const col=tm==='sec'?'w':tm?'y':(to&&w.id===to.id&&w.col==='g')?'w':w.col;diamond(x,y,col,9);label(w.id,x+16,y+2,col,26);
-    if(EFIS.cstr&&!tm&&(w.alt||w.spd)){let yy=y+25;if(w.alt){label(fAlt(w.alt),x+16,yy,'m',20);yy+=22}if(w.spd)label(String(w.spd),x+16,yy,'m',20);
-      g.strokeStyle=NC.m;g.lineWidth=2.5;g.beginPath();g.arc(x,y,17,0,Math.PI*2);g.stroke()}}
+    if(EFIS.cstr&&!tm&&(w.alt||w.spd)){let yy=y+25;if(w.alt){label(fAlt(w.alt),x+16,yy,'m',20);yy+=22}if(w.spd)label(String(w.spd),x+16,yy,'m',20)}
+    /* altitude constraint circle: in flight magenta if predicted met, amber if missed, white if not taken into account (NAV or managed vertical mode not engaged) */
+    if(!tm&&w.alt&&(EFIS.cstr||flying())){let cc='m';if(flying()){const vp=vPred(),q=vp&&vp.wp[w.ix];cc=FL.lat!=='NAV'||!(vp&&vp.mgd)?'w':q&&!q.met?'a':'m'}
+      g.strokeStyle=NC[cc]||NC.m;g.lineWidth=2.5;g.beginPath();g.arc(x,y,17,0,Math.PI*2);g.stroke()}}
   g.restore()}
   /* compass scale: ticks outward, numbers tangential, big every 30 degrees */
   const pol=(a,r)=>[V.cx+r*Math.sin(a*D2R),V.cy-r*Math.cos(a*D2R)];
@@ -135,9 +137,11 @@ function drawND(g,W,H,powered){g.save();g.setTransform(1,0,0,1,0,0);g.fillStyle=
   if(V.map&&A&&!T){const pw=pseudoWpts();if(pw)pw.forEach(q=>{const[x,y]=pj(q.pos);if(V.m==='PLAN'?(x<30||x>738||y<90||y>Hg-40):Math.hypot(x-V.cx,y-V.cy)>V.R)return;g.lineWidth=3;
     if(q.k==='D'){g.strokeStyle=NC.m;g.beginPath();g.arc(x,y,11,0,7);g.stroke();label('D',x,y+1,'m',18,'center');return}
     g.strokeStyle=NC[q.c];g.beginPath();
-    if(q.k==='up'){g.moveTo(x-18,y+12);g.lineTo(x,y);g.lineTo(x+20,y);g.moveTo(x+12,y-6);g.lineTo(x+20,y);g.lineTo(x+12,y+6)}
-    else if(q.k==='dn'){g.moveTo(x-18,y-12);g.lineTo(x,y);g.lineTo(x+20,y);g.moveTo(x+12,y-6);g.lineTo(x+20,y);g.lineTo(x+12,y+6)}
-    else{g.moveTo(x-20,y);g.lineTo(x,y);g.lineTo(x+16,y+12);g.moveTo(x+6,y+13);g.lineTo(x+16,y+12);g.lineTo(x+14,y+2)}
+    /* drawn so that the arrow tip sits on the route at the computed point */
+    if(q.k==='up'){g.moveTo(x-38,y+12);g.lineTo(x-20,y);g.lineTo(x,y);g.moveTo(x-8,y-6);g.lineTo(x,y);g.lineTo(x-8,y+6)}
+    else if(q.k==='dn'){g.moveTo(x-38,y-12);g.lineTo(x-20,y);g.lineTo(x,y);g.moveTo(x-8,y-6);g.lineTo(x,y);g.lineTo(x-8,y+6)}
+    else if(q.k==='sc'){g.moveTo(x-36,y+12);g.lineTo(x-16,y+12);g.lineTo(x,y);g.moveTo(x-10,y-1);g.lineTo(x,y);g.lineTo(x-2,y+10)}
+    else{g.moveTo(x-36,y-12);g.lineTo(x-16,y-12);g.lineTo(x,y);g.moveTo(x-10,y+1);g.lineTo(x,y);g.lineTo(x-2,y-10)}
     g.stroke()})}
   /* aircraft symbol */
   const plane=(x,y,rot)=>{g.save();g.translate(x,y);g.rotate(rot*D2R);g.strokeStyle=NC.ac;g.lineWidth=7;g.beginPath();
@@ -163,9 +167,15 @@ function pseudoWpts(){try{const out=[],crz=I().crz*100;if(!S.active||!S.active.a
   let P,s0,alt0,vs0;if(flying()){P=FL.path;s0=FL.s;alt0=FL.alt;vs0=FL.vs}else{const sig=planSig();if(_pwCache.sig!==sig){_pwCache={sig,P:buildPath()}}P=_pwCache.P;s0=0;alt0=elevO();vs0=0}
   const at=s=>posAt(P,Math.max(0,Math.min(P.len,s))).pos,td=P.sThr-tdDist(),A=FCU.alt;
   if(flying()&&!FL.ground){const climbing=['SRS','CLB','OP CLB','EXP CLB','V/S','FPA','ALT*'].includes(FL.ver)&&FL.vs>200,desc=FL.vs<-200&&!['G/S*','G/S','LAND','FLARE'].includes(FL.ver);
-    if((climbing&&A>alt0)||(desc&&A<alt0)){const t=(A-alt0)/(FL.vs||1)*60,d=Math.max(0,t*FL.gs/3600);const c=A===crz?'w':'b';
-      out.push({k:climbing?'up':'dn',c,pos:FL.lat==='NAV'?at(s0+d):dst(FL.pos,FL.trkT,d)})}}
-  else if(!flying())out.push({k:'up',c:'w',pos:at(PM.climb(I().crz).d)});
+    const ct=cstTarget(),cw=ct!=null?(FL.cst.clbIx!=null&&FL.ver!=='DES'&&FL.verArm[0]!=='DES'?FL.cst.clbIx:FL.cst.desIx):null;
+    const along=d=>FL.lat==='NAV'?at(s0+d):dst(FL.pos,FL.trkT,d);
+    if(ct!=null){const up=ct>alt0+30||FL.verArm.includes('CLB')&&ct>=alt0-30;
+      if(Math.abs(ct-alt0)>30&&Math.abs(FL.vs)>200){const d=Math.max(0,(ct-alt0)/FL.vs*60*FL.gs/3600);out.push({k:up?'up':'dn',c:'m',pos:along(d)})}
+      /* start of climb (cyan) or descent (white) again at the constraint waypoint */
+      const pt=cw!=null&&FL.path.pts.find(q=>q.ix===cw);if(pt&&pt.s>s0)out.push({k:up?'sc':'td',c:up?'b':'w',pos:at(pt.s)})}
+    else if((climbing&&A>alt0)||(desc&&A<alt0)){const t=(A-alt0)/(FL.vs||1)*60,d=Math.max(0,t*FL.gs/3600);const c=A===crz?'w':'b';
+      out.push({k:climbing?'up':'dn',c,pos:along(d)})}}
+  else if(!flying()){out.push({k:'up',c:'w',pos:at(PM.climb(I().crz).d)});const vp=vPred();if(vp)vp.lv.forEach(q=>out.push({k:q.k,c:q.k==='up'?'m':'w',pos:at(q.s)}))}
   if(s0<td&&(!flying()||['CLB','CRZ','TAKEOFF'].includes(S.phase)))out.push({k:'td',c:'w',pos:at(td)});
   if(P.sThr-s0>25&&(!flying()||S.phase!=='APPR'))out.push({k:'D',pos:at(P.sThr-25)});
   return out}catch(e){return null}}

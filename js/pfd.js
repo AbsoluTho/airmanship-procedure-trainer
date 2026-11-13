@@ -93,13 +93,16 @@ function drawPFD(g,W,H,powered){g.save();g.setTransform(1,0,0,1,0,0);g.fillStyle
   /* target speed: magenta triangle, or the value above or below the tape */
   const sel=!FCU.spdMgd&&FCU.spd!=null&&!(on&&(FL.stage==='ROLL'||FL.ver==='SRS')),tc=sel?'b':'m';
   const tgt=sel?Math.round(FCU.mach?iasOf(FCU.spd*sos(alt),alt):FCU.spd):on?Math.round(FL.stage==='ROLL'?S.perf.v2:(FL.ver==='SRS'?S.perf.v2+10:(FL.spdT??FL.ias))):(S.perf.v2||null);
-  if(tgt){const y=sy(tgt);if(y<182)T(String(tgt),120,170,tc,20,'center');else if(y>497)T(String(tgt),120,510,tc,20,'center');
+  /* above the tape: SPEED or MACH and the target in that unit (magenta managed, cyan selected) */
+  const isM=on&&!FL.ground&&FL.ver!=='SRS'&&!!FL.spdIsMach,mTgt=isM?(sel?FCU.spd:FL.ver==='EXP DES'?0.80:mgd.crzM()):null;
+  if(on&&!FL.ground&&tgt){T(isM?'MACH':'SPEED',87,140,'w',19,'center');T(isM?'.'+String(Math.round(mTgt*100)).padStart(2,'0'):String(tgt),87,166,tc,23,'center')}
+  if(tgt){const y=sy(tgt);if(y<182){if(!(on&&!FL.ground))T(String(tgt),120,170,tc,20,'center')}else if(y>497)T(String(tgt),120,510,tc,20,'center');
     else{g.fillStyle=PC[tc];g.beginPath();g.moveTo(121,y);g.lineTo(135,y-8);g.lineTo(135,y+8);g.closePath();g.fill()}}
   /* speed reference and trend */
   L(47,SY,57,SY,'y',4);L(102,SY,122,SY,'y',3);g.fillStyle=PC.y;g.beginPath();g.moveTo(121,SY);g.lineTo(137,SY-7);g.lineTo(137,SY+7);g.closePath();g.fill();
-  if(on&&!FL.ground){const acc=(FL._lastIas!=null?FL.ias-FL._lastIas:0)/(Math.max(0.05,FL.t-(FL._lastT??FL.t))||1);const dy=Math.max(-150,Math.min(150,acc*10*kpx));
-    if(Math.abs(dy)>6){L(104,SY,104,SY-dy,'y',2.5);const s=Math.sign(dy);g.strokeStyle=PC.y;g.lineWidth=2.5;g.beginPath();g.moveTo(98,SY-dy+s*8);g.lineTo(104,SY-dy);g.lineTo(110,SY-dy+s*8);g.stroke()}}
-  if(on){FL._lastIas=FL.ias;FL._lastT=FL.t}
+  /* speed trend: speed in 10 s, shown when it differs by more than 2 kt (takeoff roll and landing roll included) */
+  if(on&&FL.ias>=30&&FL.stage!=='STOP'){const dy=Math.max(-150,Math.min(150,(FL.acc||0)*10*kpx));
+    if(Math.abs(dy)>2*kpx){L(104,SY,104,SY-dy,'y',2.5);const s=Math.sign(dy);g.strokeStyle=PC.y;g.lineWidth=2.5;g.beginPath();g.moveTo(98,SY-dy+s*8);g.lineTo(104,SY-dy);g.lineTo(110,SY-dy+s*8);g.stroke()}}
   if(on&&FL.mach>0.5)T('.'+Math.round(FL.mach*100),88,522,'g',22,'center');
 
   /* ---- altitude tape (x 477-526, y 182-497, 0.278 px/ft) ---- */
@@ -110,10 +113,12 @@ function drawPFD(g,W,H,powered){g.save();g.setTransform(1,0,0,1,0,0);g.fillStyle
   g.restore();
   L(477,182,543,182,'w',2);L(477,497,543,497,'w',2);L(526,182,526,497,'w',2);
   /* target altitude (cyan) on the tape, drawn before the readout window so it never crosses the present altitude */
-  {const fcu=FCU.alt,y=ay(fcu);if(y>=182&&y<=497){g.save();g.beginPath();g.rect(477,182,49,315);g.clip();g.strokeStyle=PC.b;g.lineWidth=2.5;g.strokeRect(478,y-10,46,20);g.restore()}}
+  /* an altitude constraint that is the next level-off replaces it, in magenta */
+  const cstT=on&&typeof cstTarget==='function'?cstTarget():null,tgtA=cstT??FCU.alt,tgtC=cstT!=null?'m':'b';
+  {const fcu=tgtA,y=ay(fcu);if(y>=182&&y<=497){g.save();g.beginPath();g.rect(477,182,49,315);g.clip();g.strokeStyle=PC[tgtC];g.lineWidth=2.5;g.strokeRect(478,y-10,46,20);g.restore()}}
   /* vertical deviation (green dot): the managed descent path on the altitude tape; low dot = aircraft above the path */
   if(on&&!FL.ground&&['DES','APPR'].includes(S.phase)&&!['G/S*','G/S','LAND','FLARE','ROLL OUT'].includes(FL.ver)&&FL.path){const dtg=FL.path.sThr-FL.s;
-    if(dtg>0.5){const pa=profileAlt(dtg)+(alt-FL.alt),y=Math.max(196,Math.min(484,ay(pa)));g.strokeStyle=PC.g;g.lineWidth=2.5;g.beginPath();g.arc(470,y,6,0,7);g.stroke()}}
+    if(dtg>0.5){const pa=profileAlt(dtg)+(alt-FL.alt),y=Math.max(196,Math.min(484,ay(pa)));g.fillStyle=PC.g;g.beginPath();g.arc(470,y,6.5,0,7);g.fill()}}
   /* readout window: black band with yellow top and bottom, drum box on the right */
   g.fillStyle='#000';g.fillRect(477,323,49,34);g.fillRect(526,313,32,54);
   L(477,323,526,323,'y',2.5);L(477,357,526,357,'y',2.5);box(526,313,32,54,'y',2.5);
@@ -124,9 +129,9 @@ function drawPFD(g,W,H,powered){g.save();g.setTransform(1,0,0,1,0,0);g.fillStyle
   L(440,SY,470,SY,'y',5);
   if(FCU.metric){const m=Math.round(alt*0.3048/10)*10,tm=Math.round(FCU.alt*0.3048/10)*10;g.fillStyle='#000';g.fillRect(478,286,64,24);box(478,286,64,24,'y',1.5);T(m+'M',540,298,'g',17,'right');T(tm+'M',540,150,'b',17,'right')}
   /* target altitude and baro reference */
-  const fcu=FCU.alt;
-  if(fcu!=null){const t=fcu>=(TA[o]||13000)?'FL'+String(fcu/100).padStart(3,'0'):String(fcu),y=ay(fcu);
-    if(y<182)T(t,517,170,'b',21,'center');else if(y>497)T(t,517,510,'b',21,'center')}
+  const fcu=tgtA;
+  if(fcu!=null){const t=fcu>=(TA[o]||13000)?'FL'+String(Math.round(fcu/100)).padStart(3,'0'):String(Math.round(fcu)),y=ay(fcu);
+    if(y<182)T(t,517,166,tgtC,27,'center');else if(y>497)T(t,517,514,tgtC,27,'center')}
   {const ta=TA[o]||13000,tl=(TA[destId()]||13000)+2000,blink=Math.floor(Date.now()/500)%2===0;
    const climbAbove=on&&!EFIS.std&&altT>ta+200&&['CLB','CRZ'].includes(S.phase),descBelow=on&&EFIS.std&&altT<tl-200&&['DES','APPR'].includes(S.phase);
    if(EFIS.std){if(!(descBelow&&blink)){box(492,530,56,26,'y',2);T('STD',520,543,'b',20,'center')}}
