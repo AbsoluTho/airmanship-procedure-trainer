@@ -17,6 +17,8 @@ async def run(url,b):
         for ch in s: await k('SP' if ch==' ' else ch)
     # system message GPS PRIMARY (white) is shown while the scratchpad is empty and stays until CLR
     assert await pg.evaluate('FL.rate')==1,'simulation speed starts at x1'
+    import re as _re;ver=_re.search(r'^## Status: .+? \((v[0-9.]+)\)',open(os.path.join(ROOT,'README.md')).read(),_re.M).group(1)
+    assert (await pg.evaluate("document.querySelector('.appver').textContent")).startswith(ver+' '),'app version in the top right corner matches the README'
     assert await pg.evaluate("msgShown().t")=='GPS PRIMARY','GPS PRIMARY at power-up'
     await k('CLR');assert await pg.evaluate("msgShown()")==None,'CLR clears GPS PRIMARY'
     await t('OEJN/OETB');await k('R1')
