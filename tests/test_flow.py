@@ -33,6 +33,10 @@ async def run(url,b):
     await t('160');await k('L1');assert await pg.evaluate('window.__S().msg')=='V1/VR/V2 DISAGREE','V-speed order check'
     await k('CLR');await t('141');await k('L1')
     await pg.evaluate("window.__efis('mode','PLAN')");await k('FPLN')
+    on=await pg.evaluate("window.__efis('cstr');window.__efis('wpt');window.__efis('arpt');['cstr','wpt','vord','ndb','arpt'].filter(o=>window.__EFIS[o])")
+    assert on==['arpt'],f'EFIS options must be one at a time: {on}'
+    off=await pg.evaluate("window.__efis('arpt');['cstr','wpt','vord','ndb','arpt'].filter(o=>window.__EFIS[o])")
+    assert off==[],f'pressing the lit option turns it off: {off}'
     legs=await pg.evaluate('window.__S().active.legs.map(l=>l.k)')
     await pg.evaluate(f'window.__S().fpOff={legs.index("dest")-1}');await k('UP');await k('DOWN')
     done=await pg.evaluate("[...document.querySelectorAll('#tasks li.done')].length")

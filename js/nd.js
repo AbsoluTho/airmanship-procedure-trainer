@@ -5,6 +5,7 @@
 const EFIS={mode:'ARC',range:10,cstr:false,wpt:false,vord:false,ndb:false,arpt:false,ctr:null};
 const FCU={hdg:0};   /* selected heading (the FCU comes in a later phase) */
 const MODES=['LS','VOR','NAV','ARC','PLAN'];
+const EFIS_OPTS=['cstr','wpt','vord','ndb','arpt'];
 const RANGES=[10,20,40,80,160,320];
 const NC={g:'#3df24e',w:'#ffffff',b:'#3fd2ff',y:'#fff23d',m:'#ff6cf6',a:'#ffa21f',ac:'#ffe600',dim:'#8a949c'};
 const NF=(px,w)=>`${w||500} ${px}px "Helvetica Neue",Helvetica,Arial,sans-serif`;
@@ -156,6 +157,7 @@ function buildEfis(){const host=$('#efis');if(!host)return;
 function efisUI(){document.querySelectorAll('.efb').forEach(b=>b.setAttribute('aria-pressed',String(!!EFIS[b.dataset.efis])));
   for(const k of['mode','range']){const el=$('#knob-'+k);if(!el)continue;const K=EK[k];el.style.transform=`rotate(${K.ang[EFIS[k]]-K.photo}deg)`}}
 function efisTurn(k,d){const list=k==='mode'?MODES:RANGES,i=list.indexOf(EFIS[k])+d;if(i<0||i>=list.length)return;efisSet(k,String(list[i]))}
-function efisSet(k,v){if(k==='range')EFIS.range=+v;else if(k==='mode')EFIS.mode=v==='ROSE'?'NAV':v;else EFIS[k]=!EFIS[k];
+function efisSet(k,v){if(k==='range')EFIS.range=+v;else if(k==='mode')EFIS.mode=v==='ROSE'?'NAV':v;
+  else{const on=!EFIS[k];EFIS_OPTS.forEach(o=>EFIS[o]=false);EFIS[k]=on}   /* options are mutually exclusive: one at a time */
   drawND2D();tasks();if(window.__draw3D)window.__draw3D()}
 buildEfis();
