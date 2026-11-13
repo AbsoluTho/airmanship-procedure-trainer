@@ -78,14 +78,15 @@ button{font:inherit;color:inherit}
 @media (max-width:1000px){.ndpanel,.pfdpanel{width:min(100%,420px,calc((100vw - 52px)/2))}}
 @media (max-width:620px){.ndpanel,.pfdpanel{width:100%}}
 /* flight controls */
-.flight{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:8px}
+.flight{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;justify-content:center;gap:6px;
+  aspect-ratio:676/401;overflow:auto;box-sizing:border-box}   /* same height as the EFIS panel, so the PFD lines up with the ND */
 .fl-state{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:baseline;font:500 13px var(--f-mono);color:var(--ink2)}
 .fl-state b{font:600 15px var(--f-display);letter-spacing:.08em;color:var(--accent)}
-.fl-ready{margin:0;padding-left:18px;font:13px/1.45 var(--f-body,inherit);color:var(--ink2)}
+.fl-ready{margin:0;padding-left:18px;font:12px/1.35 var(--f-body,inherit);color:var(--ink2)}
 .fl-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .fl-l{font:600 11px/1 var(--f-display);letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);min-width:58px}
-.fb{background:var(--sunk);border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:9px 12px;font:600 13px/1 var(--f-display);letter-spacing:.06em;cursor:pointer;-webkit-tap-highlight-color:transparent}
-.fb.sm{padding:7px 10px;min-width:44px}
+.fb{background:var(--sunk);border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:8px 11px;font:600 13px/1 var(--f-display);letter-spacing:.06em;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.fb.sm{padding:6px 9px;min-width:40px}
 .fb.go{background:var(--accent-soft);border-color:#2f6d8f;color:var(--accent)}
 .fb[aria-pressed="true"]{background:var(--accent-soft);border-color:#2f6d8f;color:var(--accent)}
 .fb:disabled{opacity:.45;cursor:not-allowed}

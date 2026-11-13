@@ -10,7 +10,7 @@
 </head>
 <body>
 <div class="app">
-  <header class="top"><span class="mark">Airmanship Procedure Trainer</span><span class="appver">v0.5.0 · Phase 2 prototype</span></header>
+  <header class="top"><span class="mark">Airmanship Procedure Trainer</span><span class="appver">v0.5.1 · Phase 2 prototype</span></header>
   <nav class="tabs" role="tablist">
     <button class="tab" role="tab" data-v="mcdu" aria-selected="true">MCDU</button>
     <button class="tab" role="tab" data-v="3d" aria-selected="false">Cockpit 3D</button>
@@ -18,10 +18,6 @@
 
   <section class="view on" id="v-mcdu">
     <div class="pfdpanel">
-      <div class="ndbezel">
-        <img id="pfdBezel" alt="">
-        <canvas id="pfd" class="du" aria-label="Primary flight display"></canvas>
-      </div>
       <div class="flight" id="flight" aria-label="Flight controls">
         <div class="fl-state" id="flState"></div>
         <ul class="fl-ready" id="flReady"></ul>
@@ -36,6 +32,10 @@
         <div class="fl-row"><span class="fl-l">Skip to</span>
           <button class="fb sm" type="button" data-fl="td">T/D</button><button class="fb sm" type="button" data-fl="appr">APPROACH</button>
         </div>
+      </div>
+      <div class="ndbezel">
+        <img id="pfdBezel" alt="">
+        <canvas id="pfd" class="du" aria-label="Primary flight display"></canvas>
       </div>
     </div>
     <div class="ndpanel">
