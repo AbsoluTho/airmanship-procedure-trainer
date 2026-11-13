@@ -15,6 +15,9 @@ async def run(url,b):
     k=lambda x:pg.evaluate('k=>window.__press(k)',x)
     async def t(s):
         for ch in s: await k('SP' if ch==' ' else ch)
+    # system message GPS PRIMARY (white) is shown while the scratchpad is empty and stays until CLR
+    assert await pg.evaluate("msgShown().t")=='GPS PRIMARY','GPS PRIMARY at power-up'
+    await k('CLR');assert await pg.evaluate("msgShown()")==None,'CLR clears GPS PRIMARY'
     await t('OEJN/OETB');await k('R1');await t('OEMA');await k('L2');await t('TRN385');await k('L3');await t('20');await k('L5')
     await t('340/46');await k('L6')
     assert await pg.evaluate('window.__S().init.temp')==-46,'unsigned CRZ temp should be negative'
@@ -30,7 +33,7 @@ async def run(url,b):
     trip=await pg.evaluate('predict().trip.fuel');assert 3<trip<7,f'trip fuel {trip}'
     await k('PERF');await t('150');await k('L3');await t('146');await k('L2');await t('141');await k('L1')
     await t('1/UP0.4');await k('R3');await t('54');await k('R4')
-    await t('160');await k('L1');assert await pg.evaluate('window.__S().msg')=='V1/VR/V2 DISAGREE','V-speed order check'
+    await t('160');await k('L1');assert await pg.evaluate('[msgShown().t,msgShown().a]')==['V1/VR/V2 DISAGREE',True],'V-speed order check (amber message)'
     await k('CLR');await t('141');await k('L1')
     await pg.evaluate("window.__efis('mode','PLAN')");await k('FPLN')
     on=await pg.evaluate("window.__efis('cstr');window.__efis('wpt');window.__efis('arpt');['cstr','wpt','vord','ndb','arpt'].filter(o=>window.__EFIS[o])")
@@ -69,6 +72,13 @@ async def run(url,b):
     assert 'FCU' in (await pg.evaluate('flightReady().join()')),'FCU altitude required before takeoff'
     await pg.evaluate("window.__FCU.alt=7000;window.__efis('ls')")
     assert await pg.evaluate('flightReady().length')==0,await pg.evaluate('flightReady()')
+    # ---- FIX INFO (LAT REV at the origin): ref fix, radial and radius; crossing of the route computed ----
+    await pg.evaluate("window.__plan0=clone(window.__S().active);window.__S().fpOff=0");await k('FPLN');await k('L1');await k('R1')
+    assert 'FIX INFO' in await pg.evaluate("[...document.querySelectorAll('#scr .ln')].map(l=>l.textContent).join(' ')"),'FIX INFO page from LAT REV at the origin'
+    await t('JDW');await k('L1');await t('90');await k('L2');await t('20');await k('L4')
+    fx=await pg.evaluate("(()=>{const f=window.__S().fix[0],h=fixHits(f);return[f.id,f.rad[0],f.radius,h.rad[0]!=null,h.radius!=null]})()")
+    assert fx==['JDW',90,20,True,True],f'FIX INFO entries and route crossings: {fx}'
+    await k('FPLN')
     # ---- ECAM behind the MCDU ----
     await pg.click('#duToggle');assert await pg.evaluate("document.querySelector('#mcduHome').classList.contains('ecam-on')&&getComputedStyle(document.querySelector('#mcdu')).display==='none'"),'ECAM replaces the MCDU'
     assert await pg.evaluate("window.__ecam.page()")=='wheel','SD on the ground: WHEEL'
@@ -147,6 +157,34 @@ async def run(url,b):
     assert r.get('small') is not None and 900<=r['small']<=1100,f'OP CLB under 1200 ft: V/S 1000 ({r})'
     assert r.get('big',0)>1500 and r.get('fma')=='THR CLB/OP CLB',f'OP CLB: climb thrust, speed on elevator ({r})'
     assert r.get('mach') and abs(r['mach'][0]-0.78)<0.03 and 25000<r['mach'][1]<33000,f'selected SPD to MACH at the crossover ({r})'
+    # ---- third flight: HOLD at LABUN (flown, IMM EXIT), OFFSET R10 in cruise, NEW DEST ----
+    P=lambda x:pg.evaluate('k=>window.__press(k)',x)
+    await pg.evaluate("window.__S().active=clone(window.__plan0);window.__S().tmpy=null;window.__S().sp='';window.__S().msg=null;FCU.alt=34000")
+    ix=await pg.evaluate("window.__S().active.legs.findIndex(l=>l.id==='LABUN')");await pg.evaluate(f"window.__S().fpOff={ix}");await P('FPLN');await pg.evaluate(f"window.__S().fpOff={ix}")
+    await P('L1');await P('L3');assert await pg.evaluate("window.__S().page==='HOLD'&&!!window.__S().tmpy"),'HOLD page with a temporary F-PLN'
+    await P('R6');h=await pg.evaluate("(()=>{const L=window.__S().active.legs,i=L.findIndex(l=>l.id==='LABUN');return[L[i+1].k,L[i+1].fix,L[i+1].type]})()")
+    assert h==['hold','LABUN','COMPUTED'],f'computed hold inserted after LABUN: {h}'
+    r=await pg.evaluate("""(()=>{window.__flight('start');let n=0,ap=0,o={loops:0};while(FL.stage!=='STOP'&&n<40000){step(0.5);n++;if(n%10===0)setFma();
+        if(!ap&&FL.alt-groundElev()>1200){fcuButton('ap1');ap=1}if(FL.ver==='ALT'&&FL.alt<8000){FCU.alt=34000;fcuPush('alt',false)}
+        if(FL.inHold!=null&&o.t0==null){o.t0=FL.t;o.s=FL.s}
+        if(o.t0!=null&&!o.exit){if(FL.s<o.s-1)o.loops++;o.s=FL.s;if(FL.t-o.t0>150&&o.ias==null){o.ias=Math.round(FL.ias);o.hs=holdSpd()}
+          if(o.loops>=2){S.page='FPLN';const rows=fplnRows(S.active);S.fpOff=rows.findIndex(r=>r.k==='hold');window.__press('R1');o.exit=FL.holdExit!=null}}
+        if(o.exit&&FL.inHold==null&&o.out==null){o.out=S.active.legs[FL.fromIx].k}
+        if(o.out&&S.phase==='CRZ'&&S.active.legs[FL.fromIx].k==='wpt')break}
+      return o})()""")
+    assert r.get('loops',0)>=2 and r.get('exit') and r.get('out')=='hold',f'hold flown twice, IMM EXIT, hold sequenced: {r}'
+    assert r.get('ias') and abs(r['ias']-r['hs'])<=8,f'managed speed in the hold is the hold speed: {r}'
+    await pg.evaluate("window.__S().sp='';window.__S().fpOff=0");await P('FPLN');await pg.evaluate("window.__S().fpOff=0");await P('L1')
+    for ch in 'R10': await P(ch)
+    await P('L2');await P('R6');assert await pg.evaluate("JSON.stringify([window.__S().active.ofst.side,window.__S().active.ofst.nm])")=='["R",10]','OFFSET R10 inserted'
+    x=await pg.evaluate("""(()=>{const P0=buildPath(Object.assign(clone(S.active),{ofst:undefined}));for(let n=0;n<700;n++)step(0.5);return project(P0,FL.pos,1,P0.pts.length-1).xtk})()""")
+    assert 9<x<11,f'aircraft 10 NM right of the route: {x}'
+    await pg.evaluate("window.__S().sp='';window.__S().fpOff=0");await P('FPLN');await pg.evaluate("window.__S().fpOff=0");await P('L2')
+    for ch in 'OEMA': await P(ch)
+    await P('R4');await P('R6')
+    r=await pg.evaluate("(()=>{for(let n=0;n<200;n++)step(0.5);const L=S.active.legs;return[L[idxK(S.active,'dest')].id,I().to,L[idxK(S.active,'dest')-1].k,!!S.active.ofst]})()")
+    assert r==['OEMA','OEMA','disc',False],f'NEW DEST OEMA after a discontinuity, offset removed: {r}'
+    await pg.evaluate("window.__flight('reset');window.__S().active=clone(window.__plan0)")
     await pg.click('text=Cockpit 3D');await pg.wait_for_timeout(2500)
     await pg.evaluate('window.__dbg3d.goView(3)');await pg.wait_for_timeout(2500)
     x,y=await pg.evaluate('window.__dbg3d.proj("elec",0.624,0.79)');await pg.mouse.click(x,y);await pg.wait_for_timeout(200)
