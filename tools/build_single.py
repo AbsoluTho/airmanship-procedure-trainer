@@ -6,7 +6,7 @@ rd=lambda p:open(os.path.join(root,p),encoding='utf-8').read()
 b64=lambda p:base64.b64encode(open(os.path.join(root,p),'rb').read()).decode()
 html=rd('index.html')
 css=rd('css/app.css')
-css=re.sub(r"url\(\.\./fonts/([^)]+\.woff2)\)",lambda m:"url(data:font/woff2;base64,%s)"%b64('fonts/'+m.group(1)),css)
+css=re.sub(r"url\(\.\./fonts/([^)]+\.(woff2|ttf))\)",lambda m:"url(data:font/%s;base64,%s)"%(m.group(2),b64('fonts/'+m.group(1))),css)
 html=html.replace('<link rel="stylesheet" href="css/app.css">','<style>\n'+css+'</style>')
 def inline(m):
     src=rd(m.group(1))

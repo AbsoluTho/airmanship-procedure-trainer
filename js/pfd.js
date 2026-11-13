@@ -23,6 +23,7 @@ function drawPFD(g,W,H,powered){g.save();g.setTransform(1,0,0,1,0,0);g.fillStyle
   ['c1','c2','c3','c4','c5'].forEach((c,k)=>{const[x1,x2]=cols[k],xm=(x1+x2)/2;(F[c]||[]).forEach((ln,j)=>{if(!ln||!ln[0])return;
     const flash=ln[2]&&Math.floor(FL.t*2)%2===0;if(!flash)T(ln[0],xm,60+27*j,ln[1],k===4?18:20,'center');
     if(j===0&&k<3&&on&&FL.t-(FL.fmaT[c]??-99)<10){g.font=PF(20);const tw=g.measureText(ln[0]).width;box(xm-tw/2-5,47,tw+10,26,'w',1.5)}})});
+  if(F.msg)T(F.msg,(55+423)/2,114,'w',20,'center');
   if(F.land){const xm=(170+423)/2;T(F.land,xm,60,'g',20,'center');if(on&&FL.t-(FL.fmaT.land??-99)<10){g.font=PF(20);const tw=g.measureText(F.land).width;box(xm-tw/2-5,47,tw+10,26,'w',1.5)}}
 
   /* ---- attitude sphere: circle (r 151) cut by straight sides at x 167 and 433 ---- */
@@ -45,7 +46,10 @@ function drawPFD(g,W,H,powered){g.save();g.setTransform(1,0,0,1,0,0);g.fillStyle
   const ss=0;g.beginPath();g.moveTo(-11+ss,-138);g.lineTo(11+ss,-138);g.lineTo(15+ss,-131);g.lineTo(-15+ss,-131);g.closePath();g.stroke();
   g.restore();
   /* FD bars */
-  if(!['ROLLOUT','STOP'].includes(FL.stage)){L(210,SY,390,SY,'g',3);L(CX,SY-110,CX,SY+70,'g',3)}
+  if(EFIS.fd&&!FCU.trkFpa&&!['ROLLOUT','STOP'].includes(FL.stage)){const dr=on?Math.max(-60,Math.min(60,((FL.rollCmd??roll)-roll)*2)):0;L(210,SY,390,SY,'g',3);L(CX+dr,SY-110,CX+dr,SY+70,'g',3)}
+  /* flight path vector (bird) in TRK/FPA */
+  if(FCU.trkFpa){const fpa=on?Math.atan2(FL.vs,Math.max(60,FL.gs)*101.27)/D2R:0,by=SY+(pitch-fpa)*ppd;g.save();g.translate(CX,by);g.rotate(-roll*D2R);g.strokeStyle=PC.g;g.lineWidth=3;
+    g.beginPath();g.arc(0,0,8,0,7);g.moveTo(-8,0);g.lineTo(-26,0);g.moveTo(8,0);g.lineTo(26,0);g.moveTo(0,-8);g.lineTo(0,-18);g.stroke();g.restore()}
   /* aircraft symbol */
   const wing=s=>{const x0=s<0?173:368,x1=s<0?232:427,xs=s<0?222:368;g.fillStyle='#000';g.strokeStyle=PC.y;g.lineWidth=2.5;
     g.beginPath();g.moveTo(x0,334);g.lineTo(x1,334);if(s<0){g.lineTo(x1,360);g.lineTo(xs,360);g.lineTo(xs,346)}else{g.lineTo(x1,346);g.lineTo(xs+11,346);g.lineTo(xs+11,360);g.lineTo(xs,360)}
@@ -55,13 +59,14 @@ function drawPFD(g,W,H,powered){g.save();g.setTransform(1,0,0,1,0,0);g.fillStyle
   if(on&&agl<2500&&!FL.ground){const ra=agl>50?Math.round(agl/10)*10:Math.max(0,Math.round(agl/5)*5);T(String(ra),CX,475,agl<(S.p2.radio>0?S.p2.radio:0)?'a':'g',28,'center')}
 
   /* ---- ILS deviation (on approach) ---- */
-  if(on&&FL.apprPb){const d=destRwy(),thr=d.r.pos,crsT=d.r.crs+(d.a.var||0),dist=gc(FL.pos,thr);
-    const ang=((brg(FL.pos,thr)-crsT+540)%360)-180,locDots=Math.max(-2.2,Math.min(2.2,-ang/0.8));
-    const gsAng=Math.atan2(FL.alt-(d.tdze+50),Math.max(0.1,dist)*6076)/D2R,gsDots=Math.max(-2.2,Math.min(2.2,(gsAng-3)/0.4));
+  if((FCU.appr||FCU.loc)&&!EFIS.ls&&Math.floor(Date.now()/500)%2===0)T('LS',215,525,'a',22,'center',700);
+  if(EFIS.ls&&hasLsSel()){const d=destRwy(),thr=d.r.pos,crsT=d.r.crs+(d.a.var||0),pos0=on?FL.pos:acState().pos,alt0=alt,dist=gc(pos0,thr);
+    const ang=((brg(pos0,thr)-crsT+540)%360)-180,locDots=Math.max(-2.2,Math.min(2.2,-ang/0.8));
+    const gsAng=Math.atan2(alt0-(d.tdze+50),Math.max(0.1,dist)*6076)/D2R,gsDots=Math.max(-2.2,Math.min(2.2,(gsAng-3)/0.4)),rx=dist<25&&Math.abs(ang)<35;
     for(let k=-2;k<=2;k++)if(k){g.strokeStyle=PC.w;g.lineWidth=2;g.beginPath();g.arc(CX+k*36,512,4,0,7);g.stroke();g.beginPath();g.arc(450,SY-k*36,4,0,7);g.stroke()}
     L(CX,502,CX,522,'y',3);L(440,SY,460,SY,'y',3);
     const dia=(x,y,hz)=>{g.strokeStyle=PC.m;g.lineWidth=2.5;g.beginPath();if(hz){g.moveTo(x-12,y);g.lineTo(x,y-7);g.lineTo(x+12,y);g.lineTo(x,y+7)}else{g.moveTo(x,y-12);g.lineTo(x+7,y);g.lineTo(x,y+12);g.lineTo(x-7,y)}g.closePath();g.stroke()};
-    dia(CX+locDots*36,512,true);dia(450,SY+gsDots*36,false);
+    if(rx){dia(CX+locDots*36,512,true);dia(450,SY+gsDots*36,false)}
     const ap2=S.active&&S.active.appr&&(APPRS[destId()]||{})[S.active.appr];T(ap2?ap2.nav:'',62,560,'m',18);T(dist.toFixed(1)+'NM',62,582,'m',18)}
 
   /* ---- speed tape (x 55-119, y 182-497, 3.69 px/kt) ---- */
@@ -82,9 +87,10 @@ function drawPFD(g,W,H,powered){g.save();g.setTransform(1,0,0,1,0,0);g.fillStyle
   g.restore();
   L(55,182,135,182,'w',2);L(55,497,135,497,'w',2);L(119,182,119,497,'w',2);
   /* target speed: magenta triangle, or the value above or below the tape */
-  const tgt=on?(['ROLL','SRS0','LVR','SRS'].includes(FL.stage)?S.perf.v2+(FL.stage==='ROLL'?0:10):Math.round(FL.ias)):(S.perf.v2||null);
-  if(tgt){const y=sy(tgt);if(y<182)T(String(tgt),120,170,'m',20,'center');else if(y>497)T(String(tgt),120,510,'m',20,'center');
-    else{g.fillStyle=PC.m;g.beginPath();g.moveTo(121,y);g.lineTo(135,y-8);g.lineTo(135,y+8);g.closePath();g.fill()}}
+  const sel=!FCU.spdMgd&&FCU.spd!=null&&!(on&&(FL.stage==='ROLL'||FL.ver==='SRS')),tc=sel?'b':'m';
+  const tgt=sel?Math.round(FCU.mach?iasOf(FCU.spd*sos(alt),alt):FCU.spd):on?Math.round(FL.stage==='ROLL'?S.perf.v2:(FL.ver==='SRS'?S.perf.v2+10:(FL.spdT??FL.ias))):(S.perf.v2||null);
+  if(tgt){const y=sy(tgt);if(y<182)T(String(tgt),120,170,tc,20,'center');else if(y>497)T(String(tgt),120,510,tc,20,'center');
+    else{g.fillStyle=PC[tc];g.beginPath();g.moveTo(121,y);g.lineTo(135,y-8);g.lineTo(135,y+8);g.closePath();g.fill()}}
   /* speed reference and trend */
   L(47,SY,57,SY,'y',4);L(102,SY,122,SY,'y',3);g.fillStyle=PC.y;g.beginPath();g.moveTo(121,SY);g.lineTo(137,SY-7);g.lineTo(137,SY+7);g.closePath();g.fill();
   if(on&&!FL.ground){const acc=(FL._lastIas!=null?FL.ias-FL._lastIas:0)/(Math.max(0.05,FL.t-(FL._lastT??FL.t))||1);const dy=Math.max(-150,Math.min(150,acc*10*kpx));
@@ -107,8 +113,9 @@ function drawPFD(g,W,H,powered){g.save();g.setTransform(1,0,0,1,0,0);g.fillStyle
   g.save();g.beginPath();g.rect(527,314,30,52);g.clip();const frac=((a0%20)/20)*16;
   [-2,-1,0,1,2].forEach(k=>{const v=((d20+k*20)%100+100)%100;T(String(v).padStart(2,'0'),542,SY-k*16+frac,'g',18,'center')});g.restore();
   L(440,SY,470,SY,'y',5);
+  if(FCU.metric){const m=Math.round(alt*0.3048/10)*10,tm=Math.round(FCU.alt*0.3048/10)*10;g.fillStyle='#000';g.fillRect(478,286,64,24);box(478,286,64,24,'y',1.5);T(m+'M',540,298,'g',17,'right');T(tm+'M',540,150,'b',17,'right')}
   /* target altitude and baro reference */
-  const fcu=on?(['DES','ALT','GSS','GS','LAND','FLARE'].includes(FL.stage)?faf():I().crz*100):(I().crz?I().crz*100:null);
+  const fcu=FCU.alt;
   if(fcu!=null){const t=fcu>=(TA[o]||13000)?'FL'+String(fcu/100).padStart(3,'0'):String(fcu),y=ay(fcu);
     if(y<182)T(t,517,170,'b',21,'center');else if(y>497)T(t,517,510,'b',21,'center');else{g.fillStyle=PC.b;g.fillRect(477,y-3,49,6)}}
   const std=on&&((FL.alt>(TA[o]||13000)&&!['DES','ALT','GSS','GS','LAND','FLARE','ROLLOUT','STOP'].includes(FL.stage))||(FL.stage==='DES'&&FL.alt>13000));
@@ -131,7 +138,7 @@ function drawPFD(g,W,H,powered){g.save();g.setTransform(1,0,0,1,0,0);g.fillStyle
   g.restore();L(CX,556,CX,590,'y',5);
   const dTrk=on?((FL.trkT-(FL.hdgT))):0;g.strokeStyle=PC.g;g.lineWidth=2.5;const tx=CX+dTrk*hpx;g.beginPath();g.moveTo(tx,578);g.lineTo(tx+6,586);g.lineTo(tx,594);g.lineTo(tx-6,586);g.closePath();g.stroke();
   /* selected heading (FCU later): value at the side when off scale */
-  const sel=FCU.hdg,dh=((sel-hdgM+540)%360)-180;if(Math.abs(dh)>24)T(String(sel).padStart(3,'0'),dh<0?182:418,568,'b',18,'center');
+  const shv=selHdgVal(),dh=shv==null?0:((shv-hdgM+540)%360)-180;if(shv==null){}else if(Math.abs(dh)>24)T(String(shv).padStart(3,'0'),dh<0?182:418,568,'b',18,'center');
   else{g.fillStyle=PC.b;const x=CX+dh*hpx;g.beginPath();g.moveTo(x,578);g.lineTo(x-6,568);g.lineTo(x+6,568);g.closePath();g.fill()}
   g.restore()}
 

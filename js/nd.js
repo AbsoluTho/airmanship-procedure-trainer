@@ -2,8 +2,7 @@
 /* ================= ND (navigation display) =================
    ROSE NAV, ARC and PLAN drawn from the active and temporary flight plans.
    Drawn on a 768 x 768 design grid, scaled to whatever canvas it is given. */
-const EFIS={mode:'ARC',range:10,cstr:false,wpt:false,vord:false,ndb:false,arpt:false,ctr:null};
-const FCU={hdg:0};   /* selected heading (the FCU comes in a later phase) */
+const EFIS={mode:'ARC',range:10,cstr:false,wpt:false,vord:false,ndb:false,arpt:false,ctr:null,fd:true,ls:false};
 const MODES=['LS','VOR','NAV','ARC','PLAN'];
 const EFIS_OPTS=['cstr','wpt','vord','ndb','arpt'];
 const RANGES=[10,20,40,80,160,320];
@@ -101,7 +100,7 @@ function drawND(g,W,H,powered){g.save();g.setTransform(1,0,0,1,0,0);g.fillStyle=
   const ring=(r,a1,lab)=>{g.strokeStyle=NC.w;g.lineWidth=4.5;g.setLineDash([19,12]);g.beginPath();g.arc(V.cx,V.cy,r,-Math.PI/2-a1*D2R,-Math.PI/2+a1*D2R);g.stroke();g.setLineDash([]);
     if(lab!=null)[-61,61].forEach(a=>{const[x,y]=pol(a,r*0.91);label(String(lab),x,y,'b',27,'center')})};
   const rl=x=>Number.isInteger(x)?x:x.toFixed(1);
-  const selHdg=sweep=>{const d=((FCU.hdg-hdg+540)%360)-180,v=String(FCU.hdg).padStart(3,'0');
+  const selHdg=sweep=>{const sh=selHdgVal();if(sh==null)return;const d=((sh-hdg+540)%360)-180,v=String(sh).padStart(3,'0');
     if(Math.abs(d)<=sweep){const[x,y]=pol(d,V.R);g.save();g.translate(x,y);g.rotate(d*D2R);g.strokeStyle=NC.b;g.lineWidth=3.5;g.beginPath();g.moveTo(0,-2);g.lineTo(-11,-22);g.lineTo(11,-22);g.closePath();g.stroke();g.restore()}
     else if(V.m==='ARC'){if(d<0)label(v,24,150,'b',27);else label(v,744,150,'b',27,'right')}};
   if(V.m==='ARC'){ring(V.R/4,90,null);ring(V.R/2,81,rl(EFIS.range/2));ring(V.R*3/4,65,rl(EFIS.range*3/4));
@@ -157,6 +156,8 @@ function buildEfis(){const host=$('#efis');if(!host)return;
     h+=`<button class="kz" type="button" data-turn="${k}:-1" aria-label="Turn ${k} selector left" style="left:${pct(K.cx-K.r,EW)};top:${pct(K.cy-K.r,EH)};width:${pct(K.r,EW)};height:${pct(d,EH)}"></button>`;
     h+=`<button class="kz" type="button" data-turn="${k}:1" aria-label="Turn ${k} selector right" style="left:${pct(K.cx,EW)};top:${pct(K.cy-K.r,EH)};width:${pct(K.r,EW)};height:${pct(d,EH)}"></button>`;
     for(const[v,x,y]of ELBL[k])h+=`<button class="kl" type="button" data-efis="${k}:${v}" aria-label="${k} ${v}" style="left:${pct(x-24,EW)};top:${pct(y-14,EH)};width:${pct(48,EW)};height:${pct(28,EH)}"></button>`}
+  h+=`<button type="button" class="efb2" id="efis-fd" data-efis="fd" aria-label="FD" style="left:${pct(67,EW)};top:${pct(330,EH)};width:${pct(70,EW)};height:${pct(45,EH)}"><i style="left:19%;width:60%;top:13%;height:31%"></i></button>`;
+  h+=`<button type="button" class="efb2" id="efis-ls" data-efis="ls" aria-label="LS" style="left:${pct(150,EW)};top:${pct(330,EH)};width:${pct(70,EW)};height:${pct(45,EH)}"><i style="left:19%;width:60%;top:13%;height:31%"></i></button>`;
   host.innerHTML=h;
   host.querySelectorAll('[data-efis]').forEach(b=>b.addEventListener('click',()=>{const[k,v]=b.dataset.efis.split(':');efisSet(k,v)}));
   host.querySelectorAll('[data-turn]').forEach(b=>b.addEventListener('click',()=>{const[k,d]=b.dataset.turn.split(':');efisTurn(k,+d)}))}
@@ -164,6 +165,7 @@ function efisUI(){document.querySelectorAll('.efb').forEach(b=>b.setAttribute('a
   for(const k of['mode','range']){const el=$('#knob-'+k);if(!el)continue;const K=EK[k];el.style.transform=`rotate(${K.ang[EFIS[k]]-K.photo}deg)`}}
 function efisTurn(k,d){const list=k==='mode'?MODES:RANGES,i=list.indexOf(EFIS[k])+d;if(i<0||i>=list.length)return;efisSet(k,String(list[i]))}
 function efisSet(k,v){if(k==='range')EFIS.range=+v;else if(k==='mode')EFIS.mode=v==='ROSE'?'NAV':v;
-  else{const on=!EFIS[k];EFIS_OPTS.forEach(o=>EFIS[o]=false);EFIS[k]=on}   /* options are mutually exclusive: one at a time */
-  drawND2D();tasks();if(window.__draw3D)window.__draw3D()}
+  else if(EFIS_OPTS.includes(k)){const on=!EFIS[k];EFIS_OPTS.forEach(o=>EFIS[o]=false);EFIS[k]=on}   /* options are mutually exclusive: one at a time */
+  else EFIS[k]=!EFIS[k];   /* FD, LS */
+  drawND2D();tasks();if(window.__draw3D)window.__draw3D();if(window.drawPFD2D)drawPFD2D();if(typeof setFma==='function'&&flying())setFma();if(window.drawFcu)fcuLights()}
 buildEfis();

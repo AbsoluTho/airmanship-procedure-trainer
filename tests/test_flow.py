@@ -61,13 +61,23 @@ async def run(url,b):
     await k('FUEL');assert 'FUEL PRED' in await scr()
     await k('PROG');assert 'REC MAX' in await scr();await t('OETB');await k('R4');assert '°/' in await scr()
     await k('AIRPORT');await k('INIT');await k('RIGHT')
-    # ---- automatic flight ----
+    # ---- automatic flight, flown with the FCU ----
+    assert 'FCU' in (await pg.evaluate('flightReady().join()')),'FCU altitude required before takeoff'
+    await pg.evaluate("window.__FCU.alt=7000;window.__efis('ls')")
     assert await pg.evaluate('flightReady().length')==0,await pg.evaluate('flightReady()')
     await pg.evaluate("window.__flight('start')")
-    seen=await pg.evaluate("""(()=>{const seen=new Set();let n=0;while(FL.stage!=='STOP'&&n<40000){step(0.5);setFma();const f=FL.fma;
-      [f.c1,f.c2,f.c3].forEach(c=>(c||[]).forEach(x=>x&&seen.add(x[0])));if(f.land)seen.add(f.land);seen.add('PH:'+S.phase);n++}return[...seen]})()""")
-    for m in ['MAN','SRS','RWY','NAV','THR CLB','CLB','ALT CRZ','DES','G/S*','G/S','LOC','LAND','FLARE','RETARD','ROLL OUT','PH:CLB','PH:CRZ','PH:DES','PH:APPR','PH:DONE']:
-        assert m in seen,f'FMA/phase never shown: {m}'
+    seen=await pg.evaluate("""(()=>{const seen=new Set(),log=[];let n=0,did={};const add=()=>{const f=FL.fma;[f.c1,f.c2,f.c3,f.c4].forEach(c=>(c||[]).forEach(x=>x&&x[0]&&seen.add(x[0])));if(f.land)seen.add(f.land);seen.add('PH:'+S.phase);seen.add('LAT:'+FL.lat);seen.add('VER:'+FL.ver)};
+      while(FL.stage!=='STOP'&&n<60000){step(0.5);setFma();add();n++;const dtg=FL.path.sThr-FL.s;
+        if(!did.ap&&FL.alt-groundElev()>1200){fcuButton('ap1');did.ap=1}
+        if(!did.lvl&&FL.ver==='ALT'&&Math.abs(FL.alt-7000)<30){seen.add('LEVEL7000');FCU.alt=34000;fcuPush('alt',false);did.lvl=1}
+        if(!did.hdg&&FL.alt>20000){FCU.hdgPre=null;fcuPush('hdg',true);FCU.hdg=((Math.round(FL.trkT-3)+30)%360)||360;did.hdg=FL.t}
+        if(did.hdg&&!did.nav&&FL.t-did.hdg>90){FCU.hdg=((Math.round(FL.trkT-3)-60+360)%360)||360;fcuPush('hdg',false);did.nav=FL.t}
+        if(did.nav&&!did.navok&&FL.lat==='NAV'){seen.add('NAV REJOINED');did.navok=1}
+        if(!did.des&&FL.s>FL.td-40&&S.phase==='CRZ'){FCU.alt=4200;fcuPush('alt',false);did.des=1}
+        if(!did.appr&&dtg<28){fcuButton('appr');fcuButton('ap2');did.appr=1}}
+      seen.add('END:'+FL.stage);return[...seen]})()""")
+    for m in ['MAN','SRS','RWY','NAV','THR CLB','CLB','LEVEL7000','ALT','ALT CRZ','HDG','NAV REJOINED','DES','THR IDLE','LOC *','LOC','G/S*','G/S','CAT 3','DUAL','LAND','FLARE','RETARD','ROLL OUT','PH:CLB','PH:CRZ','PH:DES','PH:APPR','PH:DONE','END:STOP']:
+        assert m in seen,f'never seen in the flight: {m}  (seen: {sorted(seen)})'
     await pg.evaluate("window.__flight('reset')")
     done=await pg.evaluate("[...document.querySelectorAll('#tasks li.done')].length")
     assert done==14,f'exercise tasks done: {done}/14'
