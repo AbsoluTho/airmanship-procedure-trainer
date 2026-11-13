@@ -13,6 +13,10 @@ def inline(m):
     src=re.sub(r"'(img/[a-z_\-]+\.webp)'",lambda k:"'data:image/webp;base64,%s'"%b64(k.group(1)),src)
     return '<script>\n'+src.replace('</script','<\\/script')+'\n</script>'
 html=re.sub(r'<script src="([^"]+)"></script>',inline,html)
+# icons: inline as data URIs; the manifest needs separate files, so the single file leaves it out
+html=re.sub(r'<link rel="manifest"[^>]*>\n?','',html)
+html=re.sub(r'<link rel="icon" href="favicon.ico" sizes="any">\n?','',html)
+html=re.sub(r'href="(icons/[a-z0-9\-]+\.png)"',lambda m:'href="data:image/png;base64,%s"'%b64(m.group(1)),html)
 os.makedirs(os.path.join(root,'dist'),exist_ok=True)
 open(os.path.join(root,'dist/index.html'),'w',encoding='utf-8').write(html)
 print('dist/index.html',len(html)//1024,'KB')
