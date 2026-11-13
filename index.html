@@ -10,7 +10,7 @@
 </head>
 <body>
 <div class="app">
-  <header class="top"><span class="mark">Airmanship Procedure Trainer</span><span class="appver">v0.1.0 · Phase 0 prototype</span></header>
+  <header class="top"><span class="mark">Airmanship Procedure Trainer</span><span class="appver">v0.2.0 · Phase 1 prototype</span></header>
   <nav class="tabs" role="tablist">
     <button class="tab" role="tab" data-v="mcdu" aria-selected="true">MCDU</button>
     <button class="tab" role="tab" data-v="3d" aria-selected="false">Cockpit 3D</button>
@@ -24,6 +24,17 @@
         <div class="scr" id="scr"></div>
       </div>
     </div>
+    <div class="ndpanel">
+      <canvas id="nd" aria-label="Navigation display"></canvas>
+      <div class="efis" aria-label="EFIS control panel">
+        <div class="eg"><span class="el">Mode</span><div class="seg">
+          <button class="eb" type="button" data-efis="mode:ROSE">ROSE NAV</button><button class="eb" type="button" data-efis="mode:ARC">ARC</button><button class="eb" type="button" data-efis="mode:PLAN">PLAN</button></div></div>
+        <div class="eg"><span class="el">Range NM</span><div class="seg">
+          <button class="eb" type="button" data-efis="range:-" aria-label="Decrease range">−</button><span class="rv" id="ndRange">40</span><button class="eb" type="button" data-efis="range:+" aria-label="Increase range">+</button></div></div>
+        <div class="eg"><span class="el">Options</span><div class="seg">
+          <button class="eb" type="button" data-efis="cstr">CSTR</button><button class="eb" type="button" data-efis="wpt">WPT</button><button class="eb" type="button" data-efis="arpt">ARPT</button></div></div>
+      </div>
+    </div>
     <aside class="side">
       <div class="card">
         <h2>Exercise · OEJN to OETB</h2>
@@ -33,6 +44,15 @@
           <span>Arrival: <b>ILS 31 (no STAR at OETB)</b></span>
           <span>CRZ: <b>FL340 · CI 20 · ALTN OEMA</b></span>
         </div>
+        <h3>Loadsheet and takeoff data (example)</h3>
+        <div class="kv">
+          <span>ZFW / ZFWCG: <b>58.4 / 27.5</b></span>
+          <span>Block fuel: <b>8.6</b></span>
+          <span>RWY 16C · CONF <b>1+F</b> · THS <b>UP0.4</b></span>
+          <span>FLEX: <b>54</b></span>
+          <span>V1 / VR / V2: <b>141 / 146 / 150</b></span>
+        </div>
+        <div class="note"><span class="tag">NOTE</span><span>Example figures for this exercise only, not from a loadsheet or a performance tool.</span></div>
         <h3>Progress</h3>
         <ul class="tasks" id="tasks"></ul>
         <div class="note"><span class="tag">NOTE</span><span>Tasks are checked against the active flight plan, so revisions only count after INSERT.</span></div>
@@ -44,6 +64,9 @@
           <span>CLR on an empty scratchpad writes CLR: then press the LSK of a waypoint or discontinuity to delete it.</span>
           <span>Left LSK next to a waypoint: LAT REV (DEPARTURE, NEXT WPT, AIRWAYS, ARRIVAL).</span>
           <span>Up and down arrows scroll the F-PLN.</span>
+          <span>INIT, then the right arrow key: INIT B (ZFW/ZFWCG, BLOCK).</span>
+          <span>PERF: TAKE OFF page (V1, VR, V2, FLAPS/THS, FLEX).</span>
+          <span>ND in PLAN: the map centres on the waypoint on the second line of the F-PLN page, so scroll the F-PLN to review the route.</span>
         </div>
         <div style="margin-top:12px"><button class="btn sm" id="reset" type="button">Reset MCDU</button></div>
       </div>
@@ -70,6 +93,8 @@
 <script src="js/data/navdb.js"></script>
 <script src="js/data/procedures.js"></script>
 <script src="js/mcdu.js"></script>
+<script src="js/perf.js"></script>
+<script src="js/nd.js"></script>
 <script src="js/cockpit3d.js"></script>
 <script src="js/app.js"></script>
 </body>

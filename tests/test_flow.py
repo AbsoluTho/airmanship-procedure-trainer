@@ -26,8 +26,17 @@ async def run(url,b):
     await k('L6');await k('R1');await k('L3');await k('L4');await k('R6')
     legs=await pg.evaluate('window.__S().active.legs.map(l=>l.k)')
     await pg.evaluate(f'window.__S().fpOff={legs.index("disc")-1}');await k('CLR');await k('L2');await k('R6')
+    await k('INIT');await k('RIGHT');await t('58.4/27.5');await k('R1');await t('8.6');await k('R2')
+    trip=await pg.evaluate('predict().trip.fuel');assert 3<trip<7,f'trip fuel {trip}'
+    await k('PERF');await t('150');await k('L3');await t('146');await k('L2');await t('141');await k('L1')
+    await t('1/UP0.4');await k('R3');await t('54');await k('R4')
+    await t('160');await k('L1');assert await pg.evaluate('window.__S().msg')=='V1/VR/V2 DISAGREE','V-speed order check'
+    await k('CLR');await t('141');await k('L1')
+    await pg.evaluate("window.__efis('mode','PLAN')");await k('FPLN')
+    legs=await pg.evaluate('window.__S().active.legs.map(l=>l.k)')
+    await pg.evaluate(f'window.__S().fpOff={legs.index("dest")-1}');await k('UP');await k('DOWN')
     done=await pg.evaluate("[...document.querySelectorAll('#tasks li.done')].length")
-    assert done==9,f'exercise tasks done: {done}/9'
+    assert done==14,f'exercise tasks done: {done}/14'
     await pg.click('text=Cockpit 3D');await pg.wait_for_timeout(2500)
     await pg.evaluate('window.__dbg3d.goView(3)');await pg.wait_for_timeout(2500)
     x,y=await pg.evaluate('window.__dbg3d.proj("elec",0.624,0.79)');await pg.mouse.click(x,y);await pg.wait_for_timeout(200)

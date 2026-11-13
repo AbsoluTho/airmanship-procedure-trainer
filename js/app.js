@@ -11,7 +11,12 @@ const TASKS=[
  ['AIRWAYS: L677 to WEJ, V54 to TBK',()=>{const a=S.active;if(!a)return false;const ids=a.legs.filter(l=>l.k==='wpt').map(l=>l.id);
    return seqIn(ids,['MIGDA','RIDEP','YEN','RAGNO','ORGIM','TUGRU','WEJ','LABUN','NETOL','DEMSU'])}],
  ['ARRIVAL: ILS31 via D179O',()=>{const a=S.active;return!!a&&a.appr==='ILS31'&&a.via==='D179O'}],
- ['No discontinuity left before the destination',()=>{const a=S.active;if(!a)return false;const di=idxK(a,'dest');return!!a.sid&&!!a.appr&&!a.legs.slice(0,di).some(l=>l.k==='disc')}]];
+ ['No discontinuity left before the destination',()=>{const a=S.active;if(!a)return false;const di=idxK(a,'dest');return!!a.sid&&!!a.appr&&!a.legs.slice(0,di).some(l=>l.k==='disc')}],
+ ['ND PLAN: scroll the F-PLN until OETB is the PLAN centre',()=>EFIS.mode==='PLAN'&&!!EFIS.ctr&&EFIS.ctr.id==='OETB'&&!!S.active&&!!S.active.appr],
+ ['INIT B: ZFW/ZFWCG 58.4/27.5',()=>S.fuel.zfw===58.4&&S.fuel.cg===27.5],
+ ['INIT B: BLOCK 8.6',()=>S.fuel.block===8.6],
+ ['PERF TAKE OFF: V1 141, VR 146, V2 150',()=>{const q=S.perf;return q.v1===141&&q.vr===146&&q.v2===150}],
+ ['PERF TAKE OFF: FLAPS/THS 1/UP0.4, FLEX 54',()=>{const q=S.perf;return q.flaps===1&&q.ths==='UP0.4'&&q.flex===54}]];
 let lastT='';
 function tasks(){const h=TASKS.map(([t,f])=>{const d=f();return`<li class="${d?'done':''}"><span class="ck">${d?'✓':''}</span><span>${t}</span></li>`}).join('');
   if(h!==lastT){$('#tasks').innerHTML=h;lastT=h}}
@@ -29,5 +34,5 @@ function closeMcdu(){$('#mcduHome').appendChild(mc);mc.classList.remove('off');$
 $('#mclose').addEventListener('click',closeMcdu);
 $('#modal').addEventListener('click',e=>{if(e.target.id==='modal')closeMcdu()});
 
-window.__S=()=>S;window.__press=press;
+window.__S=()=>S;window.__press=press;window.__efis=efisSet;window.__EFIS=EFIS;
 render();

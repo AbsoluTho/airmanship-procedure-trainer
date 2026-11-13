@@ -71,4 +71,15 @@ button{font:inherit;color:inherit}
 .modal .mhead{display:flex;gap:10px;align-items:center;color:var(--ink2);font-size:13px;width:min(94vw,calc((100dvh - 90px)*563/880),563px)}
 .modal .mhead span{flex:1}
 .modal .mcdu{width:min(94vw,calc((100dvh - 90px)*563/880),563px)}
+/* ND + EFIS */
+.ndpanel{flex:0 1 auto;width:min(100%,calc(100dvh - 210px),470px);min-width:280px;display:flex;flex-direction:column;gap:8px}
+#nd{width:100%;aspect-ratio:1;display:block;background:#000;border-radius:10px;border:6px solid #1d252e;box-shadow:0 0 0 1px var(--line)}
+.efis{display:flex;flex-wrap:wrap;gap:8px 12px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:8px 10px}
+.eg{display:flex;flex-direction:column;gap:4px}
+.el{font:600 11px/1 var(--f-display);letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)}
+.seg{display:flex;gap:4px;align-items:center}
+.eb{background:var(--sunk);border:1px solid var(--line);color:var(--ink2);border-radius:7px;padding:7px 9px;min-width:36px;font:600 13px/1 var(--f-display);letter-spacing:.06em;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.eb[aria-pressed="true"]{background:var(--accent-soft);border-color:#2f6d8f;color:var(--accent)}
+.eb[data-efis^="range"]{font-size:17px;padding:4px 10px}
+.rv{min-width:34px;text-align:center;font:500 14px var(--f-mono);color:var(--ink)}
 @media (max-width:760px){.side{max-width:none}.mark{font-size:20px}}

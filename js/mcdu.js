@@ -4,6 +4,8 @@ let S;
 function freshState(){return{page:'INIT',title:'',sp:'',msg:null,
   init:{from:null,to:null,altn:null,flt:null,ci:null,crz:null,temp:null,tropo:null,gnd:null},
   active:null,tmpy:null,fpOff:0,lr:0,dep:{list:'RWY',off:0},arr:{list:'APPR',off:0},awy:null,
+  fuel:{zfw:null,cg:null,block:null,taxi:null,rsv:null,rsvPct:null,altn:null,final:null,finalTime:null,wind:null,minFob:null},
+  perf:{v1:null,vr:null,v2:null,shift:null,flaps:null,ths:null,flex:null,ta:null,thr:null,acc:null,eoacc:null,rwyRef:null},
   elec:{bat1:false,bat2:false,ext:false,apu:false}}}
 S=freshState();
 const I=()=>S.init;
@@ -111,25 +113,31 @@ function fplnRows(p){const rows=p?p.legs.map((l,ix)=>Object.assign({},l,{ix})):[
   if(I().altn&&p){rows.push({k:'altn',id:I().altn});rows.push({k:'end',t:'END OF ALTN F-PLN'})}else rows.push({k:'end',t:'NO ALTN F-PLN'});
   return rows}
 const dash=t=>{const n=COLS-t.length,a=Math.floor(n/2);return'-'.repeat(a)+t+'-'.repeat(n-a)};
+function planCentre(p){const rows=fplnRows(p);for(let j=Math.min(S.fpOff+1,rows.length-1);j>=0;j--){const r=rows[j];
+  const pos=(r.k==='altn')?DB.apt[r.id].pos:(r.k&&r.k!=='end'&&r.k!=='disc')?legPos(r):null;if(pos)return{pos,id:r.id}}return null}
 P.FPLN={render(){const p=cur(),rows=fplnRows(p),ds=p?dists(p):[];
+  if(p){const c=planCentre(p);if(c)EFIS.ctr=c}
+  const pr=predict(),tcum=pr&&p===S.active?pr.cum:null;
   put(1,1,'FROM','w','S');if(S.tmpy)put(1,6,'TMPY','y');if(I().flt)rput(1,I().flt,'w','L',23);
   const base=S.tmpy?'y':'g';let firstD=true;
   for(let n=0;n<5;n++){const r=rows[S.fpOff+n];if(!r)break;const ln=3+2*n,lb=ln-1;
-    if(n===0){put(lb,8,'UTC','w','S');rput(lb,'SPD/ALT','w','S',22)}
+    if(n===0){put(lb,8,'TIME','w','S');rput(lb,'SPD/ALT','w','S',22)}
     if(r.k==='end'){put(ln,0,dash(r.t),'w');continue}
     if(r.k==='disc'){put(ln,0,dash('F-PLN DISCONTINUITY'),'w');continue}
     const col=r.k==='altn'||r.seg==='map'?'b':base;
     if(n>0&&r.k!=='altn'){put(lb,1,(r.via||'').slice(0,6),'w','S');if(r.lbl)put(lb,8,r.lbl,'w','S');
       const d=ds[r.ix];if(d!=null){const t=String(Math.round(d));if(firstD){rput(lb,t+'NM','w','S',21);firstD=false}else rput(lb,t,'w','S',19)}}
     const id=(r.k==='orig'||r.k==='dest')?r.id+(r.rwy||''):r.id;
-    put(ln,0,id.slice(0,7),col);put(ln,8,'----','w');
+    const tm=tcum&&r.k!=='altn'&&tcum[r.ix]!=null?hhmm(pr.trip.at(tcum[r.ix])+(r.k==='orig'?0:1)):null;
+    put(ln,0,id.slice(0,7),col);if(tm)put(ln,8,tm,col);else put(ln,8,'----','w');
     if(r.k==='orig'){rput(ln,'---/'+String(DB.apt[r.id].elev).padStart(6),col)}
     else{const sp=r.spd?String(r.spd):'---',al=r.alt?fAlt(r.alt):'-----';
       const st=24-(4+1+6);put(ln,st,sp.padStart(4),r.spd?'m':'w');put(ln,st+4,'/','w');put(ln,st+5,al.padStart(6),r.alt?'m':'w')}}
   if(!tmpyFoot()&&p){const di=idxK(p,'dest'),d=p.legs[di];
     let tot=0;ds.forEach((x,ix)=>{if(ix<=di&&x)tot+=x});
-    put(12,1,'DEST','w','S');put(12,8,'UTC','w','S');rput(12,'DIST','w','S',17);rput(12,'EFOB','w','S',24);
-    put(13,0,(d.id+(d.rwy||'')).slice(0,7),'g');put(13,8,'----','w');rput(13,String(Math.round(tot)),'g','L',17);rput(13,'----','w')}},
+    put(12,1,'DEST','w','S');put(12,8,'TIME','w','S');rput(12,'DIST','w','S',17);rput(12,'EFOB','w','S',24);
+    put(13,0,(d.id+(d.rwy||'')).slice(0,7),'g');rput(13,String(Math.round(tot)),'g','L',17);
+    if(pr){put(13,8,hhmm(pr.trip.time),'g');rput(13,f1(S.fuel.block-pr.taxi-pr.trip.fuel),'g')}else{put(13,8,'----','w');rput(13,'----','w')}}},
  lsk(s,n){const p=cur();if(!p)return err('NOT ALLOWED');
   if(n===6){if(S.tmpy){if(s==='L')S.tmpy=null;else{S.active=S.tmpy;S.tmpy=null}return ok()}
     if(s==='L'){S.lr=idxK(p,'dest');return go('LATREV')}return err('NOT IN PROTOTYPE')}
@@ -242,6 +250,93 @@ P.AWY={render(){const p=cur(),a=S.awy;
   if(!pend&&n-1===R.length){if(v===fromId)return err('NOT ALLOWED');const q=edit();a.idx=insertAwy(q,a.idx,null,v);R.push({via:'DCT',to:v,fromId});return ok()}
   return err('NOT ALLOWED')}};
 
+/* INIT B (fuel and weight). Units: tonnes. */
+const dashF='---.-/----';
+function num(v,lo,hi,dp){if(!new RegExp('^\\d{1,3}(\\.\\d{1,'+(dp||1)+'})?$').test(v))return'F';const x=+v;return x<lo||x>hi?'R':x}
+P.INITB={render(){const f=S.fuel,pr=predict(),B=BOX;
+  cput(1,'INIT');put(1,22,'←');
+  put(2,1,'TAXI','w','S');rput(2,'ZFW/ZFWCG','w','S',23);
+  put(3,0,f1(f.taxi??0.2),'b',f.taxi!=null?'L':'S');
+  if(f.zfw!=null)rput(3,f1(f.zfw)+'/'+f1(f.cg),'b');else rput(3,B+B+'.'+B+'/'+B+B+'.'+B,'a');
+  put(4,1,'TRIP /TIME','w','S');rput(4,'BLOCK','w','S',23);
+  put(5,0,pr?f1(pr.trip.fuel)+'/'+hhmm(pr.trip.time):dashF,pr?'g':'w');
+  if(f.block!=null)rput(5,f1(f.block),'b');else rput(5,B+B+'.'+B,'a');
+  put(6,1,'RTE RSV/%','w','S');
+  segs(7,0,[[pr?f1(pr.rsv):'---.-','b',f.rsv!=null?'L':'S'],['/','b'],[(pr?pr.pct:(f.rsvPct??5)).toFixed(1),'b',f.rsvPct!=null?'L':'S']]);
+  put(8,1,'ALTN /TIME','w','S');rput(8,'TOW/   LW','w','S',23);
+  if(pr)segs(9,0,[[f1(pr.altn.fuel),'b',f.altn!=null?'L':'S'],['/'+hhmm(pr.altn.time),'g']]);else put(9,0,dashF,'w');
+  rput(9,pr?f1(pr.tow)+'/'+f1(pr.lw):'---.-/---.-',pr?'g':'w');
+  put(10,1,'FINAL/TIME','w','S');rput(10,'TRIP WIND','w','S',23);
+  if(pr)segs(11,0,[[f1(pr.final.fuel),'b',f.final!=null?'L':'S'],['/','b'],[hhmm(pr.final.time),'b',f.finalTime!=null?'L':'S']]);
+  else segs(11,0,[['---.-/','w'],[hhmm(f.finalTime??30),'b','S']]);
+  const w=f.wind||0;rput(11,(w<0?'HD':'TL')+String(Math.abs(w)).padStart(3,'0'),'b',f.wind!=null?'L':'S');
+  put(12,0,'EXTRA/TIME','w','S');rput(12,'MIN DEST FOB','w','S',23);
+  put(13,0,pr?f1(pr.extra.fuel)+'/'+hhmm(Math.abs(pr.extra.time)):dashF,pr?(pr.extra.fuel<0?'a':'g'):'w');
+  rput(13,pr?f1(pr.minFob):'---.-',pr?'b':'w',f.minFob!=null?'L':'S')},
+ lsk(s,n){const f=S.fuel,v=S.sp,k=s+n;if(!v)return;const C=v==='CLR';
+  const chk=x=>x==='F'?(err('FORMAT ERROR'),false):x==='R'?(err('ENTRY OUT OF RANGE'),false):true;
+  switch(k){
+  case'L1':if(C){f.taxi=null;return ok()}{const x=num(v,0,9.9);if(!chk(x))return;f.taxi=x;return ok()}
+  case'R1':{if(C)return err('NOT ALLOWED');const m=v.match(/^([\d.]*)(?:\/([\d.]*))?$/);if(!m||(!m[1]&&!m[2]))return err('FORMAT ERROR');
+    let z=f.zfw,c=f.cg;if(m[1]){z=num(m[1],35,80);if(!chk(z))return}if(m[2]){c=num(m[2],8,50);if(!chk(c))return}
+    if(z==null||c==null)return err('FORMAT ERROR');f.zfw=z;f.cg=c;return ok()}
+  case'R2':{if(C)return err('NOT ALLOWED');const x=num(v,1,40);if(!chk(x))return;f.block=x;return ok()}
+  case'L3':{if(C){f.rsv=null;f.rsvPct=null;return ok()}const m=v.match(/^([\d.]*)(?:\/([\d.]*))?$/);if(!m||(!m[1]&&!m[2]))return err('FORMAT ERROR');
+    if(m[1]){const x=num(m[1],0,9.9);if(!chk(x))return;f.rsv=x;f.rsvPct=null}
+    if(m[2]){const x=num(m[2],0,15);if(!chk(x))return;f.rsvPct=x;f.rsv=null}return ok()}
+  case'L4':if(C){f.altn=null;return ok()}{const x=num(v,0,9.9);if(!chk(x))return;f.altn=x;return ok()}
+  case'L5':{if(C){f.final=null;f.finalTime=null;return ok()}const m=v.match(/^([\d.]*)(?:\/(\d{4}))?$/);if(!m||(!m[1]&&!m[2]))return err('FORMAT ERROR');
+    if(m[1]){const x=num(m[1],0,9.9);if(!chk(x))return;f.final=x;f.finalTime=null}
+    if(m[2]){const t=+m[2].slice(0,2)*60+ +m[2].slice(2);if(+m[2].slice(2)>59||t>90)return err('ENTRY OUT OF RANGE');f.finalTime=t;f.final=null}return ok()}
+  case'R5':{if(C){f.wind=null;return ok()}const m=v.match(/^(HD|TL|H|T|-|\+)?(\d{1,3})$/);if(!m)return err('FORMAT ERROR');
+    const x=+m[2];if(x>250)return err('ENTRY OUT OF RANGE');f.wind=(m[1]&&/^(HD|H|-)$/.test(m[1]))?-x:x;return ok()}
+  case'R6':if(C){f.minFob=null;return ok()}{const x=num(v,0,40);if(!chk(x))return;f.minFob=x;return ok()}
+  case'R3':return err('NOT IN PROTOTYPE');
+  default:return err('NOT ALLOWED')}}};
+
+/* PERF TAKE OFF */
+function orig(){const p=S.active;return p?p.legs[0].id:null}
+function elevO(){const o=orig();return o?DB.apt[o].elev:0}
+function defRed(){return Math.round((elevO()+1500)/10)*10}
+P.PERFTO={render(){const q=S.perf,pr=predict(),f=S.fuel,B=BOX;
+  cput(1,'TAKE OFF');
+  put(2,1,'V1','w','S');put(2,7,'FLP RETR','w','S');rput(2,'RWY','w','S',23);
+  put(4,1,'VR','w','S');put(4,7,'SLT RETR','w','S');rput(4,'TO SHIFT','w','S',23);
+  put(6,1,'V2','w','S');put(6,7,'CLEAN','w','S');rput(6,'FLAPS/THS','w','S',23);
+  [[3,q.v1],[5,q.vr],[7,q.v2]].forEach(([r,x])=>x?put(r,0,String(x),'b'):put(r,0,B+B+B,'a'));
+  const tow=f.zfw!=null&&f.block!=null?f.zfw+f.block-(f.taxi??0.2):null,cs=tow?charSpeeds(tow):null;
+  [[3,'F',cs&&cs.F],[5,'S',cs&&cs.S],[7,'O',cs&&cs.O]].forEach(([r,l,x])=>{put(r,7,l+'=','w');put(r,9,x?String(x):'---',x?'g':'w')});
+  const rw=S.active&&S.active.rwy;rput(3,rw||'---',rw?'g':'w');
+  if(q.shift!=null)segs(5,24-9,[['[M]','b','S'],[String(q.shift).padStart(5),'b'],['*','b']]);else rput(5,'[M][   ]*','b');
+  if(q.flaps)rput(7,q.flaps+'/'+(q.ths?q.ths:'[   ]'),'b');else rput(7,'[]/[   ]','b');
+  put(8,1,'TRANS ALT','w','S');rput(8,'FLEX TO TEMP','w','S',23);
+  const o=orig();put(9,0,String(q.ta??(o&&TA[o]||'-----')),'b',q.ta!=null?'L':'S');
+  rput(9,q.flex!=null?q.flex+'°':'[  ]°','b');
+  put(10,0,'THR RED/ACC','w','S');rput(10,'ENG OUT ACC','w','S',23);
+  segs(11,0,[[String(q.thr??defRed()),'b',q.thr!=null?'L':'S'],['/','b'],[String(q.acc??defRed()),'b',q.acc!=null?'L':'S']]);
+  rput(11,String(q.eoacc??defRed()),'b',q.eoacc!=null?'L':'S');
+  rput(12,'NEXT ','w','S',23);rput(13,'PHASE>')},
+ lsk(s,n){const q=S.perf,v=S.sp,k=s+n;
+  if(k==='R6')return err('NOT IN PROTOTYPE');if(!v)return;const C=v==='CLR';
+  const vs=k==='L1'?'v1':k==='L2'?'vr':k==='L3'?'v2':null;
+  if(vs){if(C){q[vs]=null;return ok()}if(!/^\d{2,3}$/.test(v))return err('FORMAT ERROR');const x=+v;if(x<90||x>350)return err('ENTRY OUT OF RANGE');
+    q[vs]=x;ok();if(q.v1&&q.vr&&q.v2&&!(q.v1<=q.vr&&q.vr<=q.v2))S.msg='V1/VR/V2 DISAGREE';return}
+  const minA=elevO()+400;
+  switch(k){
+  case'R1':return err('NOT ALLOWED');
+  case'R2':{if(C){q.shift=null;return ok()}if(!/^\d{1,4}$/.test(v))return err('FORMAT ERROR');const p=S.active,rw=p&&p.rwy&&DB.apt[p.legs[0].id].rwy[p.rwy];
+    if(!rw)return err('NOT ALLOWED');if(+v>=rw.len)return err('ENTRY OUT OF RANGE');q.shift=+v||null;return ok()}
+  case'R3':{if(C){q.flaps=null;q.ths=null;return ok()}const m=v.match(/^([123])?(?:\/(?:(UP|DN)(\d(?:\.\d)?)|(\d(?:\.\d)?)(UP|DN)))?$/);
+    if(!m||(!m[1]&&!m[2]&&!m[5]))return err('FORMAT ERROR');const dir=m[2]||m[5],val=m[3]||m[4];
+    if(val!=null&&+val>5)return err('ENTRY OUT OF RANGE');if(m[1])q.flaps=+m[1];if(dir)q.ths=dir+(+val).toFixed(1);
+    if(!q.flaps)return err('FORMAT ERROR');return ok()}
+  case'R4':{if(C){q.flex=null;return ok()}if(!/^\d{1,2}$/.test(v))return err('FORMAT ERROR');q.flex=+v;return ok()}
+  case'L4':{if(C){q.ta=null;return ok()}if(!/^\d{3,5}$/.test(v))return err('FORMAT ERROR');const x=+v;if(x<1000||x>39000)return err('ENTRY OUT OF RANGE');q.ta=Math.round(x/10)*10;return ok()}
+  case'L5':{if(C){q.thr=q.acc=null;return ok()}const m=v.match(/^(\d{3,5})?(?:\/(\d{3,5}))?$/);if(!m||(!m[1]&&!m[2]))return err('FORMAT ERROR');
+    const t=m[1]?+m[1]:(q.thr??defRed()),a=m[2]?+m[2]:Math.max(q.acc??defRed(),t);if(t<minA||a<minA||a<t||a>39000)return err('ENTRY OUT OF RANGE');
+    if(m[1])q.thr=Math.round(t/10)*10;if(m[2]||a!==(q.acc??defRed()))q.acc=Math.round(a/10)*10;return ok()}
+  case'R5':{if(C){q.eoacc=null;return ok()}if(!/^\d{3,5}$/.test(v))return err('FORMAT ERROR');const x=+v;if(x<minA||x>39000)return err('ENTRY OUT OF RANGE');q.eoacc=Math.round(x/10)*10;return ok()}
+  default:return err('NOT ALLOWED')}}};
 P.MENU={render(){cput(1,'MCDU MENU');rput(2,'SELECT ','w','S');put(3,0,'<FMGC','g');rput(3,'NAV B/UP>');put(5,0,'<ATSU');put(7,0,'<AIDS');put(9,0,'<CFDS');rput(13,'RETURN>')},
  lsk(s,n){if(s==='L'&&n===1||s==='R'&&n===6)return go('INIT');return err('NOT IN PROTOTYPE')}};
 P.BLANK={render(){cput(1,S.title)},lsk(){return err('NOT IN PROTOTYPE')}};
@@ -252,7 +347,7 @@ function ok(){S.sp='';S.msg=null}
 function go(pg){S.page=pg;if(pg==='FPLN'){}}
 function typeCh(ch){if(S.msg)S.msg=null;if(S.sp==='CLR')S.sp='';if(S.sp.length<22)S.sp+=ch}
 function clrKey(){if(S.msg){S.msg=null;return}if(S.sp)S.sp=S.sp.slice(0,-1);else S.sp='CLR'}
-const TITLES={DIR:'DIR TO',PROG:'PROG',PERF:'PERF',DATA:'DATA INDEX',RADNAV:'RADIO NAV',FUEL:'FUEL PRED',SECF:'SEC INDEX',ATC:'ATC MENU'};
+const TITLES={DIR:'DIR TO',PROG:'PROG',DATA:'DATA INDEX',RADNAV:'RADIO NAV',FUEL:'FUEL PRED',SECF:'SEC INDEX',ATC:'ATC MENU'};
 function press(k){
   if(k.length===1&&/[A-Z0-9./]/.test(k))typeCh(k);
   else if(k==='SP')typeCh(' ');
@@ -264,18 +359,21 @@ function press(k){
   else if(k==='MENU')go('MENU');
   else if(k==='AIRPORT'){go('FPLN');const p=cur();if(p){S.fpOff=Math.max(0,idxK(p,'dest')-1)}}
   else if(k==='UP'||k==='DOWN'){const pg=P[S.page];if(pg.slew)pg.slew(k==='UP'?1:-1)}
-  else if(k==='LEFT'||k==='RIGHT'){if(S.page==='INIT')err('NOT IN PROTOTYPE')}
+  else if(k==='LEFT'||k==='RIGHT'){if(S.page==='INIT')go('INITB');else if(S.page==='INITB')go('INIT')}
+  else if(k==='PERF')go('PERFTO');
   else if(/^[LR][1-6]$/.test(k))P[S.page].lsk(k[0],+k[1]);
   else if(TITLES[k]){S.title=TITLES[k];go('BLANK');err('NOT IN PROTOTYPE')}
   render()}
 
 /* ================= render ================= */
 const scr=$('#scr');
-function render(){clr();P[S.page].render();
+function takeoffRwyCheck(){const r=S.active&&S.active.rwy||null,q=S.perf;
+  if(r!==q.rwyRef){if(q.rwyRef&&(q.v1||q.vr||q.v2)){q.v1=q.vr=q.v2=null;S.msg='CHECK TAKE OFF DATA'}q.rwyRef=r}}
+function render(){takeoffRwyCheck();clr();P[S.page].render();
   if(S.msg)put(14,0,S.msg,'w');else put(14,0,S.sp,'w');
   let h='';for(const row of BUF){h+='<div class="ln">';for(const x of row){
     const cl='c c-'+x.c+(x.s==='S'?' s':'');h+=x.ch===BOX?`<span class="${cl}"><i class="bx"></i></span>`:`<span class="${cl}">${x.ch==='<'?'&lt;':x.ch==='>'?'&gt;':x.ch==='&'?'&amp;':x.ch}</span>`}h+='</div>'}
-  scr.innerHTML=h;tasks();if(window.__draw3D)window.__draw3D()}
+  scr.innerHTML=h;if(window.drawND2D)drawND2D();tasks();if(window.__draw3D)window.__draw3D()}
 
 /* keys overlay */
 const mc=$('#mcdu');$('#mcduImg').src=IMG.mcdu;
