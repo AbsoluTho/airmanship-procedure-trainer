@@ -75,6 +75,16 @@ async def run(url,b):
     await pg.click('[data-ecp="fuel"]');assert await pg.evaluate("window.__ecam.page()")=='fuel','SD FUEL key'
     await pg.click('[data-ecp="fuel"]');assert await pg.evaluate("window.__ecam.page()")=='wheel','second press: back to the automatic page'
     for key in ['eng','bleed','press','elec','hyd','apu','cond','door','fctl','sts','all','rcl','emer']: await pg.click(f'[data-ecp="{key}"]')
+    # every SD page ported from FlyByWire renders over the screen with its title (ground: EXT PWR and APU on)
+    SDCHK="""(()=>{const T={eng:'ENGINE',crz:'CRUISE',wheel:'WHEEL',fuel:'FUEL',door:'DOOR/OXY',fctl:'F/CTL',bleed:'BLEED',press:'CAB PRESS',elec:'ELEC',hyd:'HYD',apu:'APU',cond:'COND',sts:'STATUS'},bad=[];
+      for(const g of Object.keys(T)){if(!window.SDP_PORTED.includes(g)){bad.push(g+' not ported');continue}window.__EC.page=g;drawEcam();const o=document.querySelector('#sdsvg');
+        if(!o.textContent.includes(T[g])||o.querySelectorAll('text,path,line').length<3)bad.push(g)}window.__EC.page=null;drawEcam();return bad})()"""
+    await pg.evaluate("Object.assign(window.__S().elec,{bat1:true,bat2:true,ext:true,apu:true})")
+    bad=await pg.evaluate(SDCHK);assert bad==[],f'SD pages on the ground: {bad}'
+    assert await pg.evaluate("(window.__EC.page='apu',drawEcam(),document.querySelector('#sdsvg').textContent.includes('AVAIL'))"),'APU AVAIL with the APU MASTER SW on the ground'
+    assert await pg.evaluate("(window.__EC.page='elec',drawEcam(),document.querySelector('#sdsvg').textContent.includes('EXT PWR'))"),'EXT PWR shown on the ELEC page'
+    assert await pg.evaluate("(window.__EC.page='sts',drawEcam(),document.querySelector('#sdsvg').textContent.includes('NORMAL'))"),'STATUS NORMAL'
+    await pg.evaluate("Object.assign(window.__S().elec,{ext:false,apu:false});window.__EC.page=null")
     await pg.click('[data-ecp="clr"]');await pg.click('[data-ecp="tocfg"]');assert await pg.evaluate('window.__EC.toCfg'),'T.O CONFIG test'
     assert await pg.evaluate("!document.querySelector('#ecp').hidden"),'ECAM control panel shown over the ND with the ECAM'
     await pg.click('#duToggle');assert not await pg.evaluate("window.__EC.on"),'MCDU button returns to the MCDU'
@@ -88,6 +98,7 @@ async def run(url,b):
     seen=await pg.evaluate("""(()=>{const seen=new Set(),log=[];let n=0,did={};const add=()=>{const f=FL.fma;[f.c1,f.c2,f.c3,f.c4].forEach(c=>(c||[]).forEach(x=>x&&x[0]&&seen.add(x[0])));if(f.land)seen.add(f.land);seen.add('PH:'+S.phase);seen.add('LAT:'+FL.lat);seen.add('VER:'+FL.ver)};
       while(FL.stage!=='STOP'&&n<60000){step(0.5);setFma();add();n++;const dtg=FL.path.sThr-FL.s;
         if(n%25===0){drawEcam();seen.add('SD:'+window.__ecam.page())}
+        if(!did.sdc&&S.phase==='CRZ'){did.sdc=1;const pg0=window.__EC.page;let ok=true;for(const g of window.SDP_PORTED){window.__EC.page=g;drawEcam();if(document.querySelector('#sdsvg').querySelectorAll('text,line,path').length<3)ok=false}window.__EC.page=pg0;if(ok)seen.add('SD PAGES IN CRZ')}
         if(FL.stage==='ROLL'&&FL.acc>2)seen.add('TREND TAKEOFF');if(FL.stage==='ROLLOUT'&&FL.acc<-2)seen.add('TREND LANDING');
         if(S.phase==='CLB'&&FL.spdIsMach&&FL.alt>25000){seen.add('MACH IN CLB');did.mclb=1}
         if(did.mclb&&S.phase==='DES'&&!FL.spdIsMach&&FL.alt<30000)seen.add('SPEED IN DES');
@@ -120,7 +131,7 @@ async def run(url,b):
         if(!did.lvl6&&FL.ver==='DES'&&Math.abs(FL.vs)<60&&Math.abs(FL.alt-7000)<40)seen.add('DES LEVEL AT CSTR'),did.lvl6=1;
         if(!did.pr&&S.phase==='CLB'&&FL.alt>8000){const v=vPredict(),q=v&&v.wp[ixOf('RIBIL')];if(q&&q.met)seen.add('RIBIL PREDICTED MET');did.pr=1}}
       seen.add('END:'+FL.stage);return[...seen]})()""")
-    for m in ['TREND TAKEOFF','TREND LANDING','MACH IN CLB','SPEED IN DES','SD:eng','SD:crz','SD:wheel','SPD CST 210','ALT CST','ALT CST 7000','CLB AFTER ORPAR','ALT ARMED MAGENTA','RIBIL PREDICTED MET','BELOW 7000 AFTER D179O','SPD CST 220 DES','DES LEVEL AT CSTR','DIR TO INSERTED','PATH FROM T-P','FROM LINE SEQUENCED','QNH ABOVE TA','STD SET','PERF CRZ T/D','CONF1 AT 12NM','CONF2 AT 8NM','MAN','SRS','RWY','NAV','THR CLB','CLB','LEVEL7000','ALT','ALT CRZ','HDG','NAV REJOINED','DES','THR IDLE','LOC *','LOC','G/S*','G/S','CAT 3','DUAL','LAND','FLARE','RETARD','ROLL OUT','PH:CLB','PH:CRZ','PH:DES','PH:APPR','PH:DONE','END:STOP']:
+    for m in ['SD PAGES IN CRZ','TREND TAKEOFF','TREND LANDING','MACH IN CLB','SPEED IN DES','SD:eng','SD:crz','SD:wheel','SPD CST 210','ALT CST','ALT CST 7000','CLB AFTER ORPAR','ALT ARMED MAGENTA','RIBIL PREDICTED MET','BELOW 7000 AFTER D179O','SPD CST 220 DES','DES LEVEL AT CSTR','DIR TO INSERTED','PATH FROM T-P','FROM LINE SEQUENCED','QNH ABOVE TA','STD SET','PERF CRZ T/D','CONF1 AT 12NM','CONF2 AT 8NM','MAN','SRS','RWY','NAV','THR CLB','CLB','LEVEL7000','ALT','ALT CRZ','HDG','NAV REJOINED','DES','THR IDLE','LOC *','LOC','G/S*','G/S','CAT 3','DUAL','LAND','FLARE','RETARD','ROLL OUT','PH:CLB','PH:CRZ','PH:DES','PH:APPR','PH:DONE','END:STOP']:
         assert m in seen,f'never seen in the flight: {m}  (seen: {sorted(seen)})'
     await pg.evaluate("window.__flight('reset');window.__ecam.show(false)")
     # ---- second flight: OPEN CLB logic and selected SPD to MACH ----

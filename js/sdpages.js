@@ -1,10 +1,11 @@
 'use strict';
 /* ================= SD system pages ported from FlyByWire A32NX (GPL-3.0) =================
-   ENGINE, CRUISE, WHEEL, FUEL, DOOR/OXY (SD, 600 or 768 unit pages) and F/CTL (SDv2, 768 units):
+   ENGINE, CRUISE, WHEEL, FUEL, DOOR/OXY, BLEED, CAB PRESS, ELEC, HYD, APU, COND (SD, 600 or 768 unit pages)
+   and F/CTL, STATUS (SDv2, 768 units):
    the same coordinates, shapes, classes and text sizes as the FlyByWire SVG pages, rendered as SVG
    over the lower ECAM screen. Values come from the trainer's simplified model; systems that are
    not simulated are shown in their normal state. */
-const SDP_PORTED=['eng','crz','wheel','fuel','door','fctl'];
+const SDP_PORTED=['eng','crz','wheel','fuel','door','fctl','bleed','press','elec','hyd','apu','cond','sts'];
 const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
 const tx=(x,y,s,cls,ex)=>`<text x="${x}" y="${y}" class="${cls||''}"${ex?' '+ex:''}>${esc(s)}</text>`;
 const pth=(d,cls,ex)=>`<path d="${d}" class="${cls||''}"${ex?' '+ex:''}/>`;
@@ -168,8 +169,191 @@ function pgFctl(D){const on=D.on,air=D.air;
     tx(408,226,'SEC','White F22 LS1')+comp(395,234,1)+comp(425,252,2)+comp(455,270,3)+wings+aileron(88,197,'left',ail)+aileron(678,197,'right',-ail)+
     elevator(212,424,'left',elev)+elevator(555,424,'right',elev)+pitchTrim+rudder)+`</g>`}
 
+/* =================== batch 2: BLEED, CAB PRESS, ELEC, HYD, APU, COND (SD, 600 or 768 units), STATUS (SDv2) =================== */
+/* FlyByWire gauge parts (@instruments/common/gauges): GaugeComponent arc and GaugeMarkerComponent */
+function vrac(v,min,max,sa,ea,perp){const p=(v-min)/(max-min),a0=perp?0:90,deg=sa>ea?sa+p*(360-sa+ea)-a0:sa+p*(ea-sa)-a0,r=deg*Math.PI/180;return{x:Math.cos(r),y:Math.sin(r)}}
+function gMark(o){const{value,x,y,min,max,r,sa,ea,cls}=o,mo=o.mo??1.15,mi=o.mi??0.85,d=vrac(value,min,max,sa,ea);
+  let s={x:x+d.x*r*mi,y:y+d.y*r*mi},e={x:x+d.x*r,y:y+d.y*r};
+  if(o.outer){s={x:x+d.x*r,y:y+d.y*r};e={x:x+d.x*r*mo,y:y+d.y*r*mo}}
+  if(o.indicator){if(!o.half)s={x,y};e={x:x+d.x*r*mo,y:y+d.y*r*mo}}
+  const f=n=>Math.round(n*100)/100,tv=o.showValue?String(Math.abs(value)):'';
+  return`<line x1="${f(s.x)}" y1="${f(s.y)}" x2="${f(e.x)}" y2="${f(e.y)}" class="${cls}"${o.bold?' stroke-width="2"':''} stroke-linecap="${o.round?'round':'square'}"/>`+
+    (tv?`<text x="${f(x+d.x*r*mi+(o.nx||0))}" y="${f(y+d.y*r*mi+(o.ny||0))}" class="${o.tcls||'GaugeText'}" dominant-baseline="central" text-anchor="middle">${tv}</text>`:'')}
+const gArc=(x,y,r,sa,ea,cls,inner)=>`<g class="GaugeComponent"><g>${pth(arcD(x,y,r,sa,ea),cls)}${inner||''}</g></g>`;
+/* SD Common Shapes Triangle (x,y = tip; rotated about the tip) */
+const triS=(x,y,col,fill,orient,sc=1)=>`<polygon class="${col}Line${fill?' Fill'+col:''}" points="${x+sc*9},${y+2*sc*9} ${x},${y} ${x-sc*9},${y+2*sc*9}" transform="rotate(${orient} ${x} ${y})"/>`;
+/* Bleed/Cond Valve: V open in a vertical duct, H across it, D in transit */
+const valveS=(x,y,r,pos,css)=>`<g><circle cx="${x}" cy="${y}" r="${r}" class="${css}"/>${pos==='V'?pth(`M ${x},${y-r} l 0,${2*r}`,css):pos==='H'?pth(`M ${x-r},${y} l ${2*r},0`,css):pth(`M ${x-0.707*r},${y-0.707*r} l ${1.414*r},${1.414*r}`,css)}</g>`;
+/* systems state: the trainer simulates the engines, cabin pressure, EXT PWR and APU MASTER SW; the rest is shown normal */
+function sdSys(D){const air=D.air,el=S.elec||{},apu=!air&&!!el.apu;
+  return{air,gnd:!air,apu,apuBleed:apu,ext:!air&&!!el.ext,bat:[air||!!el.bat1,air||!!el.bat2],n2:D.E.map(e=>e.n2)}}
+
+/* ---------- BLEED (SD/Pages/Bleed, 600 units) ---------- */
+function pgBleed(D){const Y=sdSys(D),xOpen=Y.apuBleed,prv=[!Y.apuBleed,!Y.apuBleed],pack=[true,true];
+  const gauge=(x,y,e)=>{const pOut=15,cot=Math.round((150+(D.E[e].n2-58)*1.2)/5)*5,byp=50,flow=100;
+    return`<g id="Engine${e+1}AirCond">`+tx(x+15,y-117,String(pOut),'Large End Green')+tx(x+20,y-117,'°C','Cyan Standard')+
+      gArc(x,y-69,38,-63,63,'GaugeComponent Gauge',gMark({value:50,x,y:y-69,min:0,max:100,r:38,sa:-63,ea:63,cls:'WhiteStroke Stroke2',outer:1,mo:1.1})+
+        gMark({value:byp,x,y:y-69,min:0,max:100,r:38,sa:-63,ea:63,cls:'GaugeIndicator Gauge LineCapRound',indicator:1,mo:1.1}))+
+      tx(x+15,y-47,String(cot),'Large End Green')+tx(x+20,y-47,'°C','Cyan Standard')+
+      gArc(x,y,38,-63,63,'GaugeComponent Gauge',gMark({value:100,x,y,min:80,max:120,r:38,sa:-63,ea:63,cls:'WhiteStroke Stroke2',outer:1,mo:1.1})+
+        gMark({value:Math.max(80,flow),x,y,min:80,max:120,r:38,sa:-63,ea:63,cls:(pack[e]?'GaugeIndicator':'AmberLine Stroke3')+' Gauge LineCapRound',indicator:1,mo:1.1}))+
+      valveS(x,y,15,pack[e]?'V':'H','GreenLine BackgroundFill')+`</g>`};
+  const eng=(x,y,n)=>{const e=n-1,l=n===1,n2=D.E[e].n2,hp=n2<80,psi=Math.round((hp?36:44)/2)*2,tmp=Math.round((150+(n2-58)*1.3)/5)*5,open=prv[e];
+    return`<g id="bleed-${n}">`+pth(`M ${x},${y} l -47,10 l 0,123 l 14,0`,'GreyStroke Stroke2')+pth(`M ${x-47},${y+64} l 14,0`,'GreyStroke Stroke2')+
+      pth(`M ${x},${y} l +47,10 l 0,123 l -14,0`,'GreyStroke Stroke2')+pth(`M ${x+47},${y+64} l -14,0`,'GreyStroke Stroke2')+
+      tx(x-56,y+64,'C','White Standard End')+tx(x+58,y+64,'H','White Standard')+tx(x-55,y+132,'LO','White Standard End')+tx(x+61,y+132,'HI','White Standard')+
+      gauge(x,y+150,e)+
+      pth(`M ${x},${y+247} l -27,0 l 0,54 l 54,0 l 0,-54 l -27,0`,'GreyStroke Stroke2')+
+      tx(l?x+40:x-70,y+270,'PSI','Cyan Standard')+tx(l?x+40:x-70,y+298,'°C','Cyan Standard')+
+      tx(x,y+270,String(psi),'Large Center Green')+tx(x+20,y+295,String(tmp),'Large End Green')+
+      (open?pth(`M ${x},${y+340} l 0,-37`,'GreenLine'):'')+valveS(x,y+355,15,open?'V':'H','GreenLine')+
+      pth(`M ${x},${y+415} l 0,-45`,'GreenLine')+tx(x+2,y+433,'IP','White Center Standard')+
+      valveS(l?x+47:x-47,y+398,15,hp?'H':'V','GreenLine')+pth(`M ${l?x+92:x-92},${y+415} l 0,-17 l ${l?'-29':'29'},0`,'GreenLine')+
+      tx(l?x+95:x-90,y+433,'HP','White Center Standard')+(hp?pth(`M ${l?x+33:x-33},${y+398} l ${l?'-33':'33'},0`,'GreenLine'):'')+
+      tx(l?x-61:x+58,423,String(n),'Huge White')+`</g>`};
+  const apuV=Y.apu?`<g id="apu-bleed">`+(Y.apuBleed?pth(`M 300,${338-15} l 0,-57`,'GreenLine'):'')+valveS(300,338,15,Y.apuBleed?'V':'H','GreenLine')+pth(`M 300,${338+15} l 0,19`,'GreenLine')+tx(300,338+52,'APU','Large White Center')+`</g>`:'';
+  return`<g class="p-bleed">`+tx(6,18,'BLEED','PageTitle','dominant-baseline="central"')+
+    triS(185,24,'Green',0,0,0.75)+triS(300,24,'Green',0,0,0.75)+triS(429,24,'Green',0,0,0.75)+pth('M 135,62 l 0,-19 l 329,0 l 0,19','GreenLine')+
+    valveS(300,93,15,'H','GreenLine')+pth('M 300,108 l 0,19','GreenLine')+tx(300,145,'RAM','Large White Center')+tx(300,166,'AIR','Large White Center')+
+    `<g id="cross-bleed">`+pth('M 135, 227 l 0,82','GreenLine')+(xOpen?pth('M 135,267 l 165,0','GreenLine')+pth('M 300,267 l 40,0','GreenLine')+pth('M 370,267 l 94,0','GreenLine'):'')+
+    valveS(355,267,15,xOpen?'H':'V','GreenLine')+pth('M 464,227 l 0,82','GreenLine')+`</g>`+
+    apuV+eng(135,62,1)+eng(464,62,2)+
+    (Y.gnd?`<g id="CompressedAir">`+triS(248,274,'White',0,0,0.75)+tx(250,306,'GND','Medium White Center')+`</g>`:'')+`</g>`}
+
+/* ---------- CAB PRESS (SD/Pages/Press, 600 units) ---------- */
+function pgPress(D){const c=D.cab,dP=c.dp,cv=c.vs,ca=c.alt,y=165,R=50,dpx=110,vsx=275,cax=455,Y=sdSys(D);
+  const dpS=split1(Math.max(-9.9,Math.min(9.9,dP))),amb=dP<-0.4||dP>=8.5?'Amber':'Green',caR=Math.round(ca/50)*50,caC=caR>=9550?'Red':caR>=8800?'GreenTextPulse':'Green';
+  const vsR=Math.round(Math.max(-6350,Math.min(6350,cv))/50)*50,vsP=Math.abs(vsR)>1750;
+  const dpG={x:dpx,y,min:-1,max:9,r:R,sa:210,ea:50},vsG={x:vsx,y,min:-2,max:2,r:R,sa:180,ea:0},caG={x:cax,y,min:-0.625,max:10.625,r:R,sa:210,ea:50};
+  const outflow=Y.gnd?100:Math.max(4,Math.min(80,62-dP*6.6+Math.abs(cv)*0.01));
+  const sysT=(n,x)=>n===1?tx(x,290,'SYS 1','Large Green'):'';
+  const pack=(n,x)=>triS(x+38,495-45,'Green',0,0)+tx(x,495,'PACK '+n,'Large White');
+  return`<g class="p-press">`+tx(6,18,'CAB PRESS','PageTitle','dominant-baseline="central"')+
+    `<g id="LandingElevation">`+tx(280,25,'LDG ELEV','Large Center')+tx(350,25,'AUTO','Large Green')+tx(510,25,String(Math.round(c.ldg/50)*50),'Large Green','text-anchor="end"')+tx(525,25,'FT','Medium Cyan')+`</g>`+
+    sysT(1,180)+
+    `<g id="DeltaPressure">`+tx(dpx-5,80,'ΔP','Large Center')+tx(dpx-5,100,'PSI','Medium Center Cyan')+
+      tx(dpx+38,y+25,dpS[0],'Huge End '+amb)+tx(dpx+53,y+25,'.','Huge End '+amb)+tx(dpx+63,y+25,dpS[1],'Standard End '+amb)+
+      gArc(dpx,y,R,210,50,'Gauge',gArc(dpx,y,R,40,50,'Gauge Amber')+gArc(dpx,y,R,210,218,'Gauge Amber')+
+        gMark({...dpG,value:8,cls:'GaugeText',showValue:1,ny:10})+gMark({...dpG,value:4,cls:'GaugeText'})+gMark({...dpG,value:0,cls:'GaugeText',showValue:1,ny:-10,nx:5})+
+        gMark({...dpG,value:Math.max(-1,Math.min(9,Math.round(dP*10)/10)),cls:'GaugeIndicator'+(amb==='Amber'?' Amber':''),indicator:1}))+`</g>`+
+    `<g id="VsIndicator">`+tx(vsx+15,80,'V/S','Large Center')+tx(vsx+20,100,'FT/MIN','Medium Center Cyan')+tx(vsx+85,y+5,String(vsR),'Huge End '+(vsP?'GreenTextPulse':'Green'))+
+      gArc(vsx,y,R,170,10,'GaugeComponent Gauge',gMark({...vsG,value:2,cls:'GaugeText',showValue:1,ny:10})+gMark({...vsG,value:1,cls:'GaugeText'})+gMark({...vsG,value:0,cls:'GaugeText',showValue:1,nx:10})+
+        gMark({...vsG,value:-1,cls:'GaugeText'})+gMark({...vsG,value:-2,cls:'GaugeText',showValue:1,ny:-10})+
+        gMark({...vsG,value:Math.max(-2.25,Math.min(2.25,vsR/1000)),cls:'GaugeIndicator'+(vsP?' GreenIndicatorPulse':''),indicator:1}))+`</g>`+
+    `<g id="CaIndicator">`+tx(cax+15,80,'CAB ALT','Large Center')+tx(cax+20,100,'FT','Medium Center Cyan')+tx(cax+85,y+25,String(Math.round(Math.max(-9950,Math.min(32750,ca))/50)*50),'Huge End '+caC)+
+      gArc(cax,y,R,210,50,'Gauge',gArc(cax,y,R,30,50,'Gauge Red')+gMark({...caG,value:10,cls:'GaugeText',showValue:1,ny:15})+gMark({...caG,value:5,cls:'GaugeText',ny:10})+
+        gMark({...caG,value:0,cls:'GaugeText',showValue:1,ny:-10,nx:5})+gMark({...caG,value:Math.max(-0.625,Math.min(10.625,Math.round(ca/25)*25/1000)),cls:'GaugeIndicator '+(caC==='GreenTextPulse'?'GreenIndicatorPulse':caC),indicator:1}))+`</g>`+
+    grp(-5,-25,'<polyline class="AirPressureShape" points="140,460 140,450 75,450 75,280 540,280 540,300"/><polyline class="AirPressureShape" points="180,457 180,450 265,450 265,457"/>'+
+      '<polyline class="AirPressureShape" points="305,460 305,450 380,450"/><polyline class="AirPressureShape" points="453,450 540,450 540,380 550,380"/><line class="AirPressureShape" x1="540" y1="340" x2="547" y2="340"/>')+
+    tx(490,305,'SAFETY','Large White')+gMark({value:2,x:545,y:315,min:0,max:2,r:34,sa:90,ea:180,cls:'GreenLine',indicator:1})+'<circle class="WhiteCircle" cx="545" cy="315" r="3"/>'+
+    tx(185,380,'VENT','Large White')+tx(120,417,'INLET','Large White')+gMark({value:Y.gnd?0:2,x:175,y:434,min:0,max:2,r:34,sa:180,ea:270,cls:'GreenLine',indicator:1})+'<circle class="WhiteCircle" cx="175" cy="434" r="3"/>'+
+    tx(240,417,'OUTLET','Large White')+gMark({value:Y.gnd?2:0,x:260,y:434,min:0,max:2,r:34,sa:90,ea:180,cls:'GreenLine',indicator:1})+'<circle class="WhiteCircle" cx="260" cy="434" r="3"/>'+
+    `<g id="OutflowValve">`+gArc(448,425,72,270+outflow/100*90,360,'Gauge',gArc(448,425,72,355.5,360,'Gauge Amber')+
+      gMark({value:outflow,x:448,y:425,min:0,max:100,r:72,sa:270,ea:360,cls:'GreenLine',indicator:1,mo:1})+
+      [25,50,75].map(v=>gMark({value:v,x:448,y:425,min:0,max:100,r:72,sa:270,ea:360,cls:'Gauge',outer:1,mo:1.1})).join(''))+'<circle class="WhiteCircle" cx="448" cy="425" r="3"/></g>'+
+    pack(1,47)+pack(2,478)+`</g>`}
+
+/* ---------- ELEC (SD/Pages/Elec, 600 units) ---------- */
+function pgElec(D){const Y=sdSys(D),AS=13.737375;
+  const W=(d,amber)=>`<path class="${amber?'Amber':'Green'}" d="${d}"/>`;
+  const arrow=(x,y,dir,cls)=>{const c=cls?` class="${cls}"`:'';return dir==='up'?`<path${c} d="M${x} ${y}h${AS} l-6.8685 -8.99325z"/>`:dir==='down'?`<path${c} d="M${x} ${y}h-${AS} l6.8685 8.99325z"/>`:dir==='right'?`<path${c} d="M${x} ${y}v${AS} l8.99325 -6.8685z"/>`:`<path${c} d="M${x} ${y}v-${AS} l-8.99325 6.8685z"/>`};
+  const box=(w,h)=>`<rect class="Box" width="${w}" height="${h}"/>`;
+  const prop=(x,y,v,u,ok=true)=>grp(x,y,`<text class="Right ${ok?'Green':'Amber'}">${Math.round(v)}</text><text x="3.75" class="Cyan">${u}</text>`);
+  const bus=(x,y,w,name,num,ok)=>grp(x,y,`<rect width="${w}" height="26.25" class="Bus"/><text x="${w/2}" y="21" class="QuiteLarge ${num?'Right':'Middle'} ${ok?'Green':'Amber'}">${name}</text>`+(num?`<text x="${w/2+3.75}" y="22" class="ExtraLarge ${ok?'Green':'Amber'}">${num}</text>`:''));
+  const battery=(x,y,n,auto)=>grp(x,y,box(86.25,71.25)+`<text x="52.5" y="21.625" class="Right">BAT</text><text x="56.25" y="21.625" class="Large">${n}</text>`+
+    (auto?prop(52.5,43.125,28,'V')+prop(52.5,65.625,0,'A'):'<text x="43.125" y="41.25" class="Middle" dominant-baseline="middle">OFF</text>'));
+  const batWire=(x,y,closed)=>closed?grp(x,y,W('M0.3 0 h36.15 h-36.15')):'';
+  const gen=(x,y,n,load)=>grp(x,y,box(86.25,93.75)+`<text x="54.375" y="22.5" class="Right">GEN</text><text x="58.125" y="22.5" class="Large">${n}</text>`+
+    prop(54.375,45,load,'%')+prop(54.375,67.5,115,'V')+prop(54.375,90,400,'HZ'));
+  const apuGen=(x,y,on)=>{const t='<text x="46.875" y="18.75" class="Middle">APU GEN</text>';
+    return grp(x,y,on?box(93.75,90)+t+prop(58.125,41.25,0,'%')+prop(58.125,63.75,115,'V')+prop(58.125,86.25,400,'HZ'):t)};
+  const extPwr=(x,y)=>grp(x,y,box(93.75,67.5)+'<text x="46.875" y="18.75" class="Middle">EXT PWR</text>'+prop(52.5,41.25,115,'V')+prop(52.5,63.75,400,'HZ'));
+  const trBox=(x,y,n,a,titleOnly)=>{const t=`<text x="${n===3?80:50}" y="24.375" class="Right">${n===3?'ESS TR':'TR'}</text>`;
+    return grp(x,y,titleOnly?t:box(86.25,75)+t+(n!==3?`<text x="53.75" y="24.375" class="Large">${n}</text>`:'')+prop(54.375,46.875,28,'V')+prop(54.375,69.375,a,'A'))};
+  const idg=(x,y,n)=>grp(x,y,`<text>IDG</text><text x="39.38" class="Large">${n}</text>`);
+  const idgT=(x,y,t)=>grp(x,y,`<text class="Green Right">${t}</text><text x="3.75" class="Cyan">°C</text>`);
+  const anyBat=Y.bat[0]||Y.bat[1];
+  return`<g class="p-elec">`+tx(6,18,'ELEC','PageTitle','dominant-baseline="central"')+
+    batWire(196.611875,50.77125,Y.bat[0])+batWire(367.724375,50.77125,Y.bat[1])+
+    W('M56.25 117 v44.1 v-44.1')+W('M56.25 238.35 v29 v-29')+W('M536.25 117 v44.1 v-44.1')+W('M536.25 238.35 v29 v-29')+W('M138.57 279.32 h94.63 h-94.63')+
+    W('M90.15 103.125 h168.69 v-44 v58.40 v-14.4')+W('M 341.16 103.125 h 166.66 h -166.66 v -42.52 v42.52')+
+    arrow(258.84-AS/2,157.58,'up')+arrow(326.25,214.77,'left')+
+    W('M56.44 302.81 v42.5 v-42.5')+W('M536.25 302.81 v42.5 v-42.5')+arrow(56.25-AS/2,303.77,'up','Green')+arrow(536.25-AS/2,303.77,'up','Green')+
+    battery(108.75,10,1,Y.bat[0])+battery(405,10,2,Y.bat[1])+bus(232.5,35,135,anyBat?'DC BAT':'XX',0,anyBat)+
+    bus(6,90,86.25,'DC',1,true)+bus(507.75,90,86.25,'DC',2,true)+bus(232.5,116.25,135,'DC ESS',0,true)+
+    bus(6,266.25,135,'AC',1,true)+bus(459,266.25,135,'AC',2,true)+bus(232.5,266.25,135,'AC ESS',0,true)+
+    gen(13.125,345,1,35)+gen(493.125,345,2,33)+apuGen(168.75,367.5,Y.apu)+(Y.ext?extPwr(315,390):'')+
+    trBox(13.125,161.25,1,75)+trBox(493.125,161.25,2,70)+trBox(213.75,161.25,3,0,true)+
+    grp(330,161.25,'<text class="Medium" dominant-baseline="middle" x="0.9375" y="45">EMER GEN</text>')+
+    idg(28.13,476.25,1)+idgT(135,476.25,Y.air?75:50)+idg(513.75,476.25,2)+idgT(480,476.25,Y.air?75:50)+`</g>`}
+
+/* ---------- HYD (SD/Pages/Hyd, 768 units) ---------- */
+function pgHyd(D){const run=D.E.map(e=>e.n2>15);
+  const lv={GREEN:{max:14.5,low:3.5,norm:2.6,q:13},BLUE:{max:6.5,low:2.4,norm:1.6,q:6},YELLOW:{max:12.5,low:3.5,norm:2.6,q:11.5}};
+  const pump=(sys,y,on)=>{const up=sys==='GREEN'?-151:sys==='BLUE'?-153:-84;
+    return grp(0,y,`<line class="GreenLine" x1="0" y1="-42" x2="0" y2="${up}"/><rect class="${on?'GreenLine':'AmberLine'}" x="-21" y="-42" width="42" height="42"/>`+
+      (on?'<line class="GreenLine" x1="0" y1="-1" x2="0" y2="-41"/>':'<line class="AmberLine" x1="-12" y1="-21" x2="12" y2="-21"/>'))};
+  const fire=y=>grp(0,y,'<line class="GreenLine" x1="0" y1="0" x2="0" y2="-68"/><circle class="GreenLine" cx="0" cy="21" r="21"/><line class="GreenLine" x1="0" y1="42" x2="0" y2="0"/>');
+  const resv=sys=>{const v=lv[sys],lpp=121/v.max,rh=lpp*v.low,ur=(-rh).toFixed(0),lnorm=(-121+lpp*v.norm).toFixed(0),fh=-(lpp*v.q);
+    return grp(0,576,`<line class="GreenLine" x1="0" y1="-121" x2="0" y2="${sys==='BLUE'?-205:-161}"/><line class="WhiteLine" x1="0" y1="${ur}" x2="0" y2="-121"/>`+
+      `<line class="GreenLine" x1="0" y1="-121" x2="6" y2="-121"/><line class="GreenLine" x1="6" y1="${lnorm}" x2="6" y2="-121"/><line class="GreenLine" x1="0" y1="${lnorm}" x2="6" y2="${lnorm}"/>`+
+      `<rect class="AmberLine" x="0" y="${ur}" width="6" height="${rh}"/><line class="GreenLine" x1="0" y1="0" x2="-12" y2="0"/><line class="GreenLine" x1="-12" y1="0" x2="-12" y2="${fh}"/>`+
+      `<line class="GreenLine" x1="0" y1="${fh}" x2="-12" y2="${fh}"/><line class="GreenLine" x1="0" y1="${fh}" x2="-13" y2="${fh-11}"/>`)};
+  const sys=(name,x,eng)=>{const p=eng==null||run[eng]?3000:0,lo=p<=1450,b=name==='BLUE';
+    return grp(x,65,triS(0,0,lo?'Amber':'Green',0,0)+tx(name==='GREEN'?-2:b?1:3,50,name,'Huge Center'+(lo?' Amber':''))+tx(1,92,String(p),'Huge Center '+(lo?'Amber':'Green'))+
+      `<line class="${lo?'AmberLine':'GreenLine'}" x1="0" y1="${b?217:151}" x2="0" y2="103"/>`+pump(name,b?370:303,true)+(b?'':fire(372))+resv(name))};
+  const ptu=grp(383,216,'<line id="ptu2" class="GreenLine" x1="-107" y1="0" x2="-20" y2="0"/><path id="ptu3" class="GreenLine" d="M-20 0 A20 20 0 0 0 20 0"/><line id="ptu4" class="GreenLine" x1="20" y1="0" x2="56" y2="0"/>'+
+    tx(92,10,'PTU','Large')+triS(-131,0,'Green',0,-90,4/3)+triS(56,0,'Green',0,-90,4/3)+triS(177,0,'Green',0,90,4/3));
+  const rat=grp(372,282,tx(-78,10,'RAT','Large')+triS(0,0,'White',0,90,4/3));
+  return`<g class="p-hyd ecam-common-styles">`+svg768(tx(351,39,'HYD','Title UnderlineWhite')+tx(187,404,'1',(run[0]?'':'Amber ')+'Title')+tx(562,404,'2',(run[1]?'':'Amber ')+'Title')+
+    sys('GREEN',136,0)+sys('BLUE',383,null)+sys('YELLOW',630,1)+ptu+rat+tx(420,384,'ELEC','Large')+
+    tx(676,292,'ELEC','Large')+triS(642,283,'White',0,-90,4/3)+`<line class="GreenLine" x1="630" y1="217" x2="630" y2="283"/>`+
+    tx(243,157,'PSI','Cyan Standard')+tx(481,157,'PSI','Cyan Standard'))+`</g>`}
+
+/* ---------- APU (SD/Pages/Apu, 600 units) ---------- */
+function pgApu(D){const Y=sdSys(D),on=Y.apu,n=on?100:0,egt=on?345:Math.round(satC()),egtD=Math.round(egt/5)*5,warn=1090;
+  const nG={x:-1,y:50,min:0,max:120,r:50,sa:240,ea:60},eG={x:-1,y:50,min:3,max:11,r:50,sa:240,ea:90};
+  const gen=grp(105,100,(on?'<rect class="Box" width="100" height="111"/>':'')+'<text x="50" y="20" class="Center FontNormal">APU GEN</text>'+
+    (on?grp(60,55,'<text x="0" y="0" class="Right FontLarger Green">0</text><text x="0" y="25" class="Right FontLarger Green">115</text><text x="0" y="50" class="Right FontLarger Green">400</text>')+
+      grp(70,55,'<text x="0" y="0" class="Cyan FontNormal">%</text><text x="0" y="25" class="Cyan FontNormal">V</text><text x="0" y="50" class="Cyan FontNormal">HZ</text>'):''));
+  const bOpen=Y.apuBleed,psi=bOpen?Math.round(35/2)*2:0;
+  const bleed=grp(420,153,'<rect class="Box" width="100" height="57"/><text x="50" y="22" class="Center FontNormal">BLEED</text>'+
+    `<text x="44" y="48" class="FontLarger Right Green">${psi}</text><text x="90" y="48" class="Cyan FontNormal Right">PSI</text>`+
+    '<line class="Line Green" x1="50" y1="-1" x2="50" y2="-22"/><circle class="Circle Green" cx="50" r="18" cy="-40"/>'+
+    `<line class="Line Green" x1="${bOpen?50:32}" y1="${bOpen?-58:-40}" x2="${bOpen?50:68}" y2="${bOpen?-22:-40}"/>`+
+    (bOpen?'<line class="Line Green" x1="50" y1="-57" x2="50" y2="-72"/><polygon class="Circle Green" points="40,-72 50,-92 60,-72"/>':''));
+  const nGauge=grp(155,295,gArc(0,50,50,240,60,'Line White NoFill',gArc(0,50,50,40,60,'Line Red NoFill',
+      gMark({...nG,value:0,cls:'GaugeText',nx:3,ny:-8,showValue:1,bold:1})+gMark({...nG,value:50,cls:'GaugeText',bold:1})+gMark({...nG,max:12,value:10,cls:'GaugeText',showValue:1,ny:10,bold:1})+
+      gMark({...nG,value:102,cls:'NoFill AmberHeavy',outer:1,mo:1.2})+gMark({...nG,x:0,value:n,cls:'Line Green',indicator:1})))+
+    grp(80,13,'<text x="0" y="0" class="White Center FontNormal">N</text><text x="0" y="30" class="Cyan Center FontNormal">%</text>')+tx(10,80,String(n),'FontLarger Left Green'));
+  const eGauge=grp(155,410,gArc(0,50,50,240,90,'Line White NoFill',gMark({...eG,value:3,cls:'GaugeText',nx:3,ny:-8,showValue:1,bold:1})+gMark({...eG,value:7,cls:'GaugeText',nx:1,ny:10,showValue:1,bold:1})+
+      gMark({...eG,value:10,cls:'GaugeText',nx:-12,ny:3,showValue:1,bold:1})+gMark({x:-1,y:50,min:300,max:1100,r:50,sa:240,ea:90,value:warn-33,cls:'NoFill AmberHeavy',outer:1,mo:1.2})+
+      gArc(0,50,50,240,90,'Line Red NoFill')+gArc(0,50,50,240,240+(Math.max(300,warn-300)/800)*210,'Line White NoFill')+
+      gMark({x:0,y:50,min:300,max:1100,r:50,sa:240,ea:90,value:egt<300?300:egtD,cls:'Line Green',indicator:1}))+
+    grp(80,13,'<text x="0" y="0" class="White Center FontNormal">EGT</text><text x="0" y="30" class="Cyan Center FontNormal" letter-spacing="-2">°C</text>')+tx(10,80,String(egtD),'FontLarger Left Green'));
+  return`<g class="p-apu">`+tx(283,33,'APU','PageTitle','dominant-baseline="central"')+(on?grp(305,85,'<text x="0" y="0" class="Green FontTitle Center">AVAIL</text>'):'')+gen+bleed+
+    grp(83,252,'<line class="Line Grey" x1="0" y1="0" x2="0" y2="26"/><line class="Line Grey" x1="-1" y1="0" x2="456" y2="0"/><line class="Line Grey" x1="455" y1="0" x2="455" y2="26"/>')+
+    nGauge+eGauge+grp(370,335,on?'<text class="Green FontNormal" x="0" y="60">FLAP OPEN</text>':'')+`</g>`}
+
+/* ---------- COND (SD/Pages/Cond, 768 units) ---------- */
+function pgCond(){const unit=(t,x,cab,trim,valve)=>grp(x,105,tx(47,23,t,'Large Center')+tx(26,56,String(cab),'Large Green')+tx(29,106,String(trim),'Standard Green')+
+    tx(-2,147,'C','Standard')+tx(74,146,'H','Standard')+`<g transform="rotate(${Math.round(-43+valve*86/100)} 42 158)">${pth('m 37,137 l 10,0 l -5,-9 z','GreenLine')}<line class="GreenLine" x1="42" y1="158" x2="42" y2="138"/></g>`+
+    '<line class="GreenLine" x1="42" y1="207" x2="42" y2="158"/><g><path class="WhiteLine" d="m 21,136 a 30 30 0 0 1 42 0"/><line class="WhiteLine" x1="42" y1="118" x2="42" y2="127"/></g>');
+  return`<g class="p-cond ecam-common-styles">`+svg768(`<g id="titleAndWarnings">`+tx(7,33,'COND','Title UnderlineWhite')+tx(630,32,'TEMP','Huge')+tx(715,32,':','Huge')+tx(726,31,'°C','Standard Cyan')+`</g>`+
+    pth('m 95,128 l 27,-9 l 11,-12 a 75 75 0 0 1 40 -13 h 430 l 12,10','LightGreyLine')+pth('m 94,172 a 150 150 0 0 0 60 18 h 20 m 49,0 h 122 m 49,0 h 120 m 50,0 h 38 l 12,-10','LightGreyLine')+
+    pth('m 278,94 v96 m 179,0 v-54','LightGreyLine')+unit('CKPT',153,22,20,45)+unit('FWD',324,23,21,50)+unit('AFT',494,23,22,52)+
+    `<g id="ValveAndTubes"><text class="MediumLarge"><tspan x="706" y="306" letter-spacing="1">HOT</tspan><tspan x="706" y="336" letter-spacing="2">AIR</tspan></text>`+
+    valveS(650,312,21,'H','GreenLine')+'<line class="GreenLine" x1="195" y1="312" x2="627" y2="312"/><line class="GreenLine" x1="672" y1="312" x2="696" y2="312"/></g>')+`</g>`}
+
+/* ---------- STATUS (SDv2/Pages/Status, 768 units): FWC text "\r\r              \x1b<3mNORMAL", 30 px lines, 16 px letters ---------- */
+function pgSts(){return`<g class="p-sts sdv2">`+svg768(tx(316,38,'STATUS','F36 White Underline')+
+    `<text x="8" y="118"><tspan x="${8+14*16}" y="${118+2*30}" class="Green EWDWarn">NORMAL</tspan></text>`+ln(483,96,483,593,'SW4 Grey LineRound'))+`</g>`}
+
 /* ---------- entry point ---------- */
 function sdPageSvg(pg){if(!SDP_PORTED.includes(pg))return'';const D=sdData();
-  const body={eng:pgEng,crz:pgCrz,wheel:pgWheel,fuel:pgFuel,door:pgDoor,fctl:pgFctl}[pg](D);
-  return`<defs><clipPath id="sdclip"><rect x="0" y="0" width="600" height="494"/></clipPath></defs><g clip-path="url(#sdclip)">${body}</g>`}
+  const body={eng:pgEng,crz:pgCrz,wheel:pgWheel,fuel:pgFuel,door:pgDoor,fctl:pgFctl,bleed:pgBleed,press:pgPress,elec:pgElec,hyd:pgHyd,apu:pgApu,cond:pgCond,sts:pgSts}[pg](D);
+  /* pages whose FlyByWire drawing reaches a few units below the permanent-data line (y 494) are scaled uniformly to fit, centred, from the top */
+  const k=SDP_FIT[pg],fit=k?` transform="translate(${300-300*k},0) scale(${k})"`:'';
+  return`<defs><clipPath id="sdclip"><rect x="0" y="0" width="600" height="494"/></clipPath></defs><g clip-path="url(#sdclip)"><g${fit}>${body}</g></g>`}
+const SDP_FIT={fuel:0.984,bleed:0.983,press:0.979,hyd:0.98,apu:0.989};
 window.sdPageSvg=sdPageSvg;window.SDP_PORTED=SDP_PORTED;
