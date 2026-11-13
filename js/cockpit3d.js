@@ -32,7 +32,7 @@ async function build3D(){
   /* live NDs on the main panel (captain and first officer) */
   const NDS=[[286,134,94,95],[717,134,93,95]].map(([x,y,w,h])=>{const c=document.createElement('canvas');c.width=c.height=512;const t=mkTex(c);
     plane(basic(t),w/1100*MW,h/355*MH,V(((x+w/2)/1100-.5)*MW,(.5-(y+h/2)/355)*MH,0.002),V(1,0,0),V(0,1,0),mainP);return{c,g:c.getContext('2d'),t}});
-  function drawNd3(){NDS.forEach(n=>{drawND(n.g,512,S.elec.ext);n.t.needsUpdate=true});dirty=true}
+  function drawNd3(){NDS.forEach(n=>{drawND(n.g,512,512,S.elec.ext);n.t.needsUpdate=true});dirty=true}
   const oF=V(0,1.52,-0.72),oA=V(0,1.74,0.71),OW=0.92,OL=oA.distanceTo(oF);
   const ovh=plane(basic(mkTex(crop(245,0,615,968,2))),OW,OL,oF.clone().add(oA).multiplyScalar(.5),X,oA.clone().sub(oF));
   const pF=V(0,0.47,-0.80),pA=V(0,0.24,-0.12),PW=0.44,PL=PW*790/488;

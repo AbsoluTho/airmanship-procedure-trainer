@@ -1,7 +1,7 @@
 'use strict';
 /* ================= state ================= */
 let S;
-function freshState(){return{page:'INIT',title:'',sp:'',msg:null,
+function freshState(){return{page:'INIT',title:'',sp:'',msg:'GPS PRIMARY',
   init:{from:null,to:null,altn:null,flt:null,ci:null,crz:null,temp:null,tropo:null,gnd:null},
   active:null,tmpy:null,fpOff:0,lr:0,dep:{list:'RWY',off:0},arr:{list:'APPR',off:0},awy:null,
   fuel:{zfw:null,cg:null,block:null,taxi:null,rsv:null,rsvPct:null,altn:null,final:null,finalTime:null,wind:null,minFob:null},
@@ -300,19 +300,19 @@ function elevO(){const o=orig();return o?DB.apt[o].elev:0}
 function defRed(){return Math.round((elevO()+1500)/10)*10}
 P.PERFTO={render(){const q=S.perf,pr=predict(),f=S.fuel,B=BOX;
   cput(1,'TAKE OFF');
-  put(2,1,'V1','w','S');put(2,7,'FLP RETR','w','S');rput(2,'RWY','w','S',23);
-  put(4,1,'VR','w','S');put(4,7,'SLT RETR','w','S');rput(4,'TO SHIFT','w','S',23);
-  put(6,1,'V2','w','S');put(6,7,'CLEAN','w','S');rput(6,'FLAPS/THS','w','S',23);
+  put(2,1,'V1','w','S');put(2,7,'FLP RETR','w','S');rput(2,'RWY','w','S',24);
+  put(4,1,'VR','w','S');put(4,7,'SLT RETR','w','S');rput(4,'TO SHIFT','w','S',24);
+  put(6,1,'V2','w','S');put(6,7,'CLEAN','w','S');rput(6,'FLAPS/THS','w','S',24);
   [[3,q.v1],[5,q.vr],[7,q.v2]].forEach(([r,x])=>x?put(r,0,String(x),'b'):put(r,0,B+B+B,'a'));
   const tow=f.zfw!=null&&f.block!=null?f.zfw+f.block-(f.taxi??0.2):null,cs=tow?charSpeeds(tow):null;
   [[3,'F',cs&&cs.F],[5,'S',cs&&cs.S],[7,'O',cs&&cs.O]].forEach(([r,l,x])=>{put(r,7,l+'=','w');put(r,9,x?String(x):'---',x?'g':'w')});
   const rw=S.active&&S.active.rwy;rput(3,rw||'---',rw?'g':'w');
   if(q.shift!=null)segs(5,24-9,[['[M]','b','S'],[String(q.shift).padStart(5),'b'],['*','b']]);else rput(5,'[M][   ]*','b');
   if(q.flaps)rput(7,q.flaps+'/'+(q.ths?q.ths:'[   ]'),'b');else rput(7,'[]/[   ]','b');
-  put(8,1,'TRANS ALT','w','S');rput(8,'FLEX TO TEMP','w','S',23);
+  put(8,1,'TRANS ALT','w','S');rput(8,'FLEX TO TEMP','w','S',24);
   const o=orig();put(9,0,String(q.ta??(o&&TA[o]||'-----')),'b',q.ta!=null?'L':'S');
   rput(9,q.flex!=null?q.flex+'°':'[  ]°','b');
-  put(10,0,'THR RED/ACC','w','S');rput(10,'ENG OUT ACC','w','S',23);
+  put(10,0,'THR RED/ACC','w','S');rput(10,'ENG OUT ACC','w','S',24);
   segs(11,0,[[String(q.thr??defRed()),'b',q.thr!=null?'L':'S'],['/','b'],[String(q.acc??defRed()),'b',q.acc!=null?'L':'S']]);
   rput(11,String(q.eoacc??defRed()),'b',q.eoacc!=null?'L':'S');
   rput(12,'NEXT ','w','S',23);rput(13,'PHASE>')},

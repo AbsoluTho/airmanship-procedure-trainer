@@ -10,29 +10,25 @@
 </head>
 <body>
 <div class="app">
-  <header class="top"><span class="mark">Airmanship Procedure Trainer</span><span class="appver">v0.2.0 · Phase 1 prototype</span></header>
+  <header class="top"><span class="mark">Airmanship Procedure Trainer</span><span class="appver">v0.2.1 · Phase 1 prototype</span></header>
   <nav class="tabs" role="tablist">
     <button class="tab" role="tab" data-v="mcdu" aria-selected="true">MCDU</button>
     <button class="tab" role="tab" data-v="3d" aria-selected="false">Cockpit 3D</button>
   </nav>
 
   <section class="view on" id="v-mcdu">
+    <div class="ndpanel">
+      <div class="efis" id="efis" aria-label="EFIS control panel"></div>
+      <div class="ndbezel">
+        <img id="ndBezel" alt="">
+        <canvas id="nd" aria-label="Navigation display"></canvas>
+      </div>
+    </div>
     <div id="mcduHome">
       <div class="mcdu" id="mcdu">
         <img class="face" id="mcduImg" alt="">
         <div class="scrOff"></div>
         <div class="scr" id="scr"></div>
-      </div>
-    </div>
-    <div class="ndpanel">
-      <canvas id="nd" aria-label="Navigation display"></canvas>
-      <div class="efis" aria-label="EFIS control panel">
-        <div class="eg"><span class="el">Mode</span><div class="seg">
-          <button class="eb" type="button" data-efis="mode:ROSE">ROSE NAV</button><button class="eb" type="button" data-efis="mode:ARC">ARC</button><button class="eb" type="button" data-efis="mode:PLAN">PLAN</button></div></div>
-        <div class="eg"><span class="el">Range NM</span><div class="seg">
-          <button class="eb" type="button" data-efis="range:-" aria-label="Decrease range">−</button><span class="rv" id="ndRange">40</span><button class="eb" type="button" data-efis="range:+" aria-label="Increase range">+</button></div></div>
-        <div class="eg"><span class="el">Options</span><div class="seg">
-          <button class="eb" type="button" data-efis="cstr">CSTR</button><button class="eb" type="button" data-efis="wpt">WPT</button><button class="eb" type="button" data-efis="arpt">ARPT</button></div></div>
       </div>
     </div>
     <aside class="side">
@@ -66,7 +62,9 @@
           <span>Up and down arrows scroll the F-PLN.</span>
           <span>INIT, then the right arrow key: INIT B (ZFW/ZFWCG, BLOCK).</span>
           <span>PERF: TAKE OFF page (V1, VR, V2, FLAPS/THS, FLEX).</span>
+          <span>EFIS control panel: tap a pushbutton, or a knob position (or the left or right half of a knob) to turn it.</span>
           <span>ND in PLAN: the map centres on the waypoint on the second line of the F-PLN page, so scroll the F-PLN to review the route.</span>
+          <span>CLR clears GPS PRIMARY from the MCDU and the ND.</span>
         </div>
         <div style="margin-top:12px"><button class="btn sm" id="reset" type="button">Reset MCDU</button></div>
       </div>
