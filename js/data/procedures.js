@@ -19,7 +19,7 @@ const SIDS={OEJN:{
   ISLA2W:[...C2W(),W('RALVI',{dist:10.9}),W('JN530',{dist:19.4}),W('ISLAM',{alt:A('-',13000),dist:35.7})],
   MIGD2W:[...C2W(),W('JN234',{dist:6.2}),W('MIGDA',{dist:25.0})]}}};
 const APPRS={OETB:{
- ILS31:{rwy:'31',crs:309,nav:'IPKS',
+ ILS31:{rwy:'31',crs:309,nav:'IPKS',freq:111.9,   /* LS frequency: check against the current chart */
   vias:{
    D179O:[W('D179O',{alt:A('+',5500)}),W('D136O',{alt:A('+',5500),lbl:'ARC',ctr:'TBK',dist:11.3}),W('CI31',{alt:A('@',4200)})],
    D043O:[W('D043O',{alt:A('+',5000)}),W('D120O',{alt:A('+',5000),lbl:'ARC',ctr:'TBK',dist:20.2}),W('CI31',{alt:A('@',4200)})],
