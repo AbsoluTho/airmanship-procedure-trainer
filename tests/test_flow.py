@@ -47,8 +47,9 @@ async def run(url,b):
     await k('RADNAV');await t('TBK');await k('L1');assert await pg.evaluate('window.__S().rad.vor1.freq')==115.7,'VOR tuned by ident'
     assert 'IPKS' in await scr(),'LS autotuned from the approach'
     await k('FPLN');await pg.evaluate('window.__S().fpOff=0');await k('UP');await k('DOWN')
-    await pg.evaluate("window.__S().sp='/+3000'");await k('R2');assert await pg.evaluate('JSON.stringify(window.__S().active.legs[1].alt)')=='{"t":"+","v":3000}','ALT CSTR from F-PLN'
-    await k('R2');assert 'VERT REV' in await scr();await k('L6')
+    assert await pg.evaluate("window.__S().active.legs[1].id")=='(426)','first SID leg: 400 ft AAL on runway track'
+    await pg.evaluate("window.__S().sp='/+3000'");await k('R3');assert await pg.evaluate('JSON.stringify(window.__S().active.legs[2].alt)')=='{"t":"+","v":3000}','ALT CSTR from F-PLN'
+    await k('R3');assert 'VERT REV' in await scr();await k('L6')
     await k('PERF');await k('R6');assert 'CLB' in await scr();await k('R6');await k('R6');await k('R6')
     assert 'QNH' in await scr(),'PERF APPR'
     await t('1013');await k('L1');await t('2750');await k('R2');assert await pg.evaluate('window.__S().p2.qnh')==1013
@@ -60,6 +61,14 @@ async def run(url,b):
     await k('FUEL');assert 'FUEL PRED' in await scr()
     await k('PROG');assert 'REC MAX' in await scr();await t('OETB');await k('R4');assert '°/' in await scr()
     await k('AIRPORT');await k('INIT');await k('RIGHT')
+    # ---- automatic flight ----
+    assert await pg.evaluate('flightReady().length')==0,await pg.evaluate('flightReady()')
+    await pg.evaluate("window.__flight('start')")
+    seen=await pg.evaluate("""(()=>{const seen=new Set();let n=0;while(FL.stage!=='STOP'&&n<40000){step(0.5);setFma();const f=FL.fma;
+      [f.c1,f.c2,f.c3].forEach(c=>(c||[]).forEach(x=>x&&seen.add(x[0])));if(f.land)seen.add(f.land);seen.add('PH:'+S.phase);n++}return[...seen]})()""")
+    for m in ['MAN','SRS','RWY','NAV','THR CLB','CLB','ALT CRZ','DES','G/S*','G/S','LOC','LAND','FLARE','RETARD','ROLL OUT','PH:CLB','PH:CRZ','PH:DES','PH:APPR','PH:DONE']:
+        assert m in seen,f'FMA/phase never shown: {m}'
+    await pg.evaluate("window.__flight('reset')")
     done=await pg.evaluate("[...document.querySelectorAll('#tasks li.done')].length")
     assert done==14,f'exercise tasks done: {done}/14'
     await pg.click('text=Cockpit 3D');await pg.wait_for_timeout(2500)

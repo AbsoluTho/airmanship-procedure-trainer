@@ -17,3 +17,4 @@ function dst(p,b,d){const l1=p[0]*D2R,o1=p[1]*D2R,t=b*D2R,r=d/60*D2R;
   return[l2/D2R,(o1+Math.atan2(Math.sin(t)*Math.sin(r)*Math.cos(l1),Math.cos(r)-Math.sin(l1)*Math.sin(l2)))/D2R]}
 const hhmm=m=>{m=Math.max(0,Math.round(m));return String(Math.floor(m/60)).padStart(2,'0')+String(m%60).padStart(2,'0')};
 const f1=v=>v==null?'--.-':(Math.round(v*10)/10).toFixed(1);
+const flying=()=>typeof FL!=='undefined'&&FL.active;

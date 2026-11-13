@@ -10,7 +10,7 @@ function extraState(){return{phase:'PREFLIGHT',irsT0:Date.now(),irsRef:false,
   wind:{clb:[],crz:[],des:[]},rad:{vor1:null,vor2:null,crs1:null,crs2:null,ls:null,lsCrs:null,adf1:null,adf2:null},
   spdLim:{clb:null,des:null},vr:0,windFrom:'INIT',
   p2:{clbSel:null,crzSel:null,cabin:null,qnh:null,temp:null,wdir:null,wspd:null,ta:null,baro:null,radio:null,vapp:null,conf3:false,gaThr:null,gaAcc:null,gaEo:null},
-  apprArm:false,sec:null,secOff:0,dataPg:1,lookup:{wpt:null,nav:null,rwy:null},prog:{to:null},caFreeze:null}}
+  apprArm:false,sec:null,secOff:0,secMode:false,fpOffMain:0,dataPg:1,lookup:{wpt:null,nav:null,rwy:null},prog:{to:null},caFreeze:null}}
 {const base=freshState;freshState=function(){return Object.assign(base(),extraState())}}
 Object.assign(S,extraState());
 
@@ -221,16 +221,11 @@ P.SECIDX={render(){cput(1,'SEC INDEX');put(3,0,'{COPY ACTIVE','b');rput(3,'INIT>
   if(S.sec){put(7,0,'*DELETE SEC','b');put(9,0,'*ACTIVATE SEC','b');put(13,0,'*SWAP ACTIVE','b')}},
  lsk(s,n){const k=s+n;
   if(k==='L1'){if(!S.active)return err('NOT ALLOWED');S.sec=clone(S.active);S.secOff=0;return}
-  if(k==='L2'){if(!S.sec)return err('NOT ALLOWED');return go('SECFP')}
+  if(k==='L2'){if(!S.sec)return err('NOT ALLOWED');S.secMode=true;S.fpOffMain=S.fpOff;S.fpOff=S.secOff||0;return go('FPLN')}
   if(k==='L3'&&S.sec){S.sec=null;return}
-  if(k==='L4'&&S.sec){S.active=S.sec;S.sec=null;S.tmpy=null;S.fpOff=0;return}
-  if(k==='L6'&&S.sec){const a=S.active;S.active=S.sec;S.sec=a;S.tmpy=null;S.fpOff=0;return}
+  if(k==='L4'&&S.sec){if(flying())return err('NOT ALLOWED');S.active=S.sec;S.sec=null;S.tmpy=null;S.fpOff=0;return}
+  if(k==='L6'&&S.sec){if(flying())return err('NOT ALLOWED');const a=S.active;S.active=S.sec;S.sec=a;S.tmpy=null;S.fpOff=0;return}
   return err('NOT IN PROTOTYPE')}};
-P.SECFP={render(){const A=S.active,T=S.tmpy,o=S.fpOff,c=EFIS.ctr;S.active=S.sec;S.tmpy=null;S.fpOff=S.secOff;
-  try{P.FPLN.render()}finally{S.active=A;S.tmpy=T;S.fpOff=o;EFIS.ctr=c}put(1,6,'SEC','w')},
- lsk(s,n){return err('NOT IN PROTOTYPE')},
- slew(d){const n=fplnRows(S.sec).length;S.secOff=Math.max(0,Math.min(n-1,S.secOff+d))}};
-
 /* ---------- FUEL PRED ---------- */
 P.FUELPRED={render(){const f=S.fuel,pr=predict(),d=destId(),al=I().altn,D='---.-',T='----';
   cput(1,'FUEL PRED');put(2,1,'AT','w','S');cat(2,'TIME','w','S');rput(2,'EFOB','w','S');
@@ -335,6 +330,7 @@ P.RWYPG={render(){const id=S.lookup.rwy;cput(1,'RUNWAY');put(2,1,'IDENT','w','S'
 
 /* ---------- keys ---------- */
 {const press0=press;press=function(k){
+  if(S.secMode&&/^(DIR|PROG|PERF|INIT|DATA|FPLN|RADNAV|FUEL|SECF|ATC|MENU|AIRPORT)$/.test(k)){S.secOff=S.fpOff;S.fpOff=S.fpOffMain||0;S.secMode=false}
   if(k==='PERF'){go(PERF_OF[S.phase]||'PERFTO');return render()}
   if(k==='DATA'){S.dataPg=1;go('DATA');return render()}
   if(k==='RADNAV'){go('RADNAV');return render()}

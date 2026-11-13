@@ -11,9 +11,9 @@ const NC={g:'#3df24e',w:'#ffffff',b:'#3fd2ff',y:'#fff23d',m:'#ff6cf6',a:'#ffa21f
 const NF=(px,w)=>`${w||500} ${px}px "Helvetica Neue",Helvetica,Arial,sans-serif`;
 
 /* aircraft on the ground: at the threshold of the F-PLN runway, else at the airport */
-function acState(){const p=S.active,o=p?p.legs[0].id:'OEJN',ap=DB.apt[o]||DB.apt.OEJN;
+function acState(){if(flying())return{pos:FL.pos,hdg:(FL.hdgT-(DB.apt[orig()].var||3)+360)%360,vr:DB.apt[orig()].var||3};const p=S.active,o=p?p.legs[0].id:'OEJN',ap=DB.apt[o]||DB.apt.OEJN;
   const r=p&&p.rwy&&ap.rwy[p.rwy];return{pos:r?r.pos:ap.pos,hdg:r?r.crs:156,vr:ap.var||0}}
-function toWpt(){const p=S.active;if(!p)return null;const l=p.legs.find((x,i)=>i>0&&x.k==='wpt');return l?{id:l.id,pos:DB.wpt[l.id]}:null}
+function toWpt(){const p=S.active;if(!p)return null;const from=flying()?FL.fromIx:0;const l=p.legs.find((x,i)=>i>Math.max(0,from)&&(x.k==='wpt'||x.k==='dest'));if(l&&l.k==='dest')return{id:l.id+(l.rwy||''),pos:legPos(l)};return l?{id:l.id,pos:DB.wpt[l.id]}:null}
 
 /* ---------- flight-plan geometry (lat/lon polylines) ---------- */
 function arcPts(a,b,c){const r=gc(c,a),b1=brg(c,a);let d=((brg(c,b)-b1+540)%360)-180;const n=Math.max(4,Math.ceil(Math.abs(d)/4)),out=[];
@@ -35,6 +35,8 @@ function planGeo(p,base){const G={lines:[],wpts:[],rwys:[]};let prev=null,vr=0;
     if(l.k==='wpt'){const pos=DB.wpt[l.id];if(!pos){prev=null;return}
       if(prev)G.lines.push({pts:l.lbl==='ARC'&&l.ctr&&DB.wpt[l.ctr]?arcPts(prev,pos,DB.wpt[l.ctr]):[prev,pos],col});
       G.wpts.push({id:l.id,pos,col,alt:l.alt,spd:l.spd});prev=pos;return}
+    if(l.k==='ca'&&prev){const o=p.legs[0],ap=DB.apt[o.id],r=ap.rwy[o.rwy];if(!r){prev=null;return}
+      const q=dst(r.pos,r.crs+vr,r.len/1852+l.aal/320);G.lines.push({pts:[prev,q],col});prev=q;return}
     if(l.k==='hdg'&&prev){const c=crs(l.lbl);if(c==null){prev=null;return}const q=dst(prev,c+vr,5);G.lines.push({pts:[prev,q],col});prev=q;return}
     if(l.k==='hold'&&prev){const c=crs(l.lbl);if(c!=null)G.lines.push({pts:holdPts(prev,c+vr,/R$/.test(l.id)),col});return}
     prev=null});
@@ -64,10 +66,10 @@ function drawND(g,W,H,powered){g.save();g.setTransform(1,0,0,1,0,0);g.fillStyle=
   const line=(pts,col,dash,w)=>{g.strokeStyle=NC[col];g.lineWidth=w||3.5;g.setLineDash(dash||[]);g.beginPath();pts.forEach((p,i)=>{const[x,y]=pj(p);i?g.lineTo(x,y):g.moveTo(x,y)});g.stroke();g.setLineDash([])};
   const diamond=(x,y,col,s)=>{g.beginPath();g.moveTo(x,y-s);g.lineTo(x+s,y);g.lineTo(x,y+s);g.lineTo(x-s,y);g.closePath();g.strokeStyle=NC[col];g.lineWidth=3;g.stroke()};
   const star=(x,y,col)=>{g.strokeStyle=NC[col];g.lineWidth=3;g.beginPath();for(let i=0;i<4;i++){const a=i*Math.PI/4;g.moveTo(x-11*Math.cos(a),y-11*Math.sin(a));g.lineTo(x+11*Math.cos(a),y+11*Math.sin(a))}g.stroke()};
-  const geos=[];if(A)geos.push([planGeo(A,'g'),false]);if(T)geos.push([planGeo(T,'y'),true]);
+  const geos=[];if(A)geos.push([planGeo(A,'g'),false]);if(T)geos.push([planGeo(T,'y'),true]);if(S.secMode&&S.sec)geos.push([planGeo(S.sec,'w'),'sec']);
   if(A&&I().altn&&DB.apt[I().altn]){const d=A.legs[idxK(A,'dest')],dp=legPos(d),ap=DB.apt[I().altn].pos;line([dp,ap],'b',[14,10]);
     const[x,y]=pj(ap);star(x,y,'b');label(I().altn,x+16,y+2,'b')}
-  for(const[G,tm]of geos)for(const L of G.lines)line(L.pts,tm?'y':L.col,tm?[16,10]:null);
+  for(const[G,tm]of geos)for(const L of G.lines)line(L.pts,tm==='sec'?'w':tm?'y':L.col,tm===true?[16,10]:null);
   for(const[G]of geos)for(const r of G.rwys){const[x1,y1]=pj(r.pos);
     if(r.crsT!=null){let[x2,y2]=pj(dst(r.pos,r.crsT,r.len));let dx=x2-x1,dy=y2-y1,L=Math.hypot(dx,dy);
       if(L<16){const k=16/Math.max(L,1e-3);dx*=k;dy*=k;L=16}
@@ -87,7 +89,7 @@ function drawND(g,W,H,powered){g.save();g.setTransform(1,0,0,1,0,0);g.fillStyle=
   if(EFIS.arpt){const used=new Set([A&&A.legs[0].id,A&&A.legs[idxK(A,'dest')].id,I().altn]);
     for(const[id,ap]of Object.entries(DB.apt)){if(used.has(id))continue;const[x,y]=pj(ap.pos);star(x,y,'m');label(id,x+16,y+2,'m')}}
   for(const[G,tm]of geos)for(const w of G.wpts){const[x,y]=pj(w.pos);if(!inMap(x,y,30))continue;
-    const col=tm?'y':(to&&w.id===to.id&&w.col==='g')?'w':w.col;diamond(x,y,col,9);label(w.id,x+16,y+2,col,26);
+    const col=tm==='sec'?'w':tm?'y':(to&&w.id===to.id&&w.col==='g')?'w':w.col;diamond(x,y,col,9);label(w.id,x+16,y+2,col,26);
     if(EFIS.cstr&&!tm&&(w.alt||w.spd)){let yy=y+25;if(w.alt){label(fAlt(w.alt),x+16,yy,'m',20);yy+=22}if(w.spd)label(String(w.spd),x+16,yy,'m',20);
       g.strokeStyle=NC.m;g.lineWidth=2.5;g.beginPath();g.arc(x,y,17,0,Math.PI*2);g.stroke()}}
   g.restore()}
@@ -119,8 +121,8 @@ function drawND(g,W,H,powered){g.save();g.setTransform(1,0,0,1,0,0);g.fillStyle=
   if(V.m==='PLAN'){const[x,y]=pj(ac.pos);if(x>40&&x<728&&y>100&&y<Hg-60)plane(x,y,ac.hdg+ac.vr)}else plane(V.cx,V.cy,0);
   /* data fields */
   g.textBaseline='alphabetic';g.textAlign='left';
-  g.font=NF(22);g.fillStyle=NC.w;g.fillText('GS',12,40);g.font=NF(31);g.fillStyle=NC.g;g.fillText('0',68,40);
-  g.font=NF(22);g.fillStyle=NC.w;g.fillText('TAS',94,40);g.font=NF(31);g.fillStyle=NC.g;g.fillText('---',148,40);
+  g.font=NF(22);g.fillStyle=NC.w;g.fillText('GS',12,40);g.font=NF(31);g.fillStyle=NC.g;g.fillText(flying()?String(Math.round(FL.gs)):'0',68,40);
+  g.font=NF(22);g.fillStyle=NC.w;g.fillText('TAS',94,40);g.font=NF(31);g.fillStyle=NC.g;g.fillText(flying()&&FL.tas>=60?String(Math.round(FL.tas)):'---',148,40);
   g.font=NF(31);g.fillStyle=NC.g;g.fillText('---',6,74);g.fillStyle=NC.w;g.fillText('/',56,74);g.fillStyle=NC.g;g.fillText('---',70,74);
   if(to&&to.pos&&V.map){const b=Math.round((brg(ac.pos,to.pos)-ac.vr+360)%360)||360,d=gc(ac.pos,to.pos);
     g.textAlign='left';g.font=NF(31);g.fillStyle=NC.w;g.fillText(to.id,520,40);

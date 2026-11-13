@@ -29,10 +29,12 @@ async function build3D(){
   const X=V(1,0,0);
   const MW=2.0,MH=MW*355/1100;
   const mainP=plane(basic(mkTex(crop(0,967,1100,355,1.5))),MW,MH,V(0,0.80,-0.85),X,V(0,1,0));
-  /* live NDs on the main panel (captain and first officer) */
-  const NDS=[[286,134,94,95],[717,134,93,95]].map(([x,y,w,h])=>{const c=document.createElement('canvas');c.width=c.height=512;const t=mkTex(c);
+  /* live PFD and ND on the main panel: captain's side only */
+  const NDS=[[286,134,94,95]].map(([x,y,w,h])=>{const c=document.createElement('canvas');c.width=c.height=512;const t=mkTex(c);
     plane(basic(t),w/1100*MW,h/355*MH,V(((x+w/2)/1100-.5)*MW,(.5-(y+h/2)/355)*MH,0.002),V(1,0,0),V(0,1,0),mainP);return{c,g:c.getContext('2d'),t}});
-  function drawNd3(){NDS.forEach(n=>{drawND(n.g,512,512,S.elec.ext);n.t.needsUpdate=true});dirty=true}
+  const PFDS=[[167,134,94,95]].map(([x,y,w,h])=>{const c=document.createElement('canvas');c.width=c.height=512;const t=mkTex(c);
+    plane(basic(t),w/1100*MW,h/355*MH,V(((x+w/2)/1100-.5)*MW,(.5-(y+h/2)/355)*MH,0.002),V(1,0,0),V(0,1,0),mainP);return{c,g:c.getContext('2d'),t}});
+  function drawNd3(){NDS.forEach(n=>{drawND(n.g,512,512,S.elec.ext);n.t.needsUpdate=true});PFDS.forEach(n=>{drawPFD(n.g,512,512,S.elec.ext);n.t.needsUpdate=true});dirty=true}
   const oF=V(0,1.52,-0.72),oA=V(0,1.74,0.71),OW=0.92,OL=oA.distanceTo(oF);
   const ovh=plane(basic(mkTex(crop(245,0,615,968,2))),OW,OL,oF.clone().add(oA).multiplyScalar(.5),X,oA.clone().sub(oF));
   const pF=V(0,0.47,-0.80),pA=V(0,0.24,-0.12),PW=0.44,PL=PW*790/488;
@@ -77,7 +79,7 @@ async function build3D(){
   const MS=[[31,21,94,73],[368,21,93,73]];
   const COL={w:'#fff',g:'#3df24e',b:'#3fd2ff',a:'#ffa21f',m:'#ff6cf6',y:'#fff23d'};
   function drawMcdu(){pedG.drawImage(pedBase,0,0);
-    for(const[x,y,w,h]of MS){const X0=x*PS,Y0=y*PS,W0=w*PS,H0=h*PS;pedG.fillStyle='#04060a';pedG.fillRect(X0,Y0,W0,H0);
+    for(const[x,y,w,h]of MS.slice(0,1)){   /* captain's side only */const X0=x*PS,Y0=y*PS,W0=w*PS,H0=h*PS;pedG.fillStyle='#04060a';pedG.fillRect(X0,Y0,W0,H0);
       if(!S.elec.ext||!BUF)continue;const ix=X0+W0*.03,iy=Y0+H0*.05,iw=W0*.94,ih=H0*.9,lh=ih/14,cw=iw/24;
       pedG.textAlign='center';pedG.textBaseline='middle';
       BUF.forEach((row,r)=>row.forEach((c,ci)=>{if(c.ch===' ')return;const fs=(c.s==='S'?0.72:0.95)*Math.min(lh,cw/0.6);

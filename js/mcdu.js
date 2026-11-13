@@ -10,8 +10,9 @@ function freshState(){return{page:'INIT',title:'',sp:'',msg:'GPS PRIMARY',
 S=freshState();
 const I=()=>S.init;
 const clone=o=>JSON.parse(JSON.stringify(o));
-const cur=()=>S.tmpy||S.active;
-function edit(){if(!S.tmpy)S.tmpy=clone(S.active);return S.tmpy}
+const cur=()=>S.secMode?S.sec:(S.tmpy||S.active);
+/* the SEC F-PLN is revised directly: no temporary flight plan */
+function edit(){if(S.secMode)return S.sec;if(!S.tmpy)S.tmpy=clone(S.active);return S.tmpy}
 function newPlan(f,t){return{rwy:null,sid:null,trans:null,appr:null,via:null,star:null,legs:[{k:'orig',id:f},{k:'disc'},{k:'dest',id:t}]}}
 function idxK(p,k){return p.legs.findIndex(l=>l.k===k)}
 function normalize(p){const L=p.legs;let ch=true;
@@ -21,8 +22,12 @@ function normalize(p){const L=p.legs;let ch=true;
       if(a.k==='wpt'&&b.k==='wpt'&&a.id===b.id){L.splice(i,1);ch=true;break}
       if(c&&a.k==='wpt'&&b.k==='disc'&&c.k==='wpt'&&a.id===c.id){L.splice(i,2);ch=true;break}}}}
 function dropSeg(p,...segs){p.legs=p.legs.filter(l=>!segs.includes(l.seg))}
-function setRunway(p,r){p.rwy=r;p.legs[0].rwy=r;dropSeg(p,'dep');p.sid=null;p.trans=null;if(p.legs[1].k!=='disc')p.legs.splice(1,0,{k:'disc'});normalize(p)}
-function setSid(p,sid){dropSeg(p,'dep');const legs=clone(SIDS[p.legs[0].id][p.rwy][sid]).map(l=>Object.assign(l,{seg:'dep',via:sid}));
+/* first departure leg: climb on runway track to 400 ft AAL (SID) or 1500 ft AAL (runway only, visual departure) */
+function caLeg(p,aal){const ap=DB.apt[p.legs[0].id],r=ap.rwy[p.rwy],a=Math.round((r.tdze??ap.elev)+aal);
+  return{k:'ca',id:'('+a+')',lbl:'C'+String(r.crs).padStart(3,'0')+'°',ca:a,aal,seg:'dep',via:p.sid||''}}
+function setRunway(p,r){p.rwy=r;p.legs[0].rwy=r;dropSeg(p,'dep');p.sid=null;p.trans=null;
+  p.legs.splice(1,0,caLeg(p,1500));if(p.legs[2].k!=='disc')p.legs.splice(2,0,{k:'disc'});normalize(p)}
+function setSid(p,sid){dropSeg(p,'dep');p.sid=sid;const legs=[caLeg(p,400),...clone(SIDS[p.legs[0].id][p.rwy][sid]).map(l=>Object.assign(l,{seg:'dep',via:sid}))];
   p.legs.splice(1,0,...legs);const nx=p.legs[1+legs.length],last=legs[legs.length-1];
   if(nx&&nx.k!=='disc'&&!(nx.k==='wpt'&&nx.id===last.id))p.legs.splice(1+legs.length,0,{k:'disc'});
   p.sid=sid;p.trans=null;normalize(p)}
@@ -66,7 +71,7 @@ function segs(r,start,parts){let c=start;for(const[t,col,s]of parts){put(r,c,t,c
 function csegs(r,parts){const n=parts.reduce((a,p)=>a+p[0].length,0);segs(r,Math.floor((COLS-n)/2),parts)}
 const fT=t=>(t>=0?'+':'')+t;
 function fAlt(a){if(!a)return'-----';const v=a.v>13000?'FL'+String(Math.round(a.v/100)).padStart(3,'0'):String(a.v);return(a.t==='@'?'':a.t)+v}
-function tmpyFoot(){if(S.tmpy){put(12,1,'TMPY','y','S');rput(12,'TMPY','y','S',23);put(13,0,'←ERASE','a');rput(13,'INSERT*','a');return true}return false}
+function tmpyFoot(){if(S.tmpy&&!S.secMode){put(12,1,'TMPY','y','S');rput(12,'TMPY','y','S',23);put(13,0,'←ERASE','a');rput(13,'INSERT*','a');return true}return false}
 
 /* ================= pages ================= */
 const P={};
@@ -108,7 +113,8 @@ P.INIT={render(){const i=I();
   case'R6':if(!/^[+-]?\d{1,2}$/.test(v))return err('FORMAT ERROR');i.gnd=+v;return ok();
   default:return err('NOT ALLOWED')}}};
 
-function fplnRows(p){const rows=p?p.legs.map((l,ix)=>Object.assign({},l,{ix})):[];
+function fplnRows(p){let rows=p?p.legs.map((l,ix)=>Object.assign({},l,{ix})):[];
+  if(p&&flying()&&p===S.active)rows=rows.filter(r=>r.ix>=FL.fromIx);   /* sequenced legs disappear; first line is the FROM waypoint */
   rows.push({k:'end',t:'END OF F-PLN'});
   if(I().altn&&p){rows.push({k:'altn',id:I().altn});rows.push({k:'end',t:'END OF ALTN F-PLN'})}else rows.push({k:'end',t:'NO ALTN F-PLN'});
   return rows}
@@ -118,26 +124,26 @@ function planCentre(p){const rows=fplnRows(p);for(let j=Math.min(S.fpOff+1,rows.
 P.FPLN={render(){const p=cur(),rows=fplnRows(p),ds=p?dists(p):[];
   if(p){const c=planCentre(p);if(c)EFIS.ctr=c}
   const pr=predict(),tcum=pr&&p===S.active?pr.cum:null;
-  put(1,1,'FROM','w','S');if(S.tmpy)put(1,6,'TMPY','y');if(I().flt)rput(1,I().flt,'w','L',23);
+  put(1,1,'FROM','w','S');if(S.secMode)put(1,6,'SEC','w');else if(S.tmpy)put(1,6,'TMPY','y');if(I().flt)rput(1,I().flt,'w','L',23);
   const base=S.tmpy?'y':'g';let firstD=true;
   for(let n=0;n<5;n++){const r=rows[S.fpOff+n];if(!r)break;const ln=3+2*n,lb=ln-1;
-    if(n===0){put(lb,8,'TIME','w','S');rput(lb,'SPD/ALT','w','S',22)}
+    if(n===0){put(lb,8,flying()?'UTC':'TIME','w','S');rput(lb,'SPD/ALT','w','S',22)}
     if(r.k==='end'){put(ln,0,dash(r.t),'w');continue}
     if(r.k==='disc'){put(ln,0,dash('F-PLN DISCONTINUITY'),'w');continue}
     const col=r.k==='altn'||r.seg==='map'?'b':base;
     if(n>0&&r.k!=='altn'){put(lb,1,(r.via||'').slice(0,6),'w','S');if(r.lbl)put(lb,8,r.lbl,'w','S');
       const d=ds[r.ix];if(d!=null){const t=String(Math.round(d));if(firstD){rput(lb,t+'NM','w','S',21);firstD=false}else rput(lb,t,'w','S',19)}}
     const id=(r.k==='orig'||r.k==='dest')?r.id+(r.rwy||''):r.id;
-    const tm=tcum&&r.k!=='altn'&&tcum[r.ix]!=null?hhmm(pr.trip.at(tcum[r.ix])+(r.k==='orig'?0:1)):null;
+    const tm=tcum&&r.k!=='altn'&&tcum[r.ix]!=null?(flying()?utcStr(FL.utc0+(pr.trip.at(tcum[r.ix])+1)*60000):hhmm(pr.trip.at(tcum[r.ix])+(r.k==='orig'?0:1))):null;
     put(ln,0,id.slice(0,7),col);if(tm)put(ln,8,tm,col);else put(ln,8,'----','w');
     if(r.k==='orig'){rput(ln,'---/'+String(DB.apt[r.id].elev).padStart(6),col)}
     else{const sp=r.spd?String(r.spd):'---',al=r.alt?fAlt(r.alt):'-----';
       const st=24-(4+1+6);put(ln,st,sp.padStart(4),r.spd?'m':'w');put(ln,st+4,'/','w');put(ln,st+5,al.padStart(6),r.alt?'m':'w')}}
   if(!tmpyFoot()&&p){const di=idxK(p,'dest'),d=p.legs[di];
     let tot=0;ds.forEach((x,ix)=>{if(ix<=di&&x)tot+=x});
-    put(12,1,'DEST','w','S');put(12,8,'TIME','w','S');rput(12,'DIST','w','S',17);rput(12,'EFOB','w','S',24);
+    put(12,1,'DEST','w','S');put(12,8,flying()?'UTC':'TIME','w','S');rput(12,'DIST','w','S',17);rput(12,'EFOB','w','S',24);
     put(13,0,(d.id+(d.rwy||'')).slice(0,7),'g');rput(13,String(Math.round(tot)),'g','L',17);
-    if(pr){put(13,8,hhmm(pr.trip.time),'g');rput(13,f1(S.fuel.block-pr.taxi-pr.trip.fuel),'g')}else{put(13,8,'----','w');rput(13,'----','w')}}},
+    if(pr){put(13,8,flying()?utcStr(FL.utc0+pr.trip.time*60000):hhmm(pr.trip.time),'g');rput(13,f1(flying()?FL.fob-pr.trip.fuel*Math.max(0,FL.path.sThr-FL.s)/FL.path.sThr:S.fuel.block-pr.taxi-pr.trip.fuel),'g')}else{put(13,8,'----','w');rput(13,'----','w')}}},
  lsk(s,n){const p=cur();if(!p)return err('NOT ALLOWED');
   if(n===6){if(S.tmpy){if(s==='L')S.tmpy=null;else{S.active=S.tmpy;S.tmpy=null}return ok()}
     if(s==='L'){S.lr=idxK(p,'dest');return go('LATREV')}return err('NOT IN PROTOTYPE')}
@@ -302,7 +308,7 @@ function elevO(){const o=orig();return o?DB.apt[o].elev:0}
 function defRed(){return Math.round((elevO()+1500)/10)*10}
 /* PERF TAKE OFF. Layout follows the FlyByWire A32NX MCDU (GPL-3.0). */
 P.PERFTO={render(){const q=S.perf,f=S.fuel,B=BOX,rw=S.active&&S.active.rwy;
-  csegs(1,[['TAKE OFF RWY ','w'],[(rw||'---').padStart(3),rw?'g':'w']]);
+  csegs(1,[['TAKE OFF RWY ',S.phase==='TAKEOFF'?'g':'w'],[(rw||'---').padStart(3),rw?'g':'w']]);
   put(2,1,'V1','w','S');put(2,5,'FLP RETR','w','S');
   put(4,1,'VR','w','S');put(4,5,'SLT RETR','w','S');rput(4,'TO SHIFT ','w','S');
   put(6,1,'V2','w','S');put(6,7,'CLEAN','w','S');rput(6,'FLAPS/THS','w','S');
@@ -368,10 +374,12 @@ function press(k){
   render()}
 
 /* ================= render ================= */
+const SEC_PAGES=['FPLN','LATREV','DEP','ARR','AWY','VREV'];
 const scr=$('#scr');
 function takeoffRwyCheck(){const r=S.active&&S.active.rwy||null,q=S.perf;
   if(r!==q.rwyRef){if(q.rwyRef&&(q.v1||q.vr||q.v2)){q.v1=q.vr=q.v2=null;S.msg='CHECK TAKE OFF DATA'}q.rwyRef=r}}
 function render(){takeoffRwyCheck();clr();P[S.page].render();
+  if(S.secMode&&SEC_PAGES.includes(S.page))for(const row of BUF)for(const x of row)if('gamy'.includes(x.c))x.c='w';   /* SEC F-PLN data is all white */
   if(S.msg)put(14,0,S.msg,'w');else put(14,0,S.sp,'w');
   let h='';for(const row of BUF){h+='<div class="ln">';for(const x of row){
     const cl='c c-'+x.c+(x.s==='S'?' s':'');h+=x.ch===BOX?`<span class="${cl}"><i class="bx"></i></span>`:`<span class="${cl}">${x.ch==='<'?'&lt;':x.ch==='>'?'&gt;':x.ch==='&'?'&amp;':x.ch}</span>`}h+='</div>'}
