@@ -72,15 +72,16 @@ function flightStart(){const miss=flightReady();if(miss.length)return miss;
   const P=buildPath(),o=DB.apt[orig()],r=o.rwy[S.active.rwy],tr=r.crs+(o.var||0);
   Object.assign(FL,{active:true,running:true,t:0,utc0:Date.now(),path:P,s:0,seg:1,xtk:0,pos:r.pos,hdgT:tr,trkT:tr,roll:0,pitch:0,alt:r.tdze??o.elev,vs:0,ias:0,tas:0,gs:0,mach:0,
     ground:true,lat:'RWY',latArm:FCU.hdgMgd?'NAV':null,ver:'SRS',verArm:[FCU.lvlch?'CLB':'OP CLB'],thr:'TO',conf:q2conf(),gear:true,
-    fob:S.fuel.block-(S.fuel.taxi??0.2),fromIx:0,cst:null,capAlt:null,altHold:null,fmaT:{},loc:false,gsCap:false,tdReached:false,stage:'ROLL',lvrT:null});
+    fob:S.fuel.block-(S.fuel.taxi??0.2),fromIx:0,cst:null,acc:0,accT:0,soe:false,opSmall:false,spdIsMach:false,capAlt:null,altHold:null,fmaT:{},loc:false,gsCap:false,tdReached:false,stage:'ROLL',lvrT:null});
   FCU.athr=true;FL.td=P.sThr-tdDist();FL.sig=planSig();S.phase='TAKEOFF';if(S.msg==='GPS PRIMARY')S.msg=null;setFma();flightTick(0);return[]}
 function q2conf(){const f=S.perf.flaps;return f===1?'1+F':String(f||1)}
 function flightReset(){Object.assign(FL,{active:false,running:false,path:null,stage:'IDLE',fma:{c1:[],c2:[],c3:[],c4:[],c5:[]},ias:0,gs:0,tas:0,vs:0});
-  FCU.ap1=FCU.ap2=FCU.athr=FCU.loc=FCU.appr=FCU.exped=false;S.phase='PREFLIGHT';S.apprArm=false;refreshAll()}
+  FCU.ap1=FCU.ap2=FCU.athr=FCU.loc=FCU.appr=FCU.exped=false;if(FCU.spdMgd)FCU.mach=false;S.phase='PREFLIGHT';S.apprArm=false;refreshAll()}
 
 /* ---------- FCU actions arriving in flight ---------- */
 const CLIMBING=['CLB','OP CLB','EXP CLB'],DESCENDING=['DES','OP DES','EXP DES'];
 function fcuEvent(ev){if(!FL.active)return;const A=FCU.alt;
+  FL.opSmall=Math.abs(A-FL.alt)<1200;   /* level change under 1200 ft: V/S 1000 ft/min with A/THR on speed (Airbus OPEN mode logic) */
   if(ev==='alt-pull'){if(FL.ground)return;if(Math.abs(A-FL.alt)<250)return;FL.ver=A>FL.alt?(FCU.exped?'EXP CLB':'OP CLB'):(FCU.exped?'EXP DES':'OP DES');FL.verArm=['ALT']}
   if(ev==='alt-push'){if(FL.ground){FL.verArm=['CLB'];return}if(Math.abs(A-FL.alt)<250)return;
     if(A>FL.alt){FL.ver='CLB';FL.verArm=['ALT']}else if(FL.s>=FL.td-1||S.phase==='DES'||S.phase==='APPR'){FL.ver='DES';FL.verArm=['ALT']}else{FL.verArm=['DES']}}
@@ -101,7 +102,7 @@ function setFma(){const st=FL.stage,a=S.perf,fx=a.flex!=null?'FLX '+a.flex:'TOGA
     if(FL.ver==='FLARE'&&FL.alt-groundElev()<25)f.c1=[['RETARD','w']];
     else if(CLIMBING.includes(FL.ver)||FL.ver==='SRS')f.c1=[['THR CLB','g']];
     else if(DESCENDING.includes(FL.ver))f.c1=[['THR IDLE','g']];
-    else f.c1=[[(FCU.mach||(FCU.spdMgd&&FL.mach>0.72&&FL.alt>25000))?'MACH':'SPEED','g']]}
+    else f.c1=[[FL.spdIsMach?'MACH':'SPEED','g']]}
   if(guide&&st!=='IDLE'){
     if(['LAND','FLARE','ROLL OUT'].includes(FL.ver))f.land=FL.ver;
     else{const crzAlt=FCU.alt===I().crz*100&&FL.alt>20000;
@@ -121,7 +122,7 @@ function cstTarget(){if(!flying()||FL.ground||!FL.cst)return null;if(FL.ver==='A
 const cstArmed=()=>FL.verArm.length===1&&FL.verArm[0]==='ALT'&&['CLB','DES'].includes(FL.ver)&&cstTarget()!=null;
 
 /* ---------- one simulation step ---------- */
-function step(dt){if(FL.sig!==planSig()&&!FL.ground)flightReplan();const P=FL.path,q=S.perf,p2=S.p2,crz=I().crz*100,sp=cfgSpeeds(),gnd=groundElev(),A=FCU.alt;
+function step(dt){const ias0=FL.ias;if(FL.sig!==planSig()&&!FL.ground)flightReplan();const P=FL.path,q=S.perf,p2=S.p2,crz=I().crz*100,sp=cfgSpeeds(),gnd=groundElev(),A=FCU.alt;
   const agl=()=>FL.alt-gnd;
   const pr=['NAV','RWY','RWY TRK'].includes(FL.lat)?project(P,FL.pos,FL.seg-2,FL.seg+6):project(P,FL.pos,1,P.pts.length-1);
   if(pr){FL.s=FL.lat==='NAV'?Math.max(FL.s,pr.s):pr.s;FL.seg=pr.i;FL.xtk=pr.xtk}
@@ -129,7 +130,7 @@ function step(dt){if(FL.sig!==planSig()&&!FL.ground)flightReplan();const P=FL.pa
   const fi=FL.fromIx;for(const pt of P.pts)if(pt.ix!=null&&pt.s<=FL.s+0.05&&pt.ix>FL.fromIx)FL.fromIx=pt.ix;
   if(FL.fromIx!==fi&&S.page==='FPLN'&&!S.secMode)S.fpOff=0;   /* waypoint sequenced: the F-PLN starts again at the FROM line */
 
-  if(FL.stage==='ROLL'){FL.ias+=3.4*dt;if(FL.ias>=q.vr){FL.pitch=Math.min(15,FL.pitch+3*dt);if(FL.ias>=q.vr+4){FL.ground=false;FL.stage='AIR'}}}
+  if(FL.stage==='ROLL'){FL.ias+=(S.perf.flex!=null?4.6:5.2)*dt;if(FL.ias>=q.vr){FL.pitch=Math.min(15,FL.pitch+3*dt);if(FL.ias>=q.vr+4){FL.ground=false;FL.stage='AIR'}}}
   const thrRed=q.thr??defRed(),acc=q.acc??defRed();
   if(FL.thr==='TO'&&!FL.ground&&FL.alt>=thrRed){FL.thr='LVR';FL.lvrT=FL.t}
   if(FL.thr==='LVR'&&FL.t-FL.lvrT>4)FL.thr='CL';
@@ -152,13 +153,15 @@ function step(dt){if(FL.sig!==planSig()&&!FL.ground)flightReplan();const P=FL.pa
     /* ---- vertical ---- */
     const capBand=Math.max(80,Math.abs(FL.vs)*0.12),CK=cstrNow();FL.cst=CK;
     if(FL.ver==='SRS'){spdT=q.v2+10;vsT=2400;
-      if(FL.alt>=acc){if(A>FL.alt+capBand){FL.ver=FL.verArm.includes('OP CLB')?'OP CLB':'CLB';FL.verArm=['ALT']}else{FL.ver='ALT*';FL.verArm=[]}S.phase='CLB'}}
-    if(CLIMBING.includes(FL.ver)){vsT=FL.ver==='EXP CLB'?3500:FL.alt<10000?2800:FL.alt<25000?2000:1300;
+      if(FL.alt>=acc){FL.opSmall=false;if(A>FL.alt+capBand){FL.ver=FL.verArm.includes('OP CLB')?'OP CLB':'CLB';FL.verArm=['ALT']}else{FL.ver='ALT*';FL.verArm=[]}S.phase='CLB'}}
+    FL.soe=false;
+    if(CLIMBING.includes(FL.ver)){if(FL.opSmall&&FL.ver!=='EXP CLB')vsT=1000;else FL.soe=true;   /* THR CLB, speed on elevator: V/S computed after the speed target */
       const lc=FL.ver==='CLB'&&CK.clb!=null&&CK.clb>=FL.alt-200?CK.clb:null;   /* managed climb: level off at the constraint first */
       if(lc!=null&&lc-FL.alt<capBand){FL.ver='ALT CST*';FL.capAlt=lc;FL.verArm=['CLB']}else if(lc==null&&A-FL.alt<capBand)FL.ver='ALT*'}
     if(DESCENDING.includes(FL.ver)){const fl=FL.ver==='DES'&&CK.des!=null&&CK.des<=FL.alt+200?CK.des:null,pa=Math.max(profileAlt(dtg),A,fl??-1e9);
       const slope=profileAlt(dtg)-profileAlt(Math.max(0,dtg-1));   /* ft per NM: 318 on a 3° segment, 0 where the path is level at a constraint */
-      vsT=FL.ver==='DES'?Math.max(-3500,Math.min(slope>50?-300:0,(pa-FL.alt)*3-Math.max(0,slope)*FL.gs/60)):FL.ver==='EXP DES'?-3500:-2200;
+      if(FL.ver==='DES')vsT=Math.max(-3500,Math.min(slope>50?-300:0,(pa-FL.alt)*3-Math.max(0,slope)*FL.gs/60));
+      else if(FL.opSmall&&FL.ver==='OP DES')vsT=-1000;else FL.soe=true;   /* THR IDLE, speed on elevator */
       if(fl!=null&&FL.alt-fl<capBand){FL.ver='ALT CST*';FL.capAlt=fl;FL.verArm=['DES']}else if(fl==null&&FL.alt-A<capBand)FL.ver='ALT*'}
     if(FL.ver==='V/S'||FL.ver==='FPA'){vsT=FL.ver==='FPA'?Math.tan((FCU.fpa||0)*D2R)*FL.gs*101.27:(FCU.vsVal||0);
       if((vsT>0&&A>FL.alt&&A-FL.alt<capBand)||(vsT<0&&A<FL.alt&&FL.alt-A<capBand))FL.ver='ALT*'}
@@ -187,31 +190,46 @@ function step(dt){if(FL.sig!==planSig()&&!FL.ground)flightReplan();const P=FL.pa
       if(FL.ver==='FLARE')vsT=-Math.max(120,agl()*6)}
     /* ---- speed ---- */
     if(FL.ver!=='SRS'){
+      /* selected speed: SPD to MACH in the climb when the selected speed reaches the programmed Mach, MACH to SPD in the descent at the programmed descent speed */
+      if(!FCU.spdMgd&&FCU.spd!=null){const mI=iasOf(mgd.crzM()*sos(FL.alt),FL.alt);
+        if(!FCU.mach&&FL.vs>300&&FCU.spd>=mI){FCU.mach=true;FCU.spd=Math.round(mgd.crzM()*100)/100}
+        else if(FCU.mach&&FL.vs<-300&&iasOf(FCU.spd*sos(FL.alt),FL.alt)>=mgd.des()){FCU.mach=false;FCU.spd=mgd.des()}}
+      let mm=false;
       if(!FCU.spdMgd&&FCU.spd!=null)spdT=FCU.mach?iasOf(FCU.spd*sos(FL.alt),FL.alt):FCU.spd;
       else{const lim=spdLim('clb'),dl=spdLim('des'),mmo=iasOf(mgd.crzM()*sos(FL.alt),FL.alt);
-        if(S.phase==='CLB'||S.phase==='TAKEOFF')spdT=FL.ver==='EXP CLB'?sp.GD:Math.min(FL.alt<lim.alt?lim.spd:mgd.clb(),mmo);
-        else if(S.phase==='CRZ')spdT=mmo;
-        else if(S.phase==='DES')spdT=FL.ver==='EXP DES'?Math.min(340,mmo):Math.min(FL.alt<dl.alt+1000?dl.spd:mgd.des(),mmo);
+        /* managed: the target is the programmed speed until it equals the programmed Mach, then the Mach (and the reverse in the descent) */
+        if(S.phase==='CLB'||S.phase==='TAKEOFF'){const v=FL.alt<lim.alt?lim.spd:mgd.clb();mm=FL.ver!=='EXP CLB'&&mmo<v;spdT=FL.ver==='EXP CLB'?sp.GD:Math.min(v,mmo)}
+        else if(S.phase==='CRZ'){spdT=mmo;mm=true}
+        else if(S.phase==='DES'){const em=iasOf(0.80*sos(FL.alt),FL.alt),v=FL.ver==='EXP DES'?340:FL.alt<dl.alt+1000?dl.spd:mgd.des();
+          mm=FL.ver==='EXP DES'?em<340:mmo<v;spdT=FL.ver==='EXP DES'?Math.min(340,em):Math.min(v,mmo)}
         else if(S.phase==='APPR'){const vapp=p2.vapp??sp.VLS+5;spdT={0:sp.GD,1:sp.S,2:sp.F,3:Math.max(vapp,sp.F-10),FULL:vapp}[FL.conf]??vapp}}
+      FL.spdIsMach=!FCU.spdMgd&&FCU.spd!=null?FCU.mach:mm;if(FCU.spdMgd)FCU.mach=mm;
       /* speed constraint (managed speed only) */
       if((FCU.spdMgd||FCU.spd==null)&&CK.spd!=null&&!['EXP CLB','EXP DES'].includes(FL.ver))spdT=Math.max(sp.VLS,Math.min(spdT,CK.spd));
       if(FL.ver==='FLARE')spdT=Math.min(spdT,FL.ias-1)}
     /* ---- phases ---- */
     if(S.phase==='CLB'&&FL.ver==='ALT'&&Math.abs(FL.alt-crz)<50)S.phase='CRZ';
-    if((S.phase==='CRZ'||S.phase==='CLB')&&FL.s>FL.path.len*0.4&&vsT<0&&(DESCENDING.includes(FL.ver)||FL.ver==='V/S'||FL.ver==='FPA')&&FL.alt<crz-200)S.phase='DES';
+    if((S.phase==='CRZ'||S.phase==='CLB')&&FL.s>FL.path.len*0.4&&(vsT<0||FL.vs<-300)&&(DESCENDING.includes(FL.ver)||FL.ver==='V/S'||FL.ver==='FPA')&&FL.alt<crz-200)S.phase='DES';
     if(S.phase==='DES'&&dtg<25)S.phase='APPR';
     /* ---- configuration (PM) ---- */
     /* deceleration: 12 NM flaps 1 (S speed), 8 NM flaps 2 (F speed) and gear down, 5 NM approach speed */
     if(S.phase==='APPR'){const cf=dtg>12?'0':dtg>8?'1':dtg>5?'2':dtg>4?'3':(p2.conf3?'3':'FULL');FL.conf=cf;FL.gear=dtg<=8}
     else{if(FL.conf==='1+F'&&FL.ias>sp.F)FL.conf='1';if(FL.conf==='1'&&FL.ias>sp.S)FL.conf='0';if(FL.gear&&agl()>200)FL.gear=false}
     if(FL.ver==='FLARE'&&agl()<=1&&FL.vs<=0){FL.ground=true;FL.stage='ROLLOUT';FL.ver='ROLL OUT';FL.lat='ROLL OUT';FL.alt=gnd;FL.vs=0;FCU.ap1=FCU.ap2=false;FCU.athr=false}}
-  if(FL.stage==='ROLLOUT'){FL.ias=Math.max(0,FL.ias-4.5*dt);FL.pitch=Math.max(0,FL.pitch-2*dt);
+  if(FL.stage==='ROLLOUT'){FL.ias=Math.max(0,FL.ias-(FL.ias>40?6:4)*dt);FL.pitch=Math.max(0,FL.pitch-2*dt);
     const lg=locGeo(FL.pos),d=destRwy();trkT=brg(FL.pos,dst(d.r.pos,lg.crs+180,lg.along-1));if(FL.ias<=0){FL.stage='STOP';S.phase='DONE';FL.running=false}}
   if(FL.stage==='ROLL'){const o=DB.apt[orig()],r=o.rwy[S.active.rwy];trkT=r.crs+(o.var||0)}
 
+  /* speed on elevator (OP CLB, CLB, EXP CLB with CLB thrust; OP DES, EXP DES with idle): the vertical speed is what the thrust leaves
+     once the acceleration toward the target speed is paid for (climb or descent capability minus the energy used to accelerate) */
+  if(FL.stage==='AIR'&&FL.soe){const gw=gwNowF(),cfgD=({'0':0,'1':1,'1+F':1.3,'2':2,'3':3,'FULL':4}[FL.conf]||0)*220+(FL.gear?500:0),climb=CLIMBING.includes(FL.ver),k=Math.max(150,FL.tas)*5.3;
+    const cap=climb?Math.max(400,(3300-FL.alt*0.06)*(64/gw))-cfgD:-(600+Math.max(0,FL.ias-200)*12+FL.alt*0.035)-cfgD;
+    let a=Math.max(-1,Math.min(1,(spdT-FL.ias)*0.12)),v=cap-k*a;
+    if(climb&&v<0){v=0;a=cap/k}if(!climb&&v>0){v=0;a=cap/k}
+    FL.accT=a;vsT=v}
   FL.spdT=spdT;vsT=Math.max(-6000,Math.min(6000,vsT));
   /* ---- dynamics ---- */
-  if(FL.stage==='AIR'){FL.ias+=Math.max(-1.6*dt,Math.min(1.6*dt,spdT-FL.ias));FL.vs+=Math.max(-600*dt,Math.min(600*dt,vsT-FL.vs));FL.alt+=FL.vs/60*dt}
+  if(FL.stage==='AIR'){FL.ias+=FL.soe?FL.accT*dt:Math.max(-1.6*dt,Math.min(1.6*dt,spdT-FL.ias));FL.vs+=Math.max(-600*dt,Math.min(600*dt,vsT-FL.vs));FL.alt+=FL.vs/60*dt}
   else if(FL.ground)FL.alt=gnd;
   FL.tas=tasOf(FL.ias,FL.alt);FL.gs=FL.ground?FL.ias:FL.tas;FL.mach=FL.tas/sos(FL.alt);
   const dh=((trkT-FL.trkT+540)%360)-180,rate=Math.max(-3,Math.min(3,dh*0.6));FL.trkT=(FL.trkT+rate*dt+360)%360;FL.hdgT=FL.trkT;
@@ -220,7 +238,9 @@ function step(dt){if(FL.sig!==planSig()&&!FL.ground)flightReplan();const P=FL.pa
   if(FL.stage==='AIR'){const fpa=Math.atan2(FL.vs,Math.max(60,FL.gs)*101.27)/D2R,aoa=FL.conf==='0'?2.5:FL.conf==='FULL'?4:3.5;
     FL.pitch+=Math.max(-2*dt,Math.min(2*dt,(FL.ver==='SRS'?15:fpa+aoa)-FL.pitch))}
   const ff=FL.stage==='ROLL'||FL.thr==='TO'?5.6:CLIMBING.includes(FL.ver)||FL.ver==='SRS'?3.2:DESCENDING.includes(FL.ver)?0.7:FL.ground?0.4:FL.alt>20000?PM.ff(I().crz,I().ci)*PM.wf(gwNowF()):2.4;
-  FL.fob=Math.max(0,FL.fob-ff*dt/3600);FL.t+=dt}
+  FL.fob=Math.max(0,FL.fob-ff*dt/3600);FL.t+=dt;
+  /* speed trend (kt/s), smoothed, for the PFD trend arrow */
+  const aNow=(FL.ias-ias0)/(dt||1);FL.acc=(FL.acc??0)+(aNow-(FL.acc??0))*Math.min(1,dt*1.2)}
 
 /* ---------- loop ---------- */
 function flightTick(dtReal){if(!FL.active)return;let dt=dtReal*FL.rate;while(dt>0){const h=Math.min(0.5,dt);step(h);dt-=h;if(!FL.running)break}setFma();refreshAll()}

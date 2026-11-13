@@ -84,6 +84,9 @@ async def run(url,b):
     seen=await pg.evaluate("""(()=>{const seen=new Set(),log=[];let n=0,did={};const add=()=>{const f=FL.fma;[f.c1,f.c2,f.c3,f.c4].forEach(c=>(c||[]).forEach(x=>x&&x[0]&&seen.add(x[0])));if(f.land)seen.add(f.land);seen.add('PH:'+S.phase);seen.add('LAT:'+FL.lat);seen.add('VER:'+FL.ver)};
       while(FL.stage!=='STOP'&&n<60000){step(0.5);setFma();add();n++;const dtg=FL.path.sThr-FL.s;
         if(n%25===0){drawEcam();seen.add('SD:'+window.__ecam.page())}
+        if(FL.stage==='ROLL'&&FL.acc>2)seen.add('TREND TAKEOFF');if(FL.stage==='ROLLOUT'&&FL.acc<-2)seen.add('TREND LANDING');
+        if(S.phase==='CLB'&&FL.spdIsMach&&FL.alt>25000){seen.add('MACH IN CLB');did.mclb=1}
+        if(did.mclb&&S.phase==='DES'&&!FL.spdIsMach&&FL.alt<30000)seen.add('SPEED IN DES');
         if(!did.ap&&FL.alt-groundElev()>1200){fcuButton('ap1');did.ap=1}
         if(!did.lvl&&FL.ver==='ALT'&&Math.abs(FL.alt-7000)<30){seen.add('LEVEL7000');FCU.alt=34000;fcuPush('alt',false);did.lvl=1}
         if(!did.lvl&&FL.ver==='ALT CST'&&Math.abs(FL.alt-7000)<30){seen.add('LEVEL7000');did.lvl=1}
@@ -113,9 +116,22 @@ async def run(url,b):
         if(!did.lvl6&&FL.ver==='DES'&&Math.abs(FL.vs)<60&&Math.abs(FL.alt-7000)<40)seen.add('DES LEVEL AT CSTR'),did.lvl6=1;
         if(!did.pr&&S.phase==='CLB'&&FL.alt>8000){const v=vPredict(),q=v&&v.wp[ixOf('RIBIL')];if(q&&q.met)seen.add('RIBIL PREDICTED MET');did.pr=1}}
       seen.add('END:'+FL.stage);return[...seen]})()""")
-    for m in ['SD:eng','SD:crz','SD:wheel','SPD CST 210','ALT CST','ALT CST 7000','CLB AFTER ORPAR','ALT ARMED MAGENTA','RIBIL PREDICTED MET','BELOW 7000 AFTER D179O','SPD CST 220 DES','DES LEVEL AT CSTR','DIR TO INSERTED','PATH FROM T-P','FROM LINE SEQUENCED','QNH ABOVE TA','STD SET','PERF CRZ T/D','CONF1 AT 12NM','CONF2 AT 8NM','MAN','SRS','RWY','NAV','THR CLB','CLB','LEVEL7000','ALT','ALT CRZ','HDG','NAV REJOINED','DES','THR IDLE','LOC *','LOC','G/S*','G/S','CAT 3','DUAL','LAND','FLARE','RETARD','ROLL OUT','PH:CLB','PH:CRZ','PH:DES','PH:APPR','PH:DONE','END:STOP']:
+    for m in ['TREND TAKEOFF','TREND LANDING','MACH IN CLB','SPEED IN DES','SD:eng','SD:crz','SD:wheel','SPD CST 210','ALT CST','ALT CST 7000','CLB AFTER ORPAR','ALT ARMED MAGENTA','RIBIL PREDICTED MET','BELOW 7000 AFTER D179O','SPD CST 220 DES','DES LEVEL AT CSTR','DIR TO INSERTED','PATH FROM T-P','FROM LINE SEQUENCED','QNH ABOVE TA','STD SET','PERF CRZ T/D','CONF1 AT 12NM','CONF2 AT 8NM','MAN','SRS','RWY','NAV','THR CLB','CLB','LEVEL7000','ALT','ALT CRZ','HDG','NAV REJOINED','DES','THR IDLE','LOC *','LOC','G/S*','G/S','CAT 3','DUAL','LAND','FLARE','RETARD','ROLL OUT','PH:CLB','PH:CRZ','PH:DES','PH:APPR','PH:DONE','END:STOP']:
         assert m in seen,f'never seen in the flight: {m}  (seen: {sorted(seen)})'
     await pg.evaluate("window.__flight('reset');window.__ecam.show(false)")
+    # ---- second flight: OPEN CLB logic and selected SPD to MACH ----
+    r=await pg.evaluate("""(()=>{FCU.alt=7000;FCU.spdMgd=true;FCU.mach=false;window.__flight('start');const out={};let n=0,d={};
+      while(FL.stage!=='STOP'&&n<12000){step(0.5);setFma();n++;
+        if(!d.ap&&FL.alt-groundElev()>1200){fcuButton('ap1');d.ap=1}
+        if(!d.sm&&FL.ver==='ALT'&&Math.abs(FL.alt-7000)<30){FCU.alt=7800;fcuPush('alt',true);d.sm=FL.t}
+        if(d.sm&&!d.smv&&FL.t-d.sm>20&&FL.ver==='OP CLB'){out.small=Math.round(FL.vs);d.smv=1}
+        if(d.smv&&!d.big&&FL.ver==='ALT'){FCU.spd=300;FCU.spdMgd=false;FCU.mach=false;FCU.alt=34000;fcuPush('alt',true);d.big=FL.t}
+        if(d.big&&!d.bigv&&Math.abs(FL.ias-300)<3){out.acc=Math.round(FL.t-d.big);out.big=Math.round(FL.vs);out.fma=FL.fma.c1[0][0]+'/'+FL.fma.c2[0][0];d.bigv=1}
+        if(d.big&&FCU.mach){out.mach=[FCU.spd,Math.round(FL.alt)];break}}
+      window.__flight('reset');FCU.spdMgd=true;FCU.mach=false;return out})()""")
+    assert r.get('small') is not None and 900<=r['small']<=1100,f'OP CLB under 1200 ft: V/S 1000 ({r})'
+    assert r.get('big',0)>1500 and r.get('fma')=='THR CLB/OP CLB',f'OP CLB: climb thrust, speed on elevator ({r})'
+    assert r.get('mach') and abs(r['mach'][0]-0.78)<0.03 and 25000<r['mach'][1]<33000,f'selected SPD to MACH at the crossover ({r})'
     await pg.click('text=Cockpit 3D');await pg.wait_for_timeout(2500)
     await pg.evaluate('window.__dbg3d.goView(3)');await pg.wait_for_timeout(2500)
     x,y=await pg.evaluate('window.__dbg3d.proj("elec",0.624,0.79)');await pg.mouse.click(x,y);await pg.wait_for_timeout(200)
