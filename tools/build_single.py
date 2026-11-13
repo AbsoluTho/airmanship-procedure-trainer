@@ -8,11 +8,14 @@ b64=lambda p:base64.b64encode(open(os.path.join(root,p),'rb').read()).decode()
 # so that browsers and the iPad home-screen app load the new files after every change instead of a cached copy
 import hashlib
 src=rd('index.html')
+# app version in the top right corner, from the README status line (## Status: Phase 2 prototype (v0.12.1))
+mv=re.search(r'^## Status: (.+?) \((v[0-9.]+)\)',rd('README.md'),re.M)
+if mv:src=re.sub(r'<span class="appver">[^<]*</span>','<span class="appver">%s · %s</span>'%(mv.group(2),mv.group(1)),src)
 def stamp(m):
     path=m.group(2);h=hashlib.sha1(open(os.path.join(root,path),'rb').read()).hexdigest()[:8]
     return m.group(1)+path+'?v='+h+m.group(4)
 src2=re.sub(r'((?:src|href)=")((?:js|css|vendor)/[^"?]+\.(?:js|css))(\?v=[0-9a-f]+)?(")',stamp,src)
-if src2!=src:open(os.path.join(root,'index.html'),'w',encoding='utf-8').write(src2)
+if src2!=rd('index.html'):open(os.path.join(root,'index.html'),'w',encoding='utf-8').write(src2)
 html=src2
 css=rd('css/app.css')
 css=re.sub(r"url\(\.\./fonts/([^)]+\.(woff2|ttf))\)",lambda m:"url(data:font/%s;base64,%s)"%(m.group(2),b64('fonts/'+m.group(1))),css)
