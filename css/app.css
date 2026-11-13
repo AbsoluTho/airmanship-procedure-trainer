@@ -32,7 +32,7 @@ button{font:inherit;color:inherit}
 .scr .c{flex:0 0 calc(100%/24);text-align:center;font-size:var(--fl,20px);white-space:pre}
 .scr .c.s{font-size:var(--fs,15px)}
 .scr .bx{display:inline-block;width:.62em;height:.78em;border:max(1.5px,.09em) solid currentColor;vertical-align:-.08em}
-.c-w{color:#fff}.c-g{color:#3df24e}.c-b{color:#3fd2ff}.c-a{color:#ffa21f}.c-m{color:#ff6cf6}.c-y{color:#fff23d}
+.c-w{color:#fff}.c-i{color:#7d8592}.c-g{color:#3df24e}.c-b{color:#3fd2ff}.c-a{color:#ffa21f}.c-m{color:#ff6cf6}.c-y{color:#fff23d}
 .mcdu .scrOff{position:absolute;left:17.8%;top:10.1%;width:65.2%;height:36.3%;background:#05070a;border-radius:3%;display:none}
 .mcdu.off .scrOff{display:block}.mcdu.off .scr{display:none}
 .k{position:absolute;background:transparent;border:0;padding:0;border-radius:6px;cursor:pointer;-webkit-tap-highlight-color:transparent}

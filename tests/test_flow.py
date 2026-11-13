@@ -19,7 +19,9 @@ async def run(url,b):
     assert await pg.evaluate('FL.rate')==1,'simulation speed starts at x1'
     assert await pg.evaluate("msgShown().t")=='GPS PRIMARY','GPS PRIMARY at power-up'
     await k('CLR');assert await pg.evaluate("msgShown()")==None,'CLR clears GPS PRIMARY'
-    await t('OEJN/OETB');await k('R1');await t('OEMA');await k('L2');await t('TRN385');await k('L3');await t('20');await k('L5')
+    await t('OEJN/OETB');await k('R1')
+    assert await pg.evaluate("window.__S().page")=='ROUTESEL','ROUTE selection after FROM/TO (company routes)';await k('L6')
+    await t('OEMA');await k('L2');await t('TRN385');await k('L3');await t('20');await k('L5')
     await t('340/46');await k('L6')
     assert await pg.evaluate('window.__S().init.temp')==-46,'unsigned CRZ temp should be negative'
     await t('360');await k('R5');assert await pg.evaluate('window.__S().init.tropo')==36000,'3-digit TROPO'
@@ -66,6 +68,13 @@ async def run(url,b):
     await k('DATA');await k('L5');assert 'OEJN' in await scr(),'CLOSEST AIRPORTS'
     await k('DATA');await k('L4');assert 'ACTIVE NAV DATA BASE' in await scr()
     await k('DATA');await k('RIGHT');await k('L2');await t('JDW');await k('L1');assert 'VORTAC' in await scr(),'NAVAID page'
+    # ---- pilot waypoints: NEW WAYPOINT (PLACE/BRG/DIST) and an LL entry in the F-PLN (temporary F-PLN, erased) ----
+    await pg.evaluate("localStorage.removeItem('airmanship.stored.v1');window.__stored().wpts=[]")
+    await k('DATA');await k('RIGHT');await k('R1');assert 'NEW WAYPOINT' in await scr(),'NEW WAYPOINT when none stored'
+    await t('TBK/090/20');await k('L3');await k('R6');assert 'PBD01' in await scr(),'stored waypoint PBD01'
+    await k('FPLN');await pg.evaluate("window.__S().fpOff=0");await t('N2830.0/E03700.0');await k('L2')
+    assert await pg.evaluate("window.__S().tmpy.legs.some(l=>l.id==='LL01')&&!!DB.wpt.LL01"),'LL waypoint LL01 inserted from the F-PLN'
+    await k('L6');assert await pg.evaluate("!window.__S().tmpy"),'temporary F-PLN erased'
     await k('FUEL');assert 'FUEL PRED' in await scr()
     await k('PROG');assert 'REC MAX' in await scr();await t('OETB');await k('R4');assert '°/' in await scr()
     await k('AIRPORT');await k('INIT');await k('RIGHT')
@@ -244,6 +253,23 @@ async def run(url,b):
     r=await pg.evaluate("""(()=>{let n=0,land=false;while(FL.stage!=='STOP'&&n<20000){step(0.5);n++;if(FL.path.sThr-FL.s<20)FCU.appr=true;if(FL.ver==='LAND')land=true}return[FL.stage,land,S.phase]})()""")
     assert r==['STOP',True,'DONE'],f'second approach flown to a landing: {r}'
     await pg.evaluate("window.__flight('reset');window.__S().active=clone(window.__plan0)")
+    # ---- CO RTE, ROUTE selection, INIT REQUEST, STORED ROUTES, MCDU MENU (fresh MCDU) ----
+    await pg.evaluate("S=freshState();window.__S().msgs=[];render()")
+    for ch in 'OEJNOETB2': await P(ch)
+    await P('L1');assert await pg.evaluate("[I().from,I().to,I().altn,window.__S().active.via]")==['OEJN','OETB','OEMA','TBK'],'CO RTE OEJNOETB2 loaded'
+    await pg.evaluate("S=freshState();window.__S().msgs=[];window.__reqMs(50);render()")
+    for ch in 'TRN385': await P(ch)
+    await P('L3');await P('R2');await pg.wait_for_timeout(300)
+    r=await pg.evaluate("[I().from,I().to,I().ci,I().crz,window.__S().coRte,hasMsg('AOC ACT F-PLN UPLINK'),window.__S().active.legs.filter(l=>l.k==='wpt').length]")
+    assert r[:6]==['OEJN','OETB',20,340,'OEJNOETB1',True] and r[6]>15,f'INIT REQUEST: AOC answer fills INIT A and the F-PLN: {r}'
+    await pg.evaluate("window.__S().sp=''");await P('DATA');await P('RIGHT');await P('R4')
+    for ch in 'MYRTE': await P(ch)
+    await P('L5');await pg.evaluate("S=freshState();window.__S().msgs=[];render()")
+    for ch in 'MYRTE': await P(ch)
+    await P('L1');assert await pg.evaluate("window.__S().active.legs.filter(l=>l.k==='wpt').length")==r[6],'stored route used as CO RTE'
+    await P('PERF');await P('MENU');assert 'MCDU MENU' in await pg.evaluate("[...document.querySelectorAll('#scr .ln')].map(l=>l.textContent).join(' ')")
+    await P('L1');assert await pg.evaluate("window.__S().page")=='PERFTO','MCDU MENU: FMGC returns to the last FMGC page'
+    await pg.evaluate("localStorage.removeItem('airmanship.stored.v1')")
     await pg.click('text=Cockpit 3D');await pg.wait_for_timeout(2500)
     await pg.evaluate('window.__dbg3d.goView(3)');await pg.wait_for_timeout(2500)
     x,y=await pg.evaluate('window.__dbg3d.proj("elec",0.624,0.79)');await pg.mouse.click(x,y);await pg.wait_for_timeout(200)
