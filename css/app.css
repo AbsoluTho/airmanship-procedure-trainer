@@ -157,3 +157,35 @@ button{font:inherit;color:inherit}
 .ecp-k.lit i{background:#f4f6fa;box-shadow:0 0 6px rgba(255,255,255,.9)}
 .ecp-btn{position:absolute;z-index:3;right:2.2%;bottom:2.4%;border:1px solid rgba(255,255,255,.35);border-radius:999px;background:rgba(18,24,32,.85);color:#9fe3ff;font:600 10px/1 "IBM Plex Mono",ui-monospace,monospace;letter-spacing:.06em;padding:4px 9px;cursor:pointer}
 .ecp-btn[aria-pressed="true"]{background:#1f4f72;color:#fff}
+
+/* SD pages ported from FlyByWire (their classes and sizes, scoped to the overlay) */
+#sdsvg{position:absolute;left:11.391%;top:11.390%;width:77.071%;height:82.747%;display:block;pointer-events:none;font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;overflow:hidden}
+#sdsvg text{fill:#fff;stroke:none}
+#sdsvg .p-crz text.Title{font-size:24px;text-decoration:underline;text-anchor:middle}
+#sdsvg .p-crz text.SubTitle{font-size:22px;text-decoration:underline;text-anchor:middle}
+#sdsvg .p-crz text.Standard{font-size:17px}#sdsvg .p-crz text.Medium{font-size:16px}#sdsvg .p-crz text.Large{font-size:20px}
+#sdsvg .p-crz text.Cyan,#sdsvg .p-wheel text.Cyan{fill:#00ffff}#sdsvg .p-crz text.Green,#sdsvg .p-wheel text.Green{fill:#00ff00}#sdsvg .p-crz text.Center,#sdsvg .p-wheel text.Center{text-anchor:middle}
+#sdsvg .p-crz .WingPlaneSym{stroke:#787878;stroke-width:2;fill:none}#sdsvg .p-crz .VsIndicator{stroke:#00ff00;stroke-width:2;fill:none}
+#sdsvg .PageTitle{font-size:24px;text-decoration:underline;fill:#fff}
+#sdsvg .p-eng .TextCenter{text-anchor:middle;dominant-baseline:central}#sdsvg .p-eng .FontSmall{font-size:16px}#sdsvg .p-eng .FontMedium{font-size:18px}#sdsvg .p-eng .FontLarge{font-size:20px}
+#sdsvg .p-eng .Indicator{stroke:#fff;stroke-width:1}#sdsvg .p-eng .GaugeMarking{stroke:#fff;stroke-width:2}#sdsvg .NoFill{fill:none}
+#sdsvg .p-eng .FillCyan{fill:#00ffff}#sdsvg .p-eng .FillGreen{fill:#00ff00}#sdsvg .p-eng .FillWhite{fill:#fff}#sdsvg .p-eng .FillAmber{fill:#e68000}
+#sdsvg .p-eng .AmberHeavy{stroke:#e68000;stroke-width:6}#sdsvg .p-eng .AmberLine{stroke:#e68000;stroke-width:2}#sdsvg .p-eng .WhiteLine{stroke:#fff;stroke-width:2}#sdsvg .p-eng .RedLine{stroke:#ff0000;stroke-width:2}#sdsvg .p-eng .GreenLine{stroke:#00ff00;stroke-width:2}
+#sdsvg .p-door .MainShape{fill:transparent;stroke:#787878;stroke-width:2}#sdsvg .p-door .DoorShape{fill:transparent;stroke:#00ff00;stroke-width:2}
+#sdsvg .p-door .Title{font-size:24px;fill:#fff}#sdsvg .p-door .Slide{font-size:16px}#sdsvg .p-door .Oxygen{font-size:20px}#sdsvg .p-door .Unit{font-size:18px;fill:#00ffff}#sdsvg .p-door .Value{font-size:20px;fill:#00ff00}
+#sdsvg .p-fuel .FuelUsed{font-size:19px;text-anchor:middle}#sdsvg .p-fuel .EngineNumber{font-size:30px;text-anchor:middle}#sdsvg .p-fuel .EngineLine{stroke:#787878;stroke-width:3}
+#sdsvg .p-fuel .UsedQuantity{font-size:25px;text-anchor:middle;fill:#00ff00}#sdsvg .p-fuel .ThickShape{stroke:#787878;stroke-width:4;fill:none}#sdsvg .p-fuel text.White{fill:#fff}
+#sdsvg .p-fuel .FlowShape,#sdsvg .p-fuel .ValveGreen,#sdsvg .p-fuel .PumpActive{fill-opacity:0;stroke:#00ff00;stroke-width:2}#sdsvg .p-fuel .ValveAmber,#sdsvg .p-fuel .PumpInactive{fill-opacity:0;stroke:#e68000;stroke-width:2}
+#sdsvg .p-fuel .GreenLine{stroke:#00ff00;stroke-width:2;fill:none}#sdsvg .p-fuel .WhiteLine{stroke:#fff;stroke-width:2;fill:none}
+#sdsvg .p-fuel .TankQuantity{fill:#00ff00;font-size:22px;text-anchor:end;dominant-baseline:central}#sdsvg .p-fuel .Unit,#sdsvg .p-fuel .UnitTemp{fill:#00ffff;font-size:16px}#sdsvg .p-fuel .UnitTemp{letter-spacing:-2px}
+#sdsvg .p-fuel .FuelFlowLabel{font-size:17px;text-anchor:middle}#sdsvg #FuelFlowColon{font-size:16px}#sdsvg #FuelFlowValue{fill:#00ff00;font-size:16px;text-anchor:end;dominant-baseline:middle}#sdsvg #FuelFlowUnit{fill:#00ffff;font-size:16px;dominant-baseline:middle}
+#sdsvg #FobLabel,#sdsvg #FobColon{font-size:22px}#sdsvg #FobValue{fill:#00ff00;font-size:22px;text-anchor:end;dominant-baseline:middle}#sdsvg #FobUnit{fill:#00ffff;font-size:16px;dominant-baseline:middle}
+#sdsvg .ecam-common-styles text.Standard{font-size:22px}#sdsvg .ecam-common-styles text.Medium{font-size:20px}#sdsvg .ecam-common-styles text.Large{font-size:26px}#sdsvg .ecam-common-styles text.Title{font-size:36px}
+#sdsvg .ecam-common-styles text.End{text-anchor:end}#sdsvg .ecam-common-styles text.UnderlineWhite{text-decoration:underline}
+#sdsvg .ecam-common-styles .GreenLine{stroke:#00ff00;stroke-width:2;fill:none;stroke-linejoin:round;stroke-linecap:round}#sdsvg .ecam-common-styles .WhiteLine{stroke:#fff;stroke-width:2;fill:none}
+#sdsvg .ecam-common-styles .ThickGreyLine{stroke:#787878;stroke-width:4;fill:none;stroke-linecap:round}#sdsvg .ecam-common-styles .AmberLine{stroke:#e68000;stroke-width:2;fill:none}
+#sdsvg .sdv2 text,#sdsvg .sdv2 tspan,#sdsvg .sdv2 .Fill{fill:currentColor;stroke:none}#sdsvg .sdv2 :not(text):not(tspan):not(.Fill):not(g):not(svg){fill:none;stroke:currentColor}
+#sdsvg .sdv2 .Green{color:#00ff00}#sdsvg .sdv2 .Cyan{color:#00ffff}#sdsvg .sdv2 .White{color:#fff}#sdsvg .sdv2 .Grey{color:#787878}#sdsvg .sdv2 .Amber{color:#e68000}
+#sdsvg .sdv2 .F22{font-size:22px}#sdsvg .sdv2 .F25{font-size:25px}#sdsvg .sdv2 .F26{font-size:26px}#sdsvg .sdv2 .F28{font-size:28px}#sdsvg .sdv2 .F29{font-size:29px}#sdsvg .sdv2 .F36{font-size:36px}
+#sdsvg .sdv2 .LS1{letter-spacing:1px}#sdsvg .sdv2 .Center{text-anchor:middle}#sdsvg .sdv2 .End{text-anchor:end}#sdsvg .sdv2 .Underline{text-decoration:underline}
+#sdsvg .sdv2 .LineRound{stroke-linecap:round}#sdsvg .sdv2 .LineJoinRound{stroke-linejoin:round}#sdsvg .sdv2 .SW2{stroke-width:2px}#sdsvg .sdv2 .SW3{stroke-width:3px}#sdsvg .sdv2 .SW6{stroke-width:6px}

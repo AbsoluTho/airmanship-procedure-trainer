@@ -110,13 +110,16 @@ function drawEWD(c){const D=ecCtx(c,76,82,522,510),{g,T,L,R}=D,E=engStep(),q=S.p
 /* ---------- SD ---------- */
 /* ---------- SD (reference photo: screen x 77-598, y 68-562; permanent data below y 497) ---------- */
 function drawSD(c){const P=ecCtx(c,77,68,521,494),pg=sdPage(),on=flying(),E=EC.eng[0]?EC.eng:engStep();
-  P.title(SD_TITLE[pg],338,85,19,'center');
+  /* pages ported from FlyByWire are drawn as SVG over the screen (sdpages.js); the canvas keeps the permanent data */
+  const ov=$('#sdsvg'),ported=typeof sdPageSvg==='function'&&window.SDP_PORTED.includes(pg);if(ov){const h=ported?sdPageSvg(pg):'';if(ov._h!==h){ov.innerHTML=h;ov._h=h}}
+  if(!ported)P.title(SD_TITLE[pg],338,85,19,'center');
   const g=P.g;g.save();const k=0.838;g.translate(77+(521-600*k)/2,78);g.scale(k,k);const D=ecTools(g,1.12),{T,L,R}=D;
   const used=Math.max(0,((S.fuel.block??0)-(S.fuel.taxi??0.2)-(on?FL.fob:(S.fuel.block??0)-(S.fuel.taxi??0.2)))*1000)+(on?0:0);
   const fu=[Math.round(used/2/10)*10,Math.round(used/2/10)*10+(used>0?10:0)];
   const eng2=(lbl,unit,y,v,col)=>{T(lbl,300,y,'w',21,'center');if(unit)T(unit,300,y+22,'b',18,'center');v.forEach((x,i)=>T(x,i?440:160,y+(unit?11:0),col||'g',26,'center'))};
   const cab=cabin();
-  if(pg==='crz'){T('ENG',40,75,'w',22);eng2('F.USED','KG',100,fu.map(String));eng2('OIL','QT',160,['14.5','14.0']);
+  if(ported){}
+  else if(pg==='crz'){T('ENG',40,75,'w',22);eng2('F.USED','KG',100,fu.map(String));eng2('OIL','QT',160,['14.5','14.0']);
     eng2('VIB  (N1)','',220,[(0.6).toFixed(1),(0.7).toFixed(1)]);eng2('VIB  (N2)','',252,['0.9','1.0']);
     L([[20,285],[580,285]],'gr',1.5);T('AIR',40,310,'w',22);T('LDG ELEV',260,310,'w',20);T('AUTO',372,310,'g',20);T(String(Math.round(cab.ldg/50)*50),510,310,'g',24,'right');T('FT',518,310,'b',18);
     T('ΔP',60,360,'w',22);T(cab.dp.toFixed(1),150,360,'g',26,'right');T('PSI',158,360,'b',18);
@@ -166,7 +169,6 @@ function drawSD(c){const P=ecCtx(c,77,68,521,494),pg=sdPage(),on=flying(),E=EC.e
     T('EGT',450,250,'w',22,'center');T('°C',450,276,'b',18,'center');T(S.elec&&S.elec.apu&&!on?'345':String(Math.round(satC())),450,320,'g',28,'center');T('FLAP',300,420,'w',18,'center');T('CLOSED',300,446,'g',20,'center')}
   else if(pg==='sts'){T('NORMAL',300,250,'g',30,'center')}
   g.restore();
-  if(pg==='door')drawDoor(P);
   /* permanent data */
   {const{T,L}=P;L([[77,497],[598,497]],'w',2);L([[250,497],[250,560]],'w',2);L([[425,497],[425,560]],'w',2);
   const sat=satC(),m=on?FL.mach:0,tat=(sat+273.15)*(1+0.2*m*m)-273.15,sg=v=>(v>=0?'+':'')+Math.round(v);
@@ -174,12 +176,6 @@ function drawSD(c){const P=ecCtx(c,77,68,521,494),pg=sdPage(),on=flying(),E=EC.e
   const ut=new Date(on?FL.utc0+FL.t*1000:Date.now());T(String(ut.getUTCHours()).padStart(2,'0'),326,529,'g',17,'right');T('H',336,530,'b',14,'center');T(String(ut.getUTCMinutes()).padStart(2,'0'),345,529,'g',17);
   const gw=S.fuel.zfw!=null&&(on||S.fuel.block!=null)?Math.round((S.fuel.zfw+(on?FL.fob:S.fuel.block-(S.fuel.taxi??0.2)))*1000/100)*100:null;
   T('GW',441,509,'w',17);T(gw!=null?String(gw):'XX',547,509,gw!=null?'g':'a',17,'right');T('KG',566,510,'b',14)}}
-/* DOOR/OXY page, drawn on the reference photo layout */
-function drawDoor(D){const{g,T,L}=D;g.strokeStyle=EC_C.w;g.lineWidth=2;g.beginPath();g.moveTo(305,452);g.lineTo(305,160);g.bezierCurveTo(305,128,322,110,338,102);g.bezierCurveTo(354,110,372,128,372,160);g.lineTo(372,452);g.lineTo(366,462);g.moveTo(305,452);g.lineTo(311,462);g.stroke();
-  [[331,122,14,9],[322,143,9,12],[345,143,9,12],[305,174,12,16],[359,174,12,16],[337,220,15,8],[353,236,17,17],[305,310,12,16],[305,338,12,16],[359,310,12,16],[359,338,12,16],[353,371,17,16],[355,393,8,17],[305,420,12,17],[359,420,12,17]].forEach(([x,y,w,h])=>{g.strokeStyle=EC_C.g;g.lineWidth=2;g.strokeRect(x,y,w,h)});
-  L([[300,298],[218,325]],'w',1.8);L([[377,298],[460,325]],'w',1.8);T('SLIDE',279,335,'w',15,'center');T('SLIDE',397,335,'w',15,'center');
-  L([[425,69],[425,95]],'w',1.6);T('CKPT OXY',518,85,'a',17,'center');T('1850',470,104,'g',17,'center');T('PSI',520,104,'b',14,'center');T('1850',568,104,'g',17,'center')}
-
 /* ---------- ECAM control panel (photo 676 x 248) over the lower half of the ND; MCDU / ECAM switch ---------- */
 const ECP_PH=[['tocfg',254,43],['emer',480,50,60,48],['eng',186,113],['bleed',254,113],['press',319,113],['elec',386,113],['hyd',454,113],['fuel',519,113],
   ['apu',186,157],['cond',254,157],['door',319,157],['wheel',386,157],['fctl',454,157],['all',519,157],['clr',186,202],['sts',319,202],['rcl',386,202],['clr2',519,202]];
@@ -199,7 +195,7 @@ function buildEcam(){const home=$('#mcduHome');if(!home||$('#ecam'))return;const
   home.insertAdjacentHTML('afterbegin',`<button type="button" class="dutoggle" id="duToggle" aria-pressed="false" title="Switch between MCDU and ECAM">ECAM</button>
    <div class="ecam" id="ecam" aria-label="ECAM upper and lower displays">
      <div class="ecdu ewd"><img alt="" src="${IMG_EWD}"><canvas id="ewd" aria-label="Engine and warning display"></canvas></div>
-     <div class="ecdu sdu"><img alt="" src="${IMG_SD}"><canvas id="sd" aria-label="System display"></canvas></div>
+     <div class="ecdu sdu"><img alt="" src="${IMG_SD}"><canvas id="sd" aria-label="System display"></canvas><svg id="sdsvg" viewBox="0 0 600 569" preserveAspectRatio="xMinYMin meet" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"></svg></div>
    </div>`);
   const nd=$('#ndBezel')&&$('#ndBezel').parentElement;
   if(nd){nd.insertAdjacentHTML('beforeend',`<div class="ecp-pan" id="ecp" hidden aria-label="ECAM control panel"><img alt="" src="${IMG_ECP}">${ECP_PH.map(([k,x,y,w,h])=>{w=w||46;h=h||32;
