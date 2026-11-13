@@ -2,7 +2,15 @@
 /* ================= ND (navigation display) =================
    ROSE NAV, ARC and PLAN drawn from the active and temporary flight plans.
    Drawn on a 768 x 768 design grid, scaled to whatever canvas it is given. */
-const EFIS={mode:'ARC',range:10,cstr:false,wpt:false,vord:false,ndb:false,arpt:false,ctr:null,fd:true,ls:false};
+const EFIS={mode:'ARC',range:10,cstr:false,wpt:false,vord:false,ndb:false,arpt:false,ctr:null,fd:true,ls:false,baro:1013,std:false,inhg:false,nav1:'OFF',nav2:'OFF'};
+const baroHpa=()=>EFIS.baro;
+/* actual QNH: 1013 near the departure, the PERF APPR QNH (hPa) near the destination when it was entered */
+function actualQnh(){const q=S.p2&&S.p2.qnh;return flying()&&FL.path&&FL.s>FL.path.sThr/2&&typeof q==='number'?q:1013}
+/* VOR/ADF stations: manual RAD NAV tuning, otherwise the nearest station is autotuned */
+function navStation(n){const r=S.rad||{},sw=EFIS['nav'+n];if(sw==='OFF')return null;const ac=acState().pos,isA=sw==='ADF';
+  const man=isA?r['adf'+n]:r['vor'+n];if(man&&man.id&&DB.nav[man.id])return{id:man.id,...DB.nav[man.id],adf:isA};
+  const list=Object.entries(DB.nav||{}).filter(([,x])=>isA?/NDB/.test(x.type):/VOR|TACAN/.test(x.type)).map(([id,x])=>({id,...x,d:gc(ac,x.pos),adf:isA})).sort((a,b)=>a.d-b.d);
+  const st=list[n===1?0:1];return st&&st.d<200?st:null}
 const MODES=['LS','VOR','NAV','ARC','PLAN'];
 const EFIS_OPTS=['cstr','wpt','vord','ndb','arpt'];
 const RANGES=[10,20,40,80,160,320];
@@ -34,6 +42,7 @@ function planGeo(p,base){const G={lines:[],wpts:[],rwys:[]};let prev=null,vr=0;
     if(l.k==='wpt'){const pos=DB.wpt[l.id];if(!pos){prev=null;return}
       if(prev)G.lines.push({pts:l.lbl==='ARC'&&l.ctr&&DB.wpt[l.ctr]?arcPts(prev,pos,DB.wpt[l.ctr]):[prev,pos],col});
       G.wpts.push({id:l.id,pos,col,alt:l.alt,spd:l.spd});prev=pos;return}
+    if(l.k==='tp'){prev=l.pos;return}
     if(l.k==='ca'&&prev){const o=p.legs[0],ap=DB.apt[o.id],r=ap.rwy[o.rwy];if(!r){prev=null;return}
       const q=dst(r.pos,r.crs+vr,r.len/1852+l.aal/320);G.lines.push({pts:[prev,q],col});prev=q;return}
     if(l.k==='hdg'&&prev){const c=crs(l.lbl);if(c==null){prev=null;return}const q=dst(prev,c+vr,5);G.lines.push({pts:[prev,q],col});prev=q;return}
@@ -114,6 +123,22 @@ function drawND(g,W,H,powered){g.save();g.setTransform(1,0,0,1,0,0);g.fillStyle=
     if(V.m==='PLAN')[['N',0],['E',90],['S',180],['W',270]].forEach(([t,a])=>{const[x,y]=pol(a,V.R*0.856);label(t,x,y,'w',29,'center');
       const[ax,ay]=pol(a,V.R*0.97),[b1x,b1y]=pol(a-1.4,V.R*0.932),[b2x,b2y]=pol(a+1.4,V.R*0.932);g.fillStyle=NC.w;g.beginPath();g.moveTo(ax,ay);g.lineTo(b1x,b1y);g.lineTo(b2x,b2y);g.closePath();g.fill()});
     else{for(let h=0;h<360;h+=5){const a=h-hdg;tick(a,V.R,V.R+(h%10?13:22));if(h%10===0)num(h,a)}selHdg(180);tick(0,V.R-18,V.R+20,'ac',6)}}
+  /* VOR / ADF bearing pointers (ROSE and ARC): VOR white, ADF green; 1 single line, 2 double line */
+  if(V.m!=='PLAN')[1,2].forEach(n=>{const st=navStation(n);if(!st)return;const b=(brg(ac.pos,st.pos)-(ac.hdg+ac.vr)),col=st.adf?NC.g:NC.w,R1=V.R*0.92,R2=V.R*0.55;
+    g.save();g.translate(V.cx,V.cy);g.rotate(b*D2R);g.strokeStyle=col;g.lineWidth=3;g.beginPath();
+    const ln=(o)=>{g.moveTo(o,-R1);g.lineTo(o,-R2);g.moveTo(o,R2);g.lineTo(o,R1)};if(n===1)ln(0);else{ln(-5);ln(5)}
+    g.moveTo(-14,-R1+22);g.lineTo(0,-R1);g.lineTo(14,-R1+22);g.stroke();g.restore()});
+  if(V.m!=='PLAN')[1,2].forEach(n=>{const st=navStation(n),x=n===1?14:754,al=n===1?'left':'right',col=EFIS['nav'+n]==='ADF'?'g':'w';if(EFIS['nav'+n]==='OFF')return;
+    g.textBaseline='middle';g.textAlign=al;g.font=NF(22);g.fillStyle=NC[col];g.fillText((EFIS['nav'+n]==='ADF'?'ADF':'VOR')+n,x,Hg-96);
+    if(st){g.font=NF(24);g.fillText(st.id,x,Hg-66);if(!st.adf&&/DME|TAC/.test(st.type)){const d=gc(ac.pos,st.pos);g.fillStyle=NC.g;g.fillText((d<20?d.toFixed(1):String(Math.round(d)))+(n===1?'':''),n===1?x:x-40,Hg-38);g.font=NF(19);g.fillStyle=NC.b;g.fillText('NM',n===1?x+60:x,Hg-38)}}});
+  /* pseudo waypoints on the route: T/C or level-off (cyan), T/D (white), DECEL (magenta D) */
+  if(V.map&&A&&!T){const pw=pseudoWpts();if(pw)pw.forEach(q=>{const[x,y]=pj(q.pos);if(V.m==='PLAN'?(x<30||x>738||y<90||y>Hg-40):Math.hypot(x-V.cx,y-V.cy)>V.R)return;g.lineWidth=3;
+    if(q.k==='D'){g.strokeStyle=NC.m;g.beginPath();g.arc(x,y,11,0,7);g.stroke();label('D',x,y+1,'m',18,'center');return}
+    g.strokeStyle=NC[q.c];g.beginPath();
+    if(q.k==='up'){g.moveTo(x-18,y+12);g.lineTo(x,y);g.lineTo(x+20,y);g.moveTo(x+12,y-6);g.lineTo(x+20,y);g.lineTo(x+12,y+6)}
+    else if(q.k==='dn'){g.moveTo(x-18,y-12);g.lineTo(x,y);g.lineTo(x+20,y);g.moveTo(x+12,y-6);g.lineTo(x+20,y);g.lineTo(x+12,y+6)}
+    else{g.moveTo(x-20,y);g.lineTo(x,y);g.lineTo(x+16,y+12);g.moveTo(x+6,y+13);g.lineTo(x+16,y+12);g.lineTo(x+14,y+2)}
+    g.stroke()})}
   /* aircraft symbol */
   const plane=(x,y,rot)=>{g.save();g.translate(x,y);g.rotate(rot*D2R);g.strokeStyle=NC.ac;g.lineWidth=7;g.beginPath();
     g.moveTo(0,-33);g.lineTo(0,35);g.moveTo(-37,-3);g.lineTo(37,-3);g.moveTo(-14,27);g.lineTo(14,27);g.stroke();g.restore()};
@@ -127,10 +152,23 @@ function drawND(g,W,H,powered){g.save();g.setTransform(1,0,0,1,0,0);g.fillStyle=
     g.textAlign='left';g.font=NF(31);g.fillStyle=NC.w;g.fillText(to.id,520,40);
     g.textAlign='right';g.fillStyle=NC.g;g.fillText(String(b).padStart(3,'0')+'°',756,40);
     g.fillText(d<20?d.toFixed(1):String(Math.round(d)),708,76);g.font=NF(23);g.fillStyle=NC.b;g.fillText('NM',756,76)}
-  if(T){g.textAlign='right';g.font=NF(20);g.fillStyle=NC.y;g.fillText('TMPY',756,Hg-60)}
+  if(T){g.textAlign='center';g.font=NF(20);g.fillStyle=NC.y;g.fillText('TMPY',384,Hg-20)}
   /* message box (GPS PRIMARY until cleared on the MCDU) */
   if(S.msg==='GPS PRIMARY'){const bw=438,bx=384-bw/2,by=Hg-70;g.strokeStyle=NC.w;g.lineWidth=2.5;g.strokeRect(bx,by,bw,33);label('GPS PRIMARY',384,by+18,'w',27,'center')}
   g.restore()}
+
+/* ---------- pseudo waypoints from the vertical profile ---------- */
+let _pwCache={sig:null,P:null};
+function pseudoWpts(){try{const out=[],crz=I().crz*100;if(!S.active||!S.active.appr||!I().crz)return null;
+  let P,s0,alt0,vs0;if(flying()){P=FL.path;s0=FL.s;alt0=FL.alt;vs0=FL.vs}else{const sig=planSig();if(_pwCache.sig!==sig){_pwCache={sig,P:buildPath()}}P=_pwCache.P;s0=0;alt0=elevO();vs0=0}
+  const at=s=>posAt(P,Math.max(0,Math.min(P.len,s))).pos,td=P.sThr-tdDist(),A=FCU.alt;
+  if(flying()&&!FL.ground){const climbing=['SRS','CLB','OP CLB','EXP CLB','V/S','FPA','ALT*'].includes(FL.ver)&&FL.vs>200,desc=FL.vs<-200&&!['G/S*','G/S','LAND','FLARE'].includes(FL.ver);
+    if((climbing&&A>alt0)||(desc&&A<alt0)){const t=(A-alt0)/(FL.vs||1)*60,d=Math.max(0,t*FL.gs/3600);const c=A===crz?'w':'b';
+      out.push({k:climbing?'up':'dn',c,pos:FL.lat==='NAV'?at(s0+d):dst(FL.pos,FL.trkT,d)})}}
+  else if(!flying())out.push({k:'up',c:'w',pos:at(PM.climb(I().crz).d)});
+  if(s0<td&&(!flying()||['CLB','CRZ','TAKEOFF'].includes(S.phase)))out.push({k:'td',c:'w',pos:at(td)});
+  if(P.sThr-s0>25&&(!flying()||S.phase!=='APPR'))out.push({k:'D',pos:at(P.sThr-25)});
+  return out}catch(e){return null}}
 
 /* ---------- 2D ND (in the panel photo) ---------- */
 const IMG_ND='img/nd-bezel.webp',IMG_EFIS='img/efis.webp';
@@ -158,13 +196,32 @@ function buildEfis(){const host=$('#efis');if(!host)return;
     for(const[v,x,y]of ELBL[k])h+=`<button class="kl" type="button" data-efis="${k}:${v}" aria-label="${k} ${v}" style="left:${pct(x-24,EW)};top:${pct(y-14,EH)};width:${pct(48,EW)};height:${pct(28,EH)}"></button>`}
   h+=`<button type="button" class="efb2" id="efis-fd" data-efis="fd" aria-label="FD" style="left:${pct(67,EW)};top:${pct(330,EH)};width:${pct(70,EW)};height:${pct(45,EH)}"><i style="left:19%;width:60%;top:13%;height:31%"></i></button>`;
   h+=`<button type="button" class="efb2" id="efis-ls" data-efis="ls" aria-label="LS" style="left:${pct(150,EW)};top:${pct(330,EH)};width:${pct(70,EW)};height:${pct(45,EH)}"><i style="left:19%;width:60%;top:13%;height:31%"></i></button>`;
+  h+=`<canvas class="qnh-disp" style="position:absolute;left:${pct(76,EW)};top:${pct(99,EH)};width:${pct(131,EW)};height:${pct(64,EH)};pointer-events:none"></canvas>`;
+  h+=`<button type="button" class="fz knobz" id="efis-baro" aria-label="Baro knob: turn, pull STD, push QNH" style="left:${pct(108,EW)};top:${pct(213,EH)};width:${pct(84,EW)};height:${pct(84,EH)}"></button>`;
+  h+=`<button type="button" class="kl" data-efis="inhg:1" aria-label="in Hg" style="left:${pct(66,EW)};top:${pct(186,EH)};width:${pct(46,EW)};height:${pct(24,EH)}"></button>`;
+  h+=`<button type="button" class="kl" data-efis="inhg:0" aria-label="hPa" style="left:${pct(186,EW)};top:${pct(186,EH)};width:${pct(40,EW)};height:${pct(24,EH)}"></button>`;
+  [[1,337,342],[2,567,345]].forEach(([n,cx,cy])=>{h+=`<span class="vsw" id="vsw${n}" style="left:${pct(cx-15,EW)};top:${pct(cy-15,EH)};width:${pct(30,EW)};height:${pct(30,EH)}"><i></i></span>`;
+    h+=`<button type="button" class="kl" data-efis="nav${n}:ADF" aria-label="ADF ${n}" style="left:${pct(cx-62,EW)};top:${pct(cy-16,EH)};width:${pct(42,EW)};height:${pct(32,EH)}"></button>`;
+    h+=`<button type="button" class="kl" data-efis="nav${n}:VOR" aria-label="VOR ${n}" style="left:${pct(cx+18,EW)};top:${pct(cy-16,EH)};width:${pct(48,EW)};height:${pct(32,EH)}"></button>`;
+    h+=`<button type="button" class="kl" data-efis="nav${n}:OFF" aria-label="OFF ${n}" style="left:${pct(cx-24,EW)};top:${pct(cy+18,EH)};width:${pct(48,EW)};height:${pct(26,EH)}"></button>`});
   host.innerHTML=h;
+  const qc=host.querySelector('.qnh-disp');new ResizeObserver(()=>{const d=devicePixelRatio||1;qc.width=Math.round(qc.clientWidth*d);qc.height=Math.round(qc.clientHeight*d);drawQnh()}).observe(qc);
+  $('#efis-baro').addEventListener('click',e=>openKnob('baro',e.currentTarget));
+  $('#efis-baro').addEventListener('wheel',e=>{e.preventDefault();fcuTurn('baro',e.deltaY<0?1:-1)},{passive:false});
   host.querySelectorAll('[data-efis]').forEach(b=>b.addEventListener('click',()=>{const[k,v]=b.dataset.efis.split(':');efisSet(k,v)}));
   host.querySelectorAll('[data-turn]').forEach(b=>b.addEventListener('click',()=>{const[k,d]=b.dataset.turn.split(':');efisTurn(k,+d)}))}
+function drawQnh(){const c=document.querySelector('#efis .qnh-disp');if(!c)return;const g=c.getContext('2d'),k=c.width/131;g.setTransform(k,0,0,k,0,0);
+  g.fillStyle='#0b0a08';g.fillRect(0,0,131,64);g.fillStyle='#fde990';g.textBaseline='alphabetic';
+  if(EFIS.std){g.font='34px AirbusFCU,monospace';g.textAlign='center';g.fillText('Std',65,52)}
+  else{g.font='600 13px "Helvetica Neue",Arial,sans-serif';g.textAlign='right';g.fillText('QNH',124,16);g.font='34px AirbusFCU,monospace';g.textAlign='center';
+    g.fillText(EFIS.inhg?(EFIS.baro*0.02953).toFixed(2):String(Math.round(EFIS.baro)),65,56)}}
 function efisUI(){document.querySelectorAll('.efb').forEach(b=>b.setAttribute('aria-pressed',String(!!EFIS[b.dataset.efis])));
+  [1,2].forEach(n=>{const el=$('#vsw'+n);if(el)el.dataset.pos=EFIS['nav'+n]});drawQnh();
   for(const k of['mode','range']){const el=$('#knob-'+k);if(!el)continue;const K=EK[k];el.style.transform=`rotate(${K.ang[EFIS[k]]-K.photo}deg)`}}
 function efisTurn(k,d){const list=k==='mode'?MODES:RANGES,i=list.indexOf(EFIS[k])+d;if(i<0||i>=list.length)return;efisSet(k,String(list[i]))}
 function efisSet(k,v){if(k==='range')EFIS.range=+v;else if(k==='mode')EFIS.mode=v==='ROSE'?'NAV':v;
+  else if(k==='nav1'||k==='nav2')EFIS[k]=v;
+  else if(k==='inhg')EFIS.inhg=v==='1';
   else if(EFIS_OPTS.includes(k)){const on=!EFIS[k];EFIS_OPTS.forEach(o=>EFIS[o]=false);EFIS[k]=on}   /* options are mutually exclusive: one at a time */
   else EFIS[k]=!EFIS[k];   /* FD, LS */
   drawND2D();tasks();if(window.__draw3D)window.__draw3D();if(window.drawPFD2D)drawPFD2D();if(typeof setFma==='function'&&flying())setFma();if(window.drawFcu)fcuLights()}

@@ -11,9 +11,11 @@ const FL={active:false,running:false,rate:4,t:0,utc0:0,path:null,s:0,seg:1,xtk:0
 const KT2NMS=1/3600;
 
 /* ---------- lateral path from the F-PLN ---------- */
-function buildPath(){const p=S.active,pts=[];let vr=0;
+function buildPath(){const p=S.active,pts=[];let vr=DB.apt[p.legs[0].id].var||0;
   const push=(pos,ix)=>{const last=pts[pts.length-1];if(last&&gc(last.p,pos)<0.01){if(ix!=null)last.ix=ix;return}pts.push({p:pos,ix})};
-  for(let ix=0;ix<p.legs.length;ix++){const l=p.legs[ix];
+  let tp=-1;p.legs.forEach((l,i)=>{if(l.k==='tp')tp=i});   /* after a DIR TO the path starts at the turn point */
+  for(let ix=Math.max(0,tp);ix<p.legs.length;ix++){const l=p.legs[ix];
+    if(l.k==='tp'){push(l.pos,ix);continue}
     if(l.seg==='map')break;
     if(l.k==='orig'){const ap=DB.apt[l.id],r=ap.rwy[l.rwy];vr=ap.var||0;push(r.pos,ix);push(dst(r.pos,r.crs+vr,Math.min(1.6,r.len/1852*0.7)),null);continue}
     if(l.k==='ca'){const o=p.legs[0],ap=DB.apt[o.id],r=ap.rwy[o.rwy];push(dst(r.pos,r.crs+vr,r.len/1852+l.aal/320),ix);continue}
@@ -22,8 +24,12 @@ function buildPath(){const p=S.active,pts=[];let vr=0;
       push(pos,ix);continue}
     if(l.k==='dest'){const ap=DB.apt[l.id],r=ap.rwy[l.rwy];push(r.pos,ix);push(dst(r.pos,r.crs+(ap.var||0),r.len/1852*0.75),null);break}}
   let s=0;pts.forEach((q,i)=>{if(i)s+=gc(pts[i-1].p,q.p);q.s=s});
-  const thr=pts.find(q=>q.ix!=null&&p.legs[q.ix].k==='dest');
+  const thr=pts.find(q=>q.ix!=null&&p.legs[q.ix].k==='dest')||pts[pts.length-1];
   return{pts,len:s,sThr:thr.s}}
+const planSig=()=>{const p=S.active;return p?p.legs.map(l=>l.k+(l.id||'')+(l.rwy||'')).join('|')+(p.appr||''):''};
+/* the active F-PLN changed in flight (DIR TO, ENABLE ALTN, new approach...): rebuild the path from the present position */
+function flightReplan(){const P=buildPath();FL.path=P;const pr=project(P,FL.pos,1,P.pts.length-1);FL.s=pr?pr.s:0;FL.seg=pr?pr.i:1;FL.fromIx=0;
+  for(const pt of P.pts)if(pt.ix!=null&&pt.s<=FL.s+0.05&&pt.ix>FL.fromIx)FL.fromIx=pt.ix;FL.td=P.sThr-tdDist();FL.sig=planSig();FL.tdReached=false}
 function posAt(P,s){const a=P.pts;let i=1;while(i<a.length-1&&a[i].s<s)i++;const A=a[i-1],B=a[i],f=Math.max(0,Math.min(1,(s-A.s)/((B.s-A.s)||1)));
   return{pos:[A.p[0]+(B.p[0]-A.p[0])*f,A.p[1]+(B.p[1]-A.p[1])*f],trk:brg(A.p,B.p),i}}
 /* local flat projection around a point (NM) */
@@ -69,7 +75,7 @@ function flightStart(){const miss=flightReady();if(miss.length)return miss;
   Object.assign(FL,{active:true,running:true,t:0,utc0:Date.now(),path:P,s:0,seg:1,xtk:0,pos:r.pos,hdgT:tr,trkT:tr,roll:0,pitch:0,alt:r.tdze??o.elev,vs:0,ias:0,tas:0,gs:0,mach:0,
     ground:true,lat:'RWY',latArm:FCU.hdgMgd?'NAV':null,ver:'SRS',verArm:[FCU.lvlch?'CLB':'OP CLB'],thr:'TO',conf:q2conf(),gear:true,
     fob:S.fuel.block-(S.fuel.taxi??0.2),fromIx:0,fmaT:{},loc:false,gsCap:false,tdReached:false,stage:'ROLL',lvrT:null});
-  FCU.athr=true;FL.td=P.sThr-tdDist();S.phase='TAKEOFF';if(S.msg==='GPS PRIMARY')S.msg=null;setFma();flightTick(0);return[]}
+  FCU.athr=true;FL.td=P.sThr-tdDist();FL.sig=planSig();S.phase='TAKEOFF';if(S.msg==='GPS PRIMARY')S.msg=null;setFma();flightTick(0);return[]}
 function q2conf(){const f=S.perf.flaps;return f===1?'1+F':String(f||1)}
 function flightReset(){Object.assign(FL,{active:false,running:false,path:null,stage:'IDLE',fma:{c1:[],c2:[],c3:[],c4:[],c5:[]},ias:0,gs:0,tas:0,vs:0});
   FCU.ap1=FCU.ap2=FCU.athr=FCU.loc=FCU.appr=FCU.exped=false;S.phase='PREFLIGHT';S.apprArm=false;refreshAll()}
@@ -112,12 +118,13 @@ function setFma(){const st=FL.stage,a=S.perf,fx=a.flex!=null?'FLX '+a.flex:'TOGA
   FL.fma=f}
 
 /* ---------- one simulation step ---------- */
-function step(dt){const P=FL.path,q=S.perf,p2=S.p2,crz=I().crz*100,sp=cfgSpeeds(),gnd=groundElev(),A=FCU.alt;
+function step(dt){if(FL.sig!==planSig()&&!FL.ground)flightReplan();const P=FL.path,q=S.perf,p2=S.p2,crz=I().crz*100,sp=cfgSpeeds(),gnd=groundElev(),A=FCU.alt;
   const agl=()=>FL.alt-gnd;
   const pr=['NAV','RWY','RWY TRK'].includes(FL.lat)?project(P,FL.pos,FL.seg-2,FL.seg+6):project(P,FL.pos,1,P.pts.length-1);
   if(pr){FL.s=FL.lat==='NAV'?Math.max(FL.s,pr.s):pr.s;FL.seg=pr.i;FL.xtk=pr.xtk}
   const dtg=P.sThr-FL.s;
-  for(const pt of P.pts)if(pt.ix!=null&&pt.s<=FL.s+0.05&&pt.ix>FL.fromIx)FL.fromIx=pt.ix;
+  const fi=FL.fromIx;for(const pt of P.pts)if(pt.ix!=null&&pt.s<=FL.s+0.05&&pt.ix>FL.fromIx)FL.fromIx=pt.ix;
+  if(FL.fromIx!==fi&&S.page==='FPLN'&&!S.secMode)S.fpOff=0;   /* waypoint sequenced: the F-PLN starts again at the FROM line */
 
   if(FL.stage==='ROLL'){FL.ias+=3.4*dt;if(FL.ias>=q.vr){FL.pitch=Math.min(15,FL.pitch+3*dt);if(FL.ias>=q.vr+4){FL.ground=false;FL.stage='AIR'}}}
   const thrRed=q.thr??defRed(),acc=q.acc??defRed();
@@ -180,7 +187,8 @@ function step(dt){const P=FL.path,q=S.perf,p2=S.p2,crz=I().crz*100,sp=cfgSpeeds(
     if((S.phase==='CRZ'||S.phase==='CLB')&&FL.s>FL.path.len*0.4&&vsT<0&&(DESCENDING.includes(FL.ver)||FL.ver==='V/S'||FL.ver==='FPA')&&FL.alt<crz-200)S.phase='DES';
     if(S.phase==='DES'&&dtg<25)S.phase='APPR';
     /* ---- configuration (PM) ---- */
-    if(S.phase==='APPR'){const cf=dtg>20?'0':dtg>13?'1':dtg>10?'2':dtg>7?'3':(p2.conf3?'3':'FULL');FL.conf=cf;FL.gear=dtg<10}
+    /* deceleration: 12 NM flaps 1 (S speed), 8 NM flaps 2 (F speed) and gear down, 5 NM approach speed */
+    if(S.phase==='APPR'){const cf=dtg>12?'0':dtg>8?'1':dtg>5?'2':dtg>4?'3':(p2.conf3?'3':'FULL');FL.conf=cf;FL.gear=dtg<=8}
     else{if(FL.conf==='1+F'&&FL.ias>sp.F)FL.conf='1';if(FL.conf==='1'&&FL.ias>sp.S)FL.conf='0';if(FL.gear&&agl()>200)FL.gear=false}
     if(FL.ver==='FLARE'&&agl()<=1&&FL.vs<=0){FL.ground=true;FL.stage='ROLLOUT';FL.ver='ROLL OUT';FL.lat='ROLL OUT';FL.alt=gnd;FL.vs=0;FCU.ap1=FCU.ap2=false;FCU.athr=false}}
   if(FL.stage==='ROLLOUT'){FL.ias=Math.max(0,FL.ias-4.5*dt);FL.pitch=Math.max(0,FL.pitch-2*dt);

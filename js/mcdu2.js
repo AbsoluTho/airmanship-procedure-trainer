@@ -130,6 +130,9 @@ P.VREV={render(){const p=cur(),l=p.legs[S.vr];if(!l){S.page='FPLN';return P.FPLN
   return err('NOT ALLOWED')}};
 
 /* ---------- PERF phase pages ---------- */
+/* distance and time to the top of descent */
+function tdInfo(){try{if(flying()){if(FL.s>=FL.td)return{d:0,t:utcStr(FL.utc0+FL.t*1000)};const d=FL.td-FL.s;return{d,t:utcStr(FL.utc0+(FL.t+d/Math.max(150,FL.gs)*3600)*1000)}}
+  if(!S.active||!S.active.appr||!I().crz)return null;const P=buildPath(),td=P.sThr-tdDist(),pr=predict();return{d:td,t:pr?hhmm(pr.trip.at(td)):'----'}}catch(e){return null}}
 function perfNav(s,n,prev,next){if(s==='L'&&n===6&&prev){go(prev);return true}if(s==='R'&&n===6&&next){go(next);return true}return false}
 function gwNow(){const f=S.fuel;return f.zfw!=null&&f.block!=null?f.zfw+f.block-(f.taxi??0.2):null}
 function apprArmRow(){if(!['CLB','CRZ','DES'].includes(S.phase))return false;
@@ -153,12 +156,14 @@ P.PERFCRZ={render(){const i=I(),q=S.p2,pr=predict();ttl('CRZ',phaseIs('CRZ'));
   put(4,0,'CI','w','S');put(5,0,i.ci!=null?String(i.ci):'---',i.ci!=null?'b':'w');
   put(6,0,'MANAGED','w','S');put(7,0,mach(mgd.crzM()),'g','S');
   put(8,0,phaseIs('CRZ')?'SELECTED':'PRESEL','w','S');put(9,0,q.crzSel?(q.crzSel<1?mach(q.crzSel):String(q.crzSel)):'[ ]','b');
-  rput(8,'DES CABIN RATE','w','S');segs(9,COLS-11,[[String(q.cabin??-350).padStart(4),'b',q.cabin!=null?'L':'S'],['FT/MN','w','S']]);
+  /* T/D: distance and time (UTC in flight) */
+  {const td=tdInfo();put(8,10,'T/D','w','S');rput(8,'DIST '+(flying()?' UTC':'TIME'),'w','S');
+   if(td){put(9,10,'','w');rput(9,String(Math.round(td.d)).padStart(4)+'  '+td.t,'g')}else rput(9,'----  ----','w')}
   bottomPhase(true,true)},
  lsk(s,n){if(perfNav(s,n,'PERFCLB','PERFDES'))return;const q=S.p2,v=S.sp;if(!v)return;
   if(s+n==='L4'){if(v==='CLR'){q.crzSel=null;return ok()}if(/^\.\d{2}$/.test(v)){const m=+('0'+v);if(m<0.5||m>0.82)return err('ENTRY OUT OF RANGE');q.crzSel=m;return ok()}
     if(!/^\d{3}$/.test(v))return err('FORMAT ERROR');if(+v<100||+v>350)return err('ENTRY OUT OF RANGE');q.crzSel=+v;return ok()}
-  if(s+n==='R4'){if(v==='CLR'){q.cabin=null;return ok()}if(!/^-?\d{3,4}$/.test(v))return err('FORMAT ERROR');const x=-Math.abs(+v);if(x<-999||x>-100)return err('ENTRY OUT OF RANGE');q.cabin=x;return ok()}
+  if(s+n==='R4')return err('NOT ALLOWED');
   return err('NOT ALLOWED')}};
 P.PERFDES={render(){const i=I(),pr=predict();ttl('DES',phaseIs('DES'));
   put(2,0,'ACT MODE','w','S');rput(2,'DEST EFOB','w','S');cat(2,'TIME','w','S');put(3,0,'MANAGED','g');
@@ -328,6 +333,28 @@ P.RWYPG={render(){const id=S.lookup.rwy;cput(1,'RUNWAY');put(2,1,'IDENT','w','S'
  lsk(s,n){const v=S.sp;if(s+n==='L6')return go('DATA');if(s+n!=='L1'||!v)return;const m=v.match(/^([A-Z]{4})(\d{2}[LCR]?)$/);if(!m)return err('FORMAT ERROR');
   if(!DB.apt[m[1]]||!DB.apt[m[1]].rwy[m[2]])return err('NOT IN DATA BASE');S.lookup.rwy=v;ok()}};
 
+
+/* ---------- DIR TO (layout from the FlyByWire A32NX DirectToPage) ----------
+   In flight only. The direct leg starts at the present position (T-P) and is a temporary
+   F-PLN until INSERT. NAV engages when it is inserted. */
+function dirList(){const p=S.active;if(!p)return[];const from=flying()?FL.fromIx:0;
+  return p.legs.map((l,ix)=>({l,ix})).filter(x=>x.ix>from&&(x.l.k==='wpt'||x.l.k==='dest')&&x.l.seg!=='map')}
+function directTo(id){if(!flying()||FL.ground)return err('NOT ALLOWED');
+  if(!DB.wpt[id]&&!(DB.nav&&DB.nav[id]))return err('NOT IN DATA BASE');
+  S.tmpy=clone(S.active);const q=S.tmpy,from=FL.fromIx;let ti=q.legs.findIndex((l,ix)=>ix>from&&(l.k==='wpt'||l.k==='dest')&&l.id===id);
+  if(ti<0){if(!DB.wpt[id]&&DB.nav[id])DB.wpt[id]=DB.nav[id].pos;q.legs.splice(from+1,0,W(id,{seg:'enr'}),{k:'disc'});ti=from+1}
+  q.legs.splice(from+1,ti-from-1,{k:'tp',id:'T-P',pos:FL.pos.slice(),seg:'enr'});S.dirTo=id;normalize(q);ok()}
+P.DIR={render(){cput(1,'DIR TO',S.tmpy&&S.dirTo?'y':'w');put(2,1,'DIR TO','w','S');
+  if(S.tmpy&&S.dirTo){put(3,0,'*'+S.dirTo,'y');rput(2,'RADIAL IN','w','S');rput(3,'[ ]°','b');put(4,1,'WITH','w','S');put(5,0,'*ABEAM PTS','b')}else put(3,0,'[     ]','b');
+  put(6,1,'F-PLN WPTS','w','S');const L=dirList();for(let j=0;j<3;j++){const x=L[(S.dirOff||0)+j];if(x)put(7+2*j,0,'<'+x.l.id+(x.l.k==='dest'?(x.l.rwy||''):''),'g')}
+  if(S.tmpy&&S.dirTo){put(12,1,'DIR TO','a','S');put(13,0,'←ERASE','a');rput(13,'INSERT*','a')}},
+ lsk(s,n){const k=s+n;
+  if(k==='L1'){const v=S.sp;if(!v)return;if(!/^[A-Z0-9]{2,5}$/.test(v))return err('FORMAT ERROR');return directTo(v)}
+  if(s==='L'&&n>=4&&n<=6&&!(n===6&&S.tmpy&&S.dirTo)){const x=dirList()[(S.dirOff||0)+n-4];if(!x)return;return directTo(x.l.id)}
+  if(k==='L6'&&S.tmpy){S.tmpy=null;S.dirTo=null;return ok()}
+  if(k==='R6'&&S.tmpy&&S.dirTo){S.active=S.tmpy;S.tmpy=null;S.dirTo=null;FCU.hdgMgd=true;if(flying()){FL.lat='NAV';FL.latArm=null}ok();return go('FPLN')}
+  return err('NOT ALLOWED')},
+ slew(d){const n=dirList().length;S.dirOff=Math.max(0,Math.min(Math.max(0,n-3),(S.dirOff||0)-d))}};
 /* ---------- keys ---------- */
 {const press0=press;press=function(k){
   if(S.secMode&&/^(DIR|PROG|PERF|INIT|DATA|FPLN|RADNAV|FUEL|SECF|ATC|MENU|AIRPORT)$/.test(k)){S.secOff=S.fpOff;S.fpOff=S.fpOffMain||0;S.secMode=false}
@@ -337,6 +364,7 @@ P.RWYPG={render(){const id=S.lookup.rwy;cput(1,'RUNWAY');put(2,1,'IDENT','w','S'
   if(k==='FUEL'){go('FUELPRED');return render()}
   if(k==='SECF'){go('SECIDX');return render()}
   if(k==='PROG'){go('PROG');return render()}
+  if(k==='DIR'){S.dirOff=0;go('DIR');return render()}
   if(k==='AIRPORT'){const p=cur();go('FPLN');if(p){const rows=fplnRows(p),air=rows.map((r,i)=>(r.k==='orig'||r.k==='dest'||r.k==='altn')?i:-1).filter(i=>i>=0);
     const nx=air.find(i=>i>S.fpOff);S.fpOff=nx!=null?nx:air[0]}return render()}
   if((k==='LEFT'||k==='RIGHT')&&P[S.page].arrow){P[S.page].arrow(k==='RIGHT'?1:-1);return render()}

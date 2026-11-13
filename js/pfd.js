@@ -10,7 +10,8 @@ function drawPFD(g,W,H,powered){g.save();g.setTransform(1,0,0,1,0,0);g.fillStyle
   const sc=W/592,Hp=H/sc,oy=(Hp-573)/2;g.scale(sc,sc);g.translate(-41,-39+oy);
   g.fillStyle=PC.bg;g.fillRect(41,39-oy,592,Hp);
   const on=flying(),o=orig(),ap=o?DB.apt[o]:DB.apt.OEJN,ac=acState();
-  const ias=on?FL.ias:0,alt=on?FL.alt:(S.active&&S.active.rwy?(ap.rwy[S.active.rwy].tdze??ap.elev):ap.elev),vs=on?FL.vs:0,pitch=on?FL.pitch:0,roll=on?FL.roll:0;
+  const altT=on?FL.alt:(S.active&&S.active.rwy?(ap.rwy[S.active.rwy].tdze??ap.elev):ap.elev),qAct=actualQnh(),alt=altT+(EFIS.std?(1013-qAct):(baroHpa()-qAct))*27.3;
+  const ias=on?FL.ias:0,vs=on?FL.vs:0,pitch=on?FL.pitch:0,roll=on?FL.roll:0;
   const hdgM=((ac.hdg)%360+360)%360,agl=on?FL.alt-groundElev():0;
   const T=(t,x,y,col,px,al,w)=>{g.font=PF(px||20,w);g.fillStyle=PC[col]||col;g.textAlign=al||'left';g.textBaseline='middle';g.fillText(t,x,y)};
   const L=(x1,y1,x2,y2,col,w)=>{g.strokeStyle=PC[col]||col;g.lineWidth=w||2;g.beginPath();g.moveTo(x1,y1);g.lineTo(x2,y2);g.stroke()};
@@ -21,10 +22,10 @@ function drawPFD(g,W,H,powered){g.save();g.setTransform(1,0,0,1,0,0);g.fillStyle
   const cols=[[55,170],[170,290],[290,423],[423,537],[537,628]],F=FL.fma;
   [170,290,423,537].forEach(x=>L(x,42,x,120,'#c9ccd6',1.5));
   ['c1','c2','c3','c4','c5'].forEach((c,k)=>{const[x1,x2]=cols[k],xm=(x1+x2)/2;(F[c]||[]).forEach((ln,j)=>{if(!ln||!ln[0])return;
-    const flash=ln[2]&&Math.floor(FL.t*2)%2===0;if(!flash)T(ln[0],xm,60+27*j,ln[1],k===4?18:20,'center');
-    if(j===0&&k<3&&on&&FL.t-(FL.fmaT[c]??-99)<10){g.font=PF(20);const tw=g.measureText(ln[0]).width;box(xm-tw/2-5,47,tw+10,26,'w',1.5)}})});
-  if(F.msg)T(F.msg,(55+423)/2,114,'w',20,'center');
-  if(F.land){const xm=(170+423)/2;T(F.land,xm,60,'g',20,'center');if(on&&FL.t-(FL.fmaT.land??-99)<10){g.font=PF(20);const tw=g.measureText(F.land).width;box(xm-tw/2-5,47,tw+10,26,'w',1.5)}}
+    const flash=ln[2]&&Math.floor(FL.t*2)%2===0,fs=k>=3?22:25;if(!flash)T(ln[0],xm,60+27*j,ln[1],fs,'center');
+    if(j===0&&k<3&&on&&FL.t-(FL.fmaT[c]??-99)<10){g.font=PF(25);const tw=g.measureText(ln[0]).width;box(xm-tw/2-6,45,tw+12,30,'w',1.5)}})});
+  if(F.msg)T(F.msg,(55+423)/2,114,'w',23,'center');
+  if(F.land){const xm=(170+423)/2;T(F.land,xm,60,'g',25,'center');if(on&&FL.t-(FL.fmaT.land??-99)<10){g.font=PF(25);const tw=g.measureText(F.land).width;box(xm-tw/2-6,45,tw+12,30,'w',1.5)}}
 
   /* ---- attitude sphere: circle (r 151) cut by straight sides at x 167 and 433 ---- */
   const ppd=6.2;
@@ -80,12 +81,15 @@ function drawPFD(g,W,H,powered){g.save();g.setTransform(1,0,0,1,0,0);g.fillStyle
     const vl=sp.VLS,ap_=vl-8,vsw=vl-14;L(122,sy(vl),122,sy(ap_),'a',2.5);
     for(let y=sy(ap_);y<sy(vsw);y+=10){g.fillStyle=PC.a;g.fillRect(120,y,8,5);g.fillStyle='#000';g.fillRect(120,y+5,8,5)}
     g.fillStyle=PC.r;g.fillRect(120,sy(vsw),8,520-sy(vsw));
-    if(FL.conf==='0'){g.strokeStyle=PC.g;g.lineWidth=2.5;g.beginPath();g.arc(128,sy(sp.GD),5,0,7);g.stroke()}
-    else if(FL.conf==='1'||FL.conf==='1+F'){L(120,sy(sp.S),131,sy(sp.S),'g',2.5);T('S',140,sy(sp.S),'g',22)}
-    else if(FL.conf==='2'||FL.conf==='3'){L(120,sy(sp.F),131,sy(sp.F),'g',2.5);T('F',140,sy(sp.F),'g',22)}}
+    FL._cs={conf:FL.conf,GD:sp.GD,S:sp.S,F:sp.F}}
   if(on&&FL.ground&&FL.stage==='ROLL')T('1',124,sy(S.perf.v1),'b',22);
   g.restore();
   L(55,182,135,182,'w',2);L(55,497,135,497,'w',2);L(119,182,119,497,'w',2);
+  /* characteristic speeds, drawn in front of the attitude so they are not cut */
+  if(on&&!FL.ground&&FL._cs){const c=FL._cs,inT=y=>y>186&&y<493;
+    if(c.conf==='0'){const y=sy(c.GD);if(inT(y)){g.strokeStyle=PC.g;g.lineWidth=2.5;g.beginPath();g.arc(129,y,5,0,7);g.stroke()}}
+    else if(c.conf==='1'||c.conf==='1+F'){const y=sy(c.S);if(inT(y)){L(120,y,131,y,'g',2.5);g.fillStyle=PC.bg;g.fillRect(134,y-11,16,22);T('S',142,y,'g',22,'center')}}
+    else if(c.conf==='2'||c.conf==='3'){const y=sy(c.F);if(inT(y)){L(120,y,131,y,'g',2.5);g.fillStyle=PC.bg;g.fillRect(134,y-11,16,22);T('F',142,y,'g',22,'center')}}}
   /* target speed: magenta triangle, or the value above or below the tape */
   const sel=!FCU.spdMgd&&FCU.spd!=null&&!(on&&(FL.stage==='ROLL'||FL.ver==='SRS')),tc=sel?'b':'m';
   const tgt=sel?Math.round(FCU.mach?iasOf(FCU.spd*sos(alt),alt):FCU.spd):on?Math.round(FL.stage==='ROLL'?S.perf.v2:(FL.ver==='SRS'?S.perf.v2+10:(FL.spdT??FL.ias))):(S.perf.v2||null);
@@ -105,6 +109,11 @@ function drawPFD(g,W,H,powered){g.save();g.setTransform(1,0,0,1,0,0);g.fillStyle
     if(v%500===0&&v>=0){T(String(Math.round(v/100)).padStart(3,'0'),488,y,'w',21);g.strokeStyle=PC.w;g.lineWidth=2;g.beginPath();g.moveTo(471,y-5);g.lineTo(477,y);g.lineTo(471,y+5);g.stroke()}}
   g.restore();
   L(477,182,543,182,'w',2);L(477,497,543,497,'w',2);L(526,182,526,497,'w',2);
+  /* target altitude (cyan) on the tape, drawn before the readout window so it never crosses the present altitude */
+  {const fcu=FCU.alt,y=ay(fcu);if(y>=182&&y<=497){g.save();g.beginPath();g.rect(477,182,49,315);g.clip();g.strokeStyle=PC.b;g.lineWidth=2.5;g.strokeRect(478,y-10,46,20);g.restore()}}
+  /* vertical deviation (green dot): the managed descent path on the altitude tape; low dot = aircraft above the path */
+  if(on&&!FL.ground&&['DES','APPR'].includes(S.phase)&&!['G/S*','G/S','LAND','FLARE','ROLL OUT'].includes(FL.ver)&&FL.path){const dtg=FL.path.sThr-FL.s;
+    if(dtg>0.5){const pa=profileAlt(dtg)+(alt-FL.alt),y=Math.max(196,Math.min(484,ay(pa)));g.strokeStyle=PC.g;g.lineWidth=2.5;g.beginPath();g.arc(470,y,6,0,7);g.stroke()}}
   /* readout window: black band with yellow top and bottom, drum box on the right */
   g.fillStyle='#000';g.fillRect(477,323,49,34);g.fillRect(526,313,32,54);
   L(477,323,526,323,'y',2.5);L(477,357,526,357,'y',2.5);box(526,313,32,54,'y',2.5);
@@ -117,10 +126,11 @@ function drawPFD(g,W,H,powered){g.save();g.setTransform(1,0,0,1,0,0);g.fillStyle
   /* target altitude and baro reference */
   const fcu=FCU.alt;
   if(fcu!=null){const t=fcu>=(TA[o]||13000)?'FL'+String(fcu/100).padStart(3,'0'):String(fcu),y=ay(fcu);
-    if(y<182)T(t,517,170,'b',21,'center');else if(y>497)T(t,517,510,'b',21,'center');else{g.fillStyle=PC.b;g.fillRect(477,y-3,49,6)}}
-  const std=on&&((FL.alt>(TA[o]||13000)&&!['DES','ALT','GSS','GS','LAND','FLARE','ROLLOUT','STOP'].includes(FL.stage))||(FL.stage==='DES'&&FL.alt>13000));
-  if(std){box(492,530,56,26,'y',2);T('STD',520,543,'b',20,'center')}
-  else{T('QNH',480,543,'w',20);T(String(on&&FL.s>FL.path.sThr/2&&S.p2.qnh!=null?S.p2.qnh:1013),537,543,'b',20)}
+    if(y<182)T(t,517,170,'b',21,'center');else if(y>497)T(t,517,510,'b',21,'center')}
+  {const ta=TA[o]||13000,tl=(TA[destId()]||13000)+2000,blink=Math.floor(Date.now()/500)%2===0;
+   const climbAbove=on&&!EFIS.std&&altT>ta+200&&['CLB','CRZ'].includes(S.phase),descBelow=on&&EFIS.std&&altT<tl-200&&['DES','APPR'].includes(S.phase);
+   if(EFIS.std){if(!(descBelow&&blink)){box(492,530,56,26,'y',2);T('STD',520,543,'b',20,'center')}}
+   else if(!(climbAbove&&blink)){T('QNH',480,543,'w',20);T(EFIS.inhg?(baroHpa()*0.02953).toFixed(2):String(Math.round(baroHpa())),537,543,'b',20)}}
 
   /* ---- vertical speed (x 582-617) ---- */
   const vf=v=>{const a=Math.abs(v),y=a<=1000?a*0.1:a<=2000?100+(a-1000)*0.039:Math.min(174,139+(a-2000)*0.00875);return v>=0?-y:y};

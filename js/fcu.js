@@ -48,9 +48,12 @@ function fcuLights(){document.querySelectorAll('#fcu [data-fcu-light]').forEach(
 function selHdgVal(){if(FCU.hdgPre!=null&&Date.now()<FCU.hdgPreT)return FCU.hdgPre;return FCU.hdgMgd?null:FCU.hdg}
 
 /* ---------- knob and pushbutton logic ---------- */
+/* present speed on the PFD tape: IAS, or Mach when MACH is shown */
+function curSpd(){if(FCU.mach)return flying()?Math.round(FL.mach*100)/100:0.78;return Math.round(flying()?FL.ias:(S.perf.v2||150))}
 function clampHdg(h){return((Math.round(h)-1)%360+360)%360+1}
 function fcuTurn(knob,d,big){const now=Date.now();
-  if(knob==='spd'){const st=FCU.mach?0.01:1;if(FCU.spdMgd){const b=FCU.spdPre!=null&&now<FCU.spdPreT?FCU.spdPre:(FCU.mach?+(FL.mach||0.78).toFixed(2):Math.round(flying()?FL.ias:(S.perf.v2||100)));
+  if(knob==='baro'){EFIS.baro=Math.max(745,Math.min(1100,EFIS.baro+d*(EFIS.inhg?0.3386:1)*(big?5:1)));if(EFIS.inhg)EFIS.baro=Math.round(EFIS.baro*0.02953*100)/100/0.02953;else EFIS.baro=Math.round(EFIS.baro);return fcuRefresh()}
+  if(knob==='spd'){const st=FCU.mach?0.01:1;if(FCU.spdMgd){const b=FCU.spdPre!=null&&now<FCU.spdPreT?FCU.spdPre:curSpd();
       FCU.spdPre=Math.max(FCU.mach?0.1:100,Math.min(FCU.mach?0.99:399,b+d*st*(big?10:1)));FCU.spdPreT=now+10000}
     else FCU.spd=Math.max(FCU.mach?0.1:100,Math.min(FCU.mach?0.99:399,+(FCU.spd+d*st*(big?10:1)).toFixed(2)))}
   if(knob==='hdg'){if(FCU.hdgMgd){const b=FCU.hdgPre!=null&&now<FCU.hdgPreT?FCU.hdgPre:hdgNow();FCU.hdgPre=clampHdg(b+d*(big?10:1));FCU.hdgPreT=now+10000}
@@ -61,7 +64,8 @@ function fcuTurn(knob,d,big){const now=Date.now();
     else{if(vMode)FCU.vsVal=Math.max(-6000,Math.min(6000,FCU.vsVal+d*100));else{FCU.vsPre=Math.max(-6000,Math.min(6000,(FCU.vsPre!=null&&now<FCU.vsPreT?FCU.vsPre:Math.round((flying()?FL.vs:0)/100)*100)+d*100));FCU.vsPreT=now+10000}}}
   fcuRefresh()}
 function fcuPush(knob,pull){const now=Date.now();
-  if(knob==='spd'){if(pull){const pre=FCU.spdPre!=null&&now<FCU.spdPreT?FCU.spdPre:null;FCU.spd=pre??(FCU.mach?+(FL.mach||0.78).toFixed(2):Math.round(flying()?FL.ias:(S.perf.v2||150)));FCU.spdMgd=false;FCU.spdPre=null}
+  if(knob==='baro'){EFIS.std=!!pull;return fcuRefresh()}
+  if(knob==='spd'){if(pull){const pre=FCU.spdPre!=null&&now<FCU.spdPreT?FCU.spdPre:null;FCU.spd=pre??curSpd();FCU.spdMgd=false;FCU.spdPre=null}
     else{if(!S.active)return err('NOT ALLOWED'),fcuRefresh();FCU.spdMgd=true;FCU.spdPre=null}}
   if(knob==='hdg'){if(pull){const pre=FCU.hdgPre!=null&&now<FCU.hdgPreT?FCU.hdgPre:null;FCU.hdg=pre??hdgNow();FCU.hdgMgd=false;FCU.hdgPre=null;fcuEvent('hdg-pull')}
     else{if(!S.active)return;FCU.hdgMgd=true;FCU.hdgPre=null;fcuEvent('hdg-push')}}
@@ -75,13 +79,13 @@ function fcuButton(b){const air=inAir();
   if(b==='loc'){if(!hasLsSel())return fcuRefresh();if(FCU.loc){FCU.loc=false}else{FCU.loc=true;FCU.appr=false}}
   if(b==='appr'){if(!hasLsSel())return fcuRefresh();if(FCU.appr){FCU.appr=false;if(FCU.ap1&&FCU.ap2)FCU.ap2=false}else{FCU.appr=true;FCU.loc=false}}
   if(b==='exped'){FCU.exped=!FCU.exped;fcuEvent('exped')}
-  if(b==='spdmach'){if(!FCU.spdMgd&&FCU.spd!=null){const alt=flying()?FL.alt:0;FCU.spd=FCU.mach?Math.round(iasOf(FCU.spd*sos(alt),alt)):+(tasOf(FCU.spd,alt)/sos(alt)).toFixed(2)}FCU.mach=!FCU.mach}
+  if(b==='spdmach'){FCU.mach=!FCU.mach;FCU.spdPre=null;if(!FCU.spdMgd)FCU.spd=curSpd()}
   if(b==='trkfpa'){FCU.trkFpa=!FCU.trkFpa;if(flying()){if(FL.lat==='HDG')FL.lat='TRK';else if(FL.lat==='TRK')FL.lat='HDG';if(FL.ver==='V/S')FL.ver='FPA';else if(FL.ver==='FPA')FL.ver='V/S'}}
   if(b==='metric')FCU.metric=!FCU.metric;
   if(b==='inc100')FCU.altInc=100;if(b==='inc1000')FCU.altInc=1000;
   if(flying())setFma();fcuRefresh()}
 function hasLsSel(){const p=S.active;return!!(p&&p.appr&&/^(ILS|LOC)/.test(p.appr))}
-function fcuRefresh(){if(typeof refreshAll==='function')refreshAll();else drawFcu()}
+function fcuRefresh(){if(typeof refreshAll==='function')refreshAll();else drawFcu();if(typeof drawQnh==='function')drawQnh();if(typeof drawND2D==='function')drawND2D();if(window.drawPFD2D)drawPFD2D()}
 
 /* ---------- build the panel ---------- */
 function buildFcu(){const host=$('#fcu');if(!host)return;
@@ -99,7 +103,7 @@ function buildFcu(){const host=$('#fcu');if(!host)return;
   host.querySelectorAll('[data-knob]').forEach(b=>{b.addEventListener('click',()=>openKnob(b.dataset.knob,b));
     b.addEventListener('wheel',e=>{e.preventDefault();fcuTurn(b.dataset.knob,e.deltaY<0?1:-1)},{passive:false})});
   host.querySelectorAll('[data-fbtn]').forEach(b=>b.addEventListener('click',()=>fcuButton(b.dataset.fbtn)));
-  if(document.fonts)document.fonts.load('38px AirbusFCU').then(drawFcu).catch(()=>{});
+  if(document.fonts)document.fonts.load('38px AirbusFCU').then(()=>{drawFcu();if(typeof drawQnh==='function')drawQnh()}).catch(()=>{});
   setInterval(()=>{if(FCU.hdgPre!=null||FCU.spdPre!=null||FCU.vsPre!=null)drawFcu()},1000);
   drawFcu()}
 /* ---------- knob pad: large touch controls for the selected knob ---------- */
@@ -108,14 +112,15 @@ function knobValue(k){const now=Date.now();
   if(k==='spd')return FCU.spdMgd&&!(FCU.spdPre!=null&&now<FCU.spdPreT)?'MANAGED':String(FCU.spdPre!=null&&now<FCU.spdPreT?FCU.spdPre:FCU.spd);
   if(k==='hdg'){const v=selHdgVal();return v==null?'MANAGED (NAV)':String(v).padStart(3,'0')}
   if(k==='alt')return FCU.alt+' FT · step '+FCU.altInc;
+  if(k==='baro')return EFIS.std?'STD':(EFIS.inhg?(EFIS.baro*0.02953).toFixed(2)+' inHg':Math.round(EFIS.baro)+' hPa');
   if(k==='vs'){const vm=flying()&&(FL.ver==='V/S'||FL.ver==='FPA');return FCU.trkFpa?(vm?FCU.fpa.toFixed(1)+'°':'--'):(vm?FCU.vsVal+' FT/MIN':'--')}}
 let padKnob=null;
 function openKnob(k,anchor){closeKnob();padKnob=k;const pad=document.createElement('div');pad.className='knobpad';pad.id='knobpad';pad.setAttribute('role','dialog');pad.setAttribute('aria-label',k.toUpperCase()+' knob');
-  const nm=k==='hdg'?(FCU.trkFpa?'TRK':'HDG'):k==='vs'?(FCU.trkFpa?'FPA':'V/S'):k==='spd'?(FCU.mach?'MACH':'SPD'):'ALT';
+  const nm=k==='baro'?'BARO':k==='hdg'?(FCU.trkFpa?'TRK':'HDG'):k==='vs'?(FCU.trkFpa?'FPA':'V/S'):k==='spd'?(FCU.mach?'MACH':'SPD'):'ALT';
   pad.innerHTML=`<div class="kp-h"><b>${nm}</b><span id="kpVal"></span><button type="button" class="kp-x" aria-label="Close">✕</button></div>
    <div class="kp-r"><button type="button" class="kp" data-kt="-1">− turn</button><button type="button" class="kp" data-kt="1">turn +</button></div>
-   <div class="kp-r"><button type="button" class="kp pp" data-kp="pull">PULL<small>${k==='alt'?'open climb/descent':k==='vs'?'V/S selected':k==='hdg'?'heading selected':'speed selected'}</small></button><button type="button" class="kp pp" data-kp="push">PUSH<small>${k==='alt'?'managed climb/descent':k==='vs'?'level off':k==='hdg'?'NAV (managed)':'managed speed'}</small></button></div>
-   ${k==='alt'?'<div class="kp-r"><button type="button" class="kp sm" data-ki="100">STEP 100</button><button type="button" class="kp sm" data-ki="1000">STEP 1000</button></div>':''}`;
+   <div class="kp-r"><button type="button" class="kp pp" data-kp="pull">PULL<small>${k==='baro'?'STD':k==='alt'?'open climb/descent':k==='vs'?'V/S selected':k==='hdg'?'heading selected':'speed selected'}</small></button><button type="button" class="kp pp" data-kp="push">PUSH<small>${k==='baro'?'QNH':k==='alt'?'managed climb/descent':k==='vs'?'level off':k==='hdg'?'NAV (managed)':'managed speed'}</small></button></div>
+   ${k==='alt'?'<div class="kp-r"><button type="button" class="kp sm" data-ki="100">STEP 100</button><button type="button" class="kp sm" data-ki="1000">STEP 1000</button></div>':''}${k==='baro'?'<div class="kp-r"><button type="button" class="kp sm" data-ku="1">in Hg</button><button type="button" class="kp sm" data-ku="0">hPa</button></div>':''}`;
   document.body.appendChild(pad);const r=anchor.getBoundingClientRect(),pw=pad.offsetWidth,ph=pad.offsetHeight;
   let x=r.left+r.width/2-pw/2,y=r.bottom+8;if(y+ph>innerHeight-8)y=r.top-ph-8;x=Math.max(8,Math.min(innerWidth-pw-8,x));pad.style.left=x+'px';pad.style.top=Math.max(8,y)+'px';
   pad.querySelector('.kp-x').onclick=closeKnob;
@@ -124,6 +129,7 @@ function openKnob(k,anchor){closeKnob();padKnob=k;const pad=document.createEleme
     ['pointerup','pointerleave','pointercancel'].forEach(ev=>b.addEventListener(ev,stop))});
   pad.querySelectorAll('[data-kp]').forEach(b=>b.onclick=()=>{fcuPush(k,b.dataset.kp==='pull');kpUpd()});
   pad.querySelectorAll('[data-ki]').forEach(b=>b.onclick=()=>{fcuButton(b.dataset.ki==='100'?'inc100':'inc1000');kpUpd()});
+  pad.querySelectorAll('[data-ku]').forEach(b=>b.onclick=()=>{EFIS.inhg=b.dataset.ku==='1';fcuRefresh();kpUpd()});
   kpUpd();setTimeout(()=>document.addEventListener('pointerdown',outside,true),0)}
 function outside(e){const p=$('#knobpad');if(p&&!p.contains(e.target)&&!e.target.closest('[data-knob]'))closeKnob()}
 function closeKnob(){const p=$('#knobpad');if(p)p.remove();padKnob=null;document.removeEventListener('pointerdown',outside,true)}

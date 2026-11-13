@@ -109,6 +109,9 @@ button{font:inherit;color:inherit}
 .fbar{position:absolute;display:none;pointer-events:none;background:repeating-linear-gradient(#5dff76 0 2px,transparent 2px 4.2px);filter:drop-shadow(0 0 3px #3df24e)}
 .fbar.on{display:block}
 .finc{position:absolute;width:1.1%;aspect-ratio:1;margin-left:-.55%;border-radius:50%;background:#fde990;box-shadow:0 0 4px #fde990;pointer-events:none}
+.vsw{position:absolute;border-radius:50%;background:radial-gradient(#2a2d31 55%,#141618 70%);pointer-events:none}
+.vsw i{position:absolute;left:50%;top:50%;width:26%;height:56%;margin-left:-13%;margin-top:-56%;border-radius:40% 40% 20% 20%;background:linear-gradient(#f2f2f2,#9ea3a8);transform-origin:50% 100%;transform:rotate(0deg);transition:transform .12s}
+.vsw[data-pos="ADF"] i{transform:rotate(-62deg)}.vsw[data-pos="VOR"] i{transform:rotate(62deg)}.vsw[data-pos="OFF"] i{transform:rotate(180deg)}
 .dus{display:flex;gap:6px}
 .dus .ndbezel{flex:1 1 0}
 .ndbezel{position:relative;width:100%;aspect-ratio:452/559;border-radius:8px;overflow:hidden}

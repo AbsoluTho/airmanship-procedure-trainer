@@ -61,6 +61,10 @@ async def run(url,b):
     await k('FUEL');assert 'FUEL PRED' in await scr()
     await k('PROG');assert 'REC MAX' in await scr();await t('OETB');await k('R4');assert '°/' in await scr()
     await k('AIRPORT');await k('INIT');await k('RIGHT')
+    done=await pg.evaluate("[...document.querySelectorAll('#tasks li.done')].length")
+    assert done==14,f'exercise tasks done: {done}/14'
+    alt_rows=await pg.evaluate("fplnRows(window.__S().active).map(r=>r.k).join(',')")
+    assert 'altorig,altn' in alt_rows,'alternate F-PLN rows'
     # ---- automatic flight, flown with the FCU ----
     assert 'FCU' in (await pg.evaluate('flightReady().join()')),'FCU altitude required before takeoff'
     await pg.evaluate("window.__FCU.alt=7000;window.__efis('ls')")
@@ -73,14 +77,21 @@ async def run(url,b):
         if(!did.hdg&&FL.alt>20000){FCU.hdgPre=null;fcuPush('hdg',true);FCU.hdg=((Math.round(FL.trkT-3)+30)%360)||360;did.hdg=FL.t}
         if(did.hdg&&!did.nav&&FL.t-did.hdg>90){FCU.hdg=((Math.round(FL.trkT-3)-60+360)%360)||360;fcuPush('hdg',false);did.nav=FL.t}
         if(did.nav&&!did.navok&&FL.lat==='NAV'){seen.add('NAV REJOINED');did.navok=1}
+        if(did.navok&&!did.dir&&S.phase==='CRZ'&&FL.fromIx>3){const L=dirList();const tgt=L.find(x=>x.l.id==='WEJ');if(tgt){directTo('WEJ');P.DIR.lsk('R',6);did.dir=1;
+          if(S.active.legs.some(l=>l.k==='tp')&&FL.lat==='NAV')seen.add('DIR TO INSERTED')}}
+        if(did.dir&&!did.dirok){step(0.5);if(FL.path.pts[0].ix!=null&&S.active.legs[FL.path.pts[0].ix].k==='tp')seen.add('PATH FROM T-P');did.dirok=1}
+        if(did.dirok&&!did.seq&&FL.fromIx>0){const r=fplnRows(S.active);if(r[0].ix===FL.fromIx)seen.add('FROM LINE SEQUENCED');did.seq=1}
+        if(!did.qnh&&FL.alt>14000){if(EFIS.std===false)seen.add('QNH ABOVE TA');fcuPush('baro',true);if(EFIS.std)seen.add('STD SET');did.qnh=1}
+        if(!did.crzpg&&S.phase==='CRZ'){S.page='PERFCRZ';render();const t=[...document.querySelectorAll('#scr .ln')].map(l=>l.textContent).join(' ');if(t.includes('T/D'))seen.add('PERF CRZ T/D');did.crzpg=1}
         if(!did.des&&FL.s>FL.td-40&&S.phase==='CRZ'){FCU.alt=4200;fcuPush('alt',false);did.des=1}
+        if(did.des&&!did.q2&&FL.alt<12000){fcuPush('baro',false);did.q2=1}
+        if(!did.c1&&FL.conf==='1'&&S.phase==='APPR'){const d=FL.path.sThr-FL.s;if(d<=12.2&&d>11)seen.add('CONF1 AT 12NM');did.c1=1}
+        if(!did.c2&&FL.conf==='2'&&S.phase==='APPR'){const d=FL.path.sThr-FL.s;if(d<=8.2&&d>7)seen.add('CONF2 AT 8NM');did.c2=1}
         if(!did.appr&&dtg<28){fcuButton('appr');fcuButton('ap2');did.appr=1}}
       seen.add('END:'+FL.stage);return[...seen]})()""")
-    for m in ['MAN','SRS','RWY','NAV','THR CLB','CLB','LEVEL7000','ALT','ALT CRZ','HDG','NAV REJOINED','DES','THR IDLE','LOC *','LOC','G/S*','G/S','CAT 3','DUAL','LAND','FLARE','RETARD','ROLL OUT','PH:CLB','PH:CRZ','PH:DES','PH:APPR','PH:DONE','END:STOP']:
+    for m in ['DIR TO INSERTED','PATH FROM T-P','FROM LINE SEQUENCED','QNH ABOVE TA','STD SET','PERF CRZ T/D','CONF1 AT 12NM','CONF2 AT 8NM','MAN','SRS','RWY','NAV','THR CLB','CLB','LEVEL7000','ALT','ALT CRZ','HDG','NAV REJOINED','DES','THR IDLE','LOC *','LOC','G/S*','G/S','CAT 3','DUAL','LAND','FLARE','RETARD','ROLL OUT','PH:CLB','PH:CRZ','PH:DES','PH:APPR','PH:DONE','END:STOP']:
         assert m in seen,f'never seen in the flight: {m}  (seen: {sorted(seen)})'
     await pg.evaluate("window.__flight('reset')")
-    done=await pg.evaluate("[...document.querySelectorAll('#tasks li.done')].length")
-    assert done==14,f'exercise tasks done: {done}/14'
     await pg.click('text=Cockpit 3D');await pg.wait_for_timeout(2500)
     await pg.evaluate('window.__dbg3d.goView(3)');await pg.wait_for_timeout(2500)
     x,y=await pg.evaluate('window.__dbg3d.proj("elec",0.624,0.79)');await pg.mouse.click(x,y);await pg.wait_for_timeout(200)
