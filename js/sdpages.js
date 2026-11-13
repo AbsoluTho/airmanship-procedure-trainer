@@ -22,7 +22,7 @@ const tri=(x,y,col,fill,orient)=>`<polygon class="${col}Line${fill?' Fill'+col:'
 const split1=v=>{const s=(Math.round(v*10)/10).toFixed(1).split('.');return s};
 
 /* ---------- shared figures from the model ---------- */
-function sdData(){const on=flying(),E=EC.eng[0]?EC.eng:engStep(),blk=S.fuel.block,tx_=S.fuel.taxi??0.2;
+function sdData(){const on=flying(),E=engStep(),blk=S.fuel.block,tx_=S.fuel.taxi??0.2;
   const used=Math.max(0,blk!=null&&on?(blk-tx_-FL.fob)*1000:0),fu=[Math.round(used/2/10)*10,Math.round(used/2/10)*10+(used>0?10:0)];
   const air=on&&!FL.ground,gear=on?FL.gear:true,agl=on?FL.alt-groundElev():0;
   return{on,E,fu,used,air,gear,agl,cab:cabin(),kg:fobKg()||0,run:true}}
@@ -198,19 +198,19 @@ function pgBleed(D){const Y=sdSys(D),xOpen=Y.apuBleed,prv=[!Y.apuBleed,!Y.apuBle
       gArc(x,y,38,-63,63,'GaugeComponent Gauge',gMark({value:100,x,y,min:80,max:120,r:38,sa:-63,ea:63,cls:'WhiteStroke Stroke2',outer:1,mo:1.1})+
         gMark({value:Math.max(80,flow),x,y,min:80,max:120,r:38,sa:-63,ea:63,cls:(pack[e]?'GaugeIndicator':'AmberLine Stroke3')+' Gauge LineCapRound',indicator:1,mo:1.1}))+
       valveS(x,y,15,pack[e]?'V':'H','GreenLine BackgroundFill')+`</g>`};
-  const eng=(x,y,n)=>{const e=n-1,l=n===1,n2=D.E[e].n2,hp=n2<80,psi=Math.round((hp?36:44)/2)*2,tmp=Math.round((150+(n2-58)*1.3)/5)*5,open=prv[e];
+  const eng=(x,y,n)=>{const e=n-1,l=n===1,dead=!!D.E[e].fail,n2=D.E[e].n2,hp=n2<80&&!dead,psi=dead?0:Math.round((hp?36:44)/2)*2,tmp=dead?Math.round(Math.max(0,satC()+30)/5)*5:Math.round((150+(n2-58)*1.3)/5)*5,open=prv[e]&&!dead,lc=dead?'AmberLine':'GreenLine';
     return`<g id="bleed-${n}">`+pth(`M ${x},${y} l -47,10 l 0,123 l 14,0`,'GreyStroke Stroke2')+pth(`M ${x-47},${y+64} l 14,0`,'GreyStroke Stroke2')+
       pth(`M ${x},${y} l +47,10 l 0,123 l -14,0`,'GreyStroke Stroke2')+pth(`M ${x+47},${y+64} l -14,0`,'GreyStroke Stroke2')+
       tx(x-56,y+64,'C','White Standard End')+tx(x+58,y+64,'H','White Standard')+tx(x-55,y+132,'LO','White Standard End')+tx(x+61,y+132,'HI','White Standard')+
       gauge(x,y+150,e)+
       pth(`M ${x},${y+247} l -27,0 l 0,54 l 54,0 l 0,-54 l -27,0`,'GreyStroke Stroke2')+
       tx(l?x+40:x-70,y+270,'PSI','Cyan Standard')+tx(l?x+40:x-70,y+298,'°C','Cyan Standard')+
-      tx(x,y+270,String(psi),'Large Center Green')+tx(x+20,y+295,String(tmp),'Large End Green')+
+      tx(x,y+270,String(psi),'Large Center '+(psi<=4?'Amber':'Green'))+tx(x+20,y+295,String(tmp),'Large End Green')+
       (open?pth(`M ${x},${y+340} l 0,-37`,'GreenLine'):'')+valveS(x,y+355,15,open?'V':'H','GreenLine')+
-      pth(`M ${x},${y+415} l 0,-45`,'GreenLine')+tx(x+2,y+433,'IP','White Center Standard')+
-      valveS(l?x+47:x-47,y+398,15,hp?'H':'V','GreenLine')+pth(`M ${l?x+92:x-92},${y+415} l 0,-17 l ${l?'-29':'29'},0`,'GreenLine')+
+      pth(`M ${x},${y+415} l 0,-45`,lc)+tx(x+2,y+433,'IP','White Center Standard')+
+      valveS(l?x+47:x-47,y+398,15,hp?'H':'V','GreenLine')+pth(`M ${l?x+92:x-92},${y+415} l 0,-17 l ${l?'-29':'29'},0`,lc)+
       tx(l?x+95:x-90,y+433,'HP','White Center Standard')+(hp?pth(`M ${l?x+33:x-33},${y+398} l ${l?'-33':'33'},0`,'GreenLine'):'')+
-      tx(l?x-61:x+58,423,String(n),'Huge White')+`</g>`};
+      tx(l?x-61:x+58,423,String(n),'Huge '+(dead?'Amber':'White'))+`</g>`};
   const apuV=Y.apu?`<g id="apu-bleed">`+(Y.apuBleed?pth(`M 300,${338-15} l 0,-57`,'GreenLine'):'')+valveS(300,338,15,Y.apuBleed?'V':'H','GreenLine')+pth(`M 300,${338+15} l 0,19`,'GreenLine')+tx(300,338+52,'APU','Large White Center')+`</g>`:'';
   return`<g class="p-bleed">`+tx(6,18,'BLEED','PageTitle','dominant-baseline="central"')+
     triS(185,24,'Green',0,0,0.75)+triS(300,24,'Green',0,0,0.75)+triS(429,24,'Green',0,0,0.75)+pth('M 135,62 l 0,-19 l 329,0 l 0,19','GreenLine')+
@@ -254,7 +254,7 @@ function pgPress(D){const c=D.cab,dP=c.dp,cv=c.vs,ca=c.alt,y=165,R=50,dpx=110,vs
     pack(1,47)+pack(2,478)+`</g>`}
 
 /* ---------- ELEC (SD/Pages/Elec, 600 units) ---------- */
-function pgElec(D){const Y=sdSys(D),AS=13.737375;
+function pgElec(D){const Y=sdSys(D),AS=13.737375,gOk=D.E.map(e=>!e.fail);
   const W=(d,amber)=>`<path class="${amber?'Amber':'Green'}" d="${d}"/>`;
   const arrow=(x,y,dir,cls)=>{const c=cls?` class="${cls}"`:'';return dir==='up'?`<path${c} d="M${x} ${y}h${AS} l-6.8685 -8.99325z"/>`:dir==='down'?`<path${c} d="M${x} ${y}h-${AS} l6.8685 8.99325z"/>`:dir==='right'?`<path${c} d="M${x} ${y}v${AS} l8.99325 -6.8685z"/>`:`<path${c} d="M${x} ${y}v-${AS} l-8.99325 6.8685z"/>`};
   const box=(w,h)=>`<rect class="Box" width="${w}" height="${h}"/>`;
@@ -263,8 +263,8 @@ function pgElec(D){const Y=sdSys(D),AS=13.737375;
   const battery=(x,y,n,auto)=>grp(x,y,box(86.25,71.25)+`<text x="52.5" y="21.625" class="Right">BAT</text><text x="56.25" y="21.625" class="Large">${n}</text>`+
     (auto?prop(52.5,43.125,28,'V')+prop(52.5,65.625,0,'A'):'<text x="43.125" y="41.25" class="Middle" dominant-baseline="middle">OFF</text>'));
   const batWire=(x,y,closed)=>closed?grp(x,y,W('M0.3 0 h36.15 h-36.15')):'';
-  const gen=(x,y,n,load)=>grp(x,y,box(86.25,93.75)+`<text x="54.375" y="22.5" class="Right">GEN</text><text x="58.125" y="22.5" class="Large">${n}</text>`+
-    prop(54.375,45,load,'%')+prop(54.375,67.5,115,'V')+prop(54.375,90,400,'HZ'));
+  const gen=(x,y,n,load)=>{const ok_=gOk[n-1],a=ok_?'':' Amber';return grp(x,y,box(86.25,93.75)+`<text x="54.375" y="22.5" class="Right${a}">GEN</text><text x="58.125" y="22.5" class="Large${a}">${n}</text>`+
+    prop(54.375,45,ok_?load:0,'%',ok_)+prop(54.375,67.5,ok_?115:0,'V',ok_)+prop(54.375,90,ok_?400:0,'HZ',ok_))};
   const apuGen=(x,y,on)=>{const t='<text x="46.875" y="18.75" class="Middle">APU GEN</text>';
     return grp(x,y,on?box(93.75,90)+t+prop(58.125,41.25,0,'%')+prop(58.125,63.75,115,'V')+prop(58.125,86.25,400,'HZ'):t)};
   const extPwr=(x,y)=>grp(x,y,box(93.75,67.5)+'<text x="46.875" y="18.75" class="Middle">EXT PWR</text>'+prop(52.5,41.25,115,'V')+prop(52.5,63.75,400,'HZ'));
@@ -278,32 +278,36 @@ function pgElec(D){const Y=sdSys(D),AS=13.737375;
     W('M56.25 117 v44.1 v-44.1')+W('M56.25 238.35 v29 v-29')+W('M536.25 117 v44.1 v-44.1')+W('M536.25 238.35 v29 v-29')+W('M138.57 279.32 h94.63 h-94.63')+
     W('M90.15 103.125 h168.69 v-44 v58.40 v-14.4')+W('M 341.16 103.125 h 166.66 h -166.66 v -42.52 v42.52')+
     arrow(258.84-AS/2,157.58,'up')+arrow(326.25,214.77,'left')+
-    W('M56.44 302.81 v42.5 v-42.5')+W('M536.25 302.81 v42.5 v-42.5')+arrow(56.25-AS/2,303.77,'up','Green')+arrow(536.25-AS/2,303.77,'up','Green')+
+    (gOk[0]&&gOk[1]?W('M56.44 302.81 v42.5 v-42.5')+W('M536.25 302.81 v42.5 v-42.5'):gOk[0]?W('M56.44 302.81 v42.5 v-23.75 h479.81 v-20.75'):W('M536.25 302.81 v42.5 v-23.75 h-479.81 v-20.75'))+   /* one generator lost: bus tie */
+    arrow(56.25-AS/2,303.77,'up','Green')+arrow(536.25-AS/2,303.77,'up','Green')+
     battery(108.75,10,1,Y.bat[0])+battery(405,10,2,Y.bat[1])+bus(232.5,35,135,anyBat?'DC BAT':'XX',0,anyBat)+
     bus(6,90,86.25,'DC',1,true)+bus(507.75,90,86.25,'DC',2,true)+bus(232.5,116.25,135,'DC ESS',0,true)+
     bus(6,266.25,135,'AC',1,true)+bus(459,266.25,135,'AC',2,true)+bus(232.5,266.25,135,'AC ESS',0,true)+
-    gen(13.125,345,1,35)+gen(493.125,345,2,33)+apuGen(168.75,367.5,Y.apu)+(Y.ext?extPwr(315,390):'')+
+    gen(13.125,345,1,gOk[1]?35:68)+gen(493.125,345,2,gOk[0]?33:66)+apuGen(168.75,367.5,Y.apu)+(Y.ext?extPwr(315,390):'')+
     trBox(13.125,161.25,1,75)+trBox(493.125,161.25,2,70)+trBox(213.75,161.25,3,0,true)+
     grp(330,161.25,'<text class="Medium" dominant-baseline="middle" x="0.9375" y="45">EMER GEN</text>')+
-    idg(28.13,476.25,1)+idgT(135,476.25,Y.air?75:50)+idg(513.75,476.25,2)+idgT(480,476.25,Y.air?75:50)+`</g>`}
+    idg(28.13,476.25,1)+idgT(135,476.25,!gOk[0]?40:Y.air?75:50)+idg(513.75,476.25,2)+idgT(480,476.25,!gOk[1]?40:Y.air?75:50)+`</g>`}
 
 /* ---------- HYD (SD/Pages/Hyd, 768 units) ---------- */
-function pgHyd(D){const run=D.E.map(e=>e.n2>15);
+function pgHyd(D){const run=D.E.map(e=>e.n2>15&&!e.fail);
+  /* PTU: with one engine pump lost, the PTU pressurises that system from the other one */
+  const ptuDir=run[0]&&!run[1]?'G2Y':!run[0]&&run[1]?'Y2G':null;
   const lv={GREEN:{max:14.5,low:3.5,norm:2.6,q:13},BLUE:{max:6.5,low:2.4,norm:1.6,q:6},YELLOW:{max:12.5,low:3.5,norm:2.6,q:11.5}};
-  const pump=(sys,y,on)=>{const up=sys==='GREEN'?-151:sys==='BLUE'?-153:-84;
-    return grp(0,y,`<line class="GreenLine" x1="0" y1="-42" x2="0" y2="${up}"/><rect class="${on?'GreenLine':'AmberLine'}" x="-21" y="-42" width="42" height="42"/>`+
-      (on?'<line class="GreenLine" x1="0" y1="-1" x2="0" y2="-41"/>':'<line class="AmberLine" x1="-12" y1="-21" x2="12" y2="-21"/>'))};
+  const pump=(sys,y,on,lo)=>{const up=sys==='GREEN'?-151:sys==='BLUE'?-153:-84;
+    return grp(0,y,`<line class="${lo?'AmberLine':'GreenLine'}" x1="0" y1="-42" x2="0" y2="${up}"/><rect class="${on&&!lo?'GreenLine':'AmberLine'}" x="-21" y="-42" width="42" height="42"/>`+
+      (on&&!lo?'<line class="GreenLine" x1="0" y1="-1" x2="0" y2="-41"/>':on?'':'<line class="AmberLine" x1="-12" y1="-21" x2="12" y2="-21"/>')+(on&&lo?tx(-13,-14,'LO','Standard Amber'):''))};
   const fire=y=>grp(0,y,'<line class="GreenLine" x1="0" y1="0" x2="0" y2="-68"/><circle class="GreenLine" cx="0" cy="21" r="21"/><line class="GreenLine" x1="0" y1="42" x2="0" y2="0"/>');
   const resv=sys=>{const v=lv[sys],lpp=121/v.max,rh=lpp*v.low,ur=(-rh).toFixed(0),lnorm=(-121+lpp*v.norm).toFixed(0),fh=-(lpp*v.q);
     return grp(0,576,`<line class="GreenLine" x1="0" y1="-121" x2="0" y2="${sys==='BLUE'?-205:-161}"/><line class="WhiteLine" x1="0" y1="${ur}" x2="0" y2="-121"/>`+
       `<line class="GreenLine" x1="0" y1="-121" x2="6" y2="-121"/><line class="GreenLine" x1="6" y1="${lnorm}" x2="6" y2="-121"/><line class="GreenLine" x1="0" y1="${lnorm}" x2="6" y2="${lnorm}"/>`+
       `<rect class="AmberLine" x="0" y="${ur}" width="6" height="${rh}"/><line class="GreenLine" x1="0" y1="0" x2="-12" y2="0"/><line class="GreenLine" x1="-12" y1="0" x2="-12" y2="${fh}"/>`+
       `<line class="GreenLine" x1="0" y1="${fh}" x2="-12" y2="${fh}"/><line class="GreenLine" x1="0" y1="${fh}" x2="-13" y2="${fh-11}"/>`)};
-  const sys=(name,x,eng)=>{const p=eng==null||run[eng]?3000:0,lo=p<=1450,b=name==='BLUE';
+  const sys=(name,x,eng)=>{const p=eng==null||run[eng]||ptuDir?3000:0,lo=p<=1450,b=name==='BLUE',plo=eng!=null&&!run[eng];
     return grp(x,65,triS(0,0,lo?'Amber':'Green',0,0)+tx(name==='GREEN'?-2:b?1:3,50,name,'Huge Center'+(lo?' Amber':''))+tx(1,92,String(p),'Huge Center '+(lo?'Amber':'Green'))+
-      `<line class="${lo?'AmberLine':'GreenLine'}" x1="0" y1="${b?217:151}" x2="0" y2="103"/>`+pump(name,b?370:303,true)+(b?'':fire(372))+resv(name))};
-  const ptu=grp(383,216,'<line id="ptu2" class="GreenLine" x1="-107" y1="0" x2="-20" y2="0"/><path id="ptu3" class="GreenLine" d="M-20 0 A20 20 0 0 0 20 0"/><line id="ptu4" class="GreenLine" x1="20" y1="0" x2="56" y2="0"/>'+
-    tx(92,10,'PTU','Large')+triS(-131,0,'Green',0,-90,4/3)+triS(56,0,'Green',0,-90,4/3)+triS(177,0,'Green',0,90,4/3));
+      `<line class="${lo?'AmberLine':'GreenLine'}" x1="0" y1="${b?217:151}" x2="0" y2="103"/>`+pump(name,b?370:303,true,plo)+(b?'':fire(372))+resv(name))};
+  const tf=ptuDir?1:0,o1=ptuDir==='G2Y'?90:-90,o3=ptuDir==='Y2G'?-90:90;
+  const ptu=grp(383,216,(ptuDir?'<line id="ptu1" class="GreenLine" x1="-132" y1="0" x2="-246" y2="0"/><line id="ptu5" class="GreenLine" x1="177" y1="0" x2="246" y2="0"/>':'')+'<line id="ptu2" class="GreenLine" x1="-107" y1="0" x2="-20" y2="0"/><path id="ptu3" class="GreenLine" d="M-20 0 A20 20 0 0 0 20 0"/><line id="ptu4" class="GreenLine" x1="20" y1="0" x2="56" y2="0"/>'+
+    tx(92,10,'PTU','Large')+triS(o1<0?-131:-107,0,'Green',tf,o1,4/3)+triS(o1>0?80:56,0,'Green',tf,o1,4/3)+triS(o3>0?177:153,0,'Green',tf,o3,4/3));
   const rat=grp(372,282,tx(-78,10,'RAT','Large')+triS(0,0,'White',0,90,4/3));
   return`<g class="p-hyd ecam-common-styles">`+svg768(tx(351,39,'HYD','Title UnderlineWhite')+tx(187,404,'1',(run[0]?'':'Amber ')+'Title')+tx(562,404,'2',(run[1]?'':'Amber ')+'Title')+
     sys('GREEN',136,0)+sys('BLUE',383,null)+sys('YELLOW',630,1)+ptu+rat+tx(420,384,'ELEC','Large')+

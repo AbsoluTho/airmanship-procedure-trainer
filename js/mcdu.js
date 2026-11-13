@@ -137,7 +137,7 @@ P.FPLN={render(){const p=cur(),rows=fplnRows(p),ds=p?dists(p):[];
     const col=alt_||r.seg==='map'?'b':(flying()&&p===S.active&&!S.tmpy&&n===1&&S.fpOff===0)?'w':base;   /* TO waypoint in white */
     if(r.k==='hold'){fplnHoldRow(r,ln,lb,col,p,n);continue}
     if(r.k==='altn'&&n>0){put(lb,1,'DCT','w','S');const a0=legPos({k:'altorig',id:p.legs[idxK(p,'dest')].id,rwy:p.legs[idxK(p,'dest')].rwy}),a1=legPos(r);if(a0&&a1)rput(lb,String(Math.round(gc(a0,a1))),'w','S',19)}
-    if(n>0&&!alt_){put(lb,1,(r.via||'').slice(0,6),'w','S');if(r.lbl)put(lb,8,r.lbl,'w','S');
+    if(n>0&&!alt_){put(lb,1,(r.via||'').slice(0,6),'w','S');if(r.lbl)put(lb,8,r.lbl,'w','S');if(r.step!=null&&typeof stepKind==='function')put(lb,8,stepKind(p,r.ix),'w','S');
       const d=ds[r.ix];if(d!=null){const t=String(Math.round(d));if(firstD){rput(lb,t+'NM','w','S',21);firstD=false}else rput(lb,t,'w','S',19)}}
     const id=(r.k==='orig'||r.k==='dest'||alt_)?r.id+(r.rwy||''):r.id;
     const tm=tcum&&!alt_&&tcum[r.ix]!=null?(flying()?utcStr(FL.utc0+(pr.trip.at(tcum[r.ix])+1)*60000):hhmm(pr.trip.at(tcum[r.ix])+(r.k==='orig'?0:1))):null;
