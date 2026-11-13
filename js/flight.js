@@ -47,9 +47,7 @@ function locGeo(pos){const d=destRwy(),c=d.r.crs+(d.a.var||0),q=enu(d.r.pos,pos)
   const along=-(q[0]*u[0]+q[1]*u[1]),xtk=(u[0]*q[1]-u[1]*q[0])*-1;return{crs:c,along,xtk}}   /* along: NM before the threshold */
 function faf(){const p=S.active,di=idxK(p,'dest');for(let i=di-1;i>0;i--){const l=p.legs[i];if(l.k==='wpt'&&l.alt&&l.seg==='arr')return l.alt.v}return destRwy().tdze+1500}
 function gsAlt(dtg){return destRwy().tdze+50+318*Math.max(0,dtg)}
-function profileAlt(dtg){const tdze=destRwy().tdze,Ai=faf(),dgs=(Ai-tdze-50)/318;
-  if(dtg<=dgs)return gsAlt(dtg);if(dtg<=dgs+8)return Ai;return Ai+318*(dtg-dgs-8)}
-function tdDist(){const crz=I().crz*100,tdze=destRwy().tdze,Ai=faf(),dgs=(Ai-tdze-50)/318;return dgs+8+(crz-Ai)/318}
+/* profileAlt() and tdDist() (constrained descent path, T/D) are in vnav.js */
 const hasLs=()=>{const p=S.active;return!!(p&&p.appr&&/^(ILS|LOC)/.test(p.appr))};
 
 /* ---------- atmosphere and speeds ---------- */
@@ -74,7 +72,7 @@ function flightStart(){const miss=flightReady();if(miss.length)return miss;
   const P=buildPath(),o=DB.apt[orig()],r=o.rwy[S.active.rwy],tr=r.crs+(o.var||0);
   Object.assign(FL,{active:true,running:true,t:0,utc0:Date.now(),path:P,s:0,seg:1,xtk:0,pos:r.pos,hdgT:tr,trkT:tr,roll:0,pitch:0,alt:r.tdze??o.elev,vs:0,ias:0,tas:0,gs:0,mach:0,
     ground:true,lat:'RWY',latArm:FCU.hdgMgd?'NAV':null,ver:'SRS',verArm:[FCU.lvlch?'CLB':'OP CLB'],thr:'TO',conf:q2conf(),gear:true,
-    fob:S.fuel.block-(S.fuel.taxi??0.2),fromIx:0,fmaT:{},loc:false,gsCap:false,tdReached:false,stage:'ROLL',lvrT:null});
+    fob:S.fuel.block-(S.fuel.taxi??0.2),fromIx:0,cst:null,capAlt:null,altHold:null,fmaT:{},loc:false,gsCap:false,tdReached:false,stage:'ROLL',lvrT:null});
   FCU.athr=true;FL.td=P.sThr-tdDist();FL.sig=planSig();S.phase='TAKEOFF';if(S.msg==='GPS PRIMARY')S.msg=null;setFma();flightTick(0);return[]}
 function q2conf(){const f=S.perf.flaps;return f===1?'1+F':String(f||1)}
 function flightReset(){Object.assign(FL,{active:false,running:false,path:null,stage:'IDLE',fma:{c1:[],c2:[],c3:[],c4:[],c5:[]},ias:0,gs:0,tas:0,vs:0});
@@ -107,7 +105,7 @@ function setFma(){const st=FL.stage,a=S.perf,fx=a.flex!=null?'FLX '+a.flex:'TOGA
   if(guide&&st!=='IDLE'){
     if(['LAND','FLARE','ROLL OUT'].includes(FL.ver))f.land=FL.ver;
     else{const crzAlt=FCU.alt===I().crz*100&&FL.alt>20000;
-      f.c2=[[FL.ver==='ALT'&&crzAlt?'ALT CRZ':FL.ver==='ALT*'&&crzAlt?'ALT CRZ*':FL.ver,'g'],FL.verArm.length?[FL.verArm.join(' '),'b']:null];
+      f.c2=[[FL.ver==='ALT'&&crzAlt?'ALT CRZ':FL.ver==='ALT*'&&crzAlt?'ALT CRZ*':FL.ver,'g'],FL.verArm.length?[FL.verArm.join(' '),cstArmed()?'m':'b']:null];
       f.c3=[[FL.lat==='LOC*'?'LOC *':FL.lat,'g'],FL.latArm?[FL.latArm,'b']:null]}}
   if(FL.tdReached&&!DESCENDING.includes(FL.ver))f.msg='T/D REACHED';
   if((FCU.appr||FCU.loc)&&!['ROLLOUT','STOP','IDLE'].includes(st)&&FCU.appr){const q=S.p2,aps=(FCU.ap1?1:0)+(FCU.ap2?1:0),mn=q.radio!=null?(q.radio==='NO'?'NO DH':'DH '+q.radio):q.baro!=null?'BARO '+q.baro:'';
@@ -116,6 +114,11 @@ function setFma(){const st=FL.stage,a=S.perf,fx=a.flex!=null?'FLX '+a.flex:'TOGA
   for(const c of['c1','c2','c3'])if(JSON.stringify((f[c]||[])[0])!==JSON.stringify((FL.fma[c]||[])[0]))FL.fmaT[c]=FL.t;
   if(f.land!==FL.fma.land)FL.fmaT.land=FL.t;
   FL.fma=f}
+
+/* ALT armed in magenta, and the PFD target altitude in magenta, when the next level-off is a constraint */
+function cstTarget(){if(!flying()||FL.ground||!FL.cst)return null;if(FL.ver==='ALT CST*')return FL.capAlt;if(FL.ver==='ALT CST')return FL.altHold;
+  if(FL.ver==='CLB'&&FL.cst.clb!=null&&FL.cst.clb>=FL.alt-200)return FL.cst.clb;if(FL.ver==='DES'&&FL.cst.des!=null&&FL.cst.des<=FL.alt+200)return FL.cst.des;return null}
+const cstArmed=()=>FL.verArm.length===1&&FL.verArm[0]==='ALT'&&['CLB','DES'].includes(FL.ver)&&cstTarget()!=null;
 
 /* ---------- one simulation step ---------- */
 function step(dt){if(FL.sig!==planSig()&&!FL.ground)flightReplan();const P=FL.path,q=S.perf,p2=S.p2,crz=I().crz*100,sp=cfgSpeeds(),gnd=groundElev(),A=FCU.alt;
@@ -147,20 +150,29 @@ function step(dt){if(FL.sig!==planSig()&&!FL.ground)flightReplan();const P=FL.pa
     else if(FL.lat==='HDG'||FL.lat==='TRK')trkT=(FCU.hdg??Math.round(FL.trkT-vr))+vr;
     else if(['LOC*','LOC','LAND'].includes(FL.lat)&&lg){const d=destRwy(),tgt=dst(d.r.pos,lg.crs+180,Math.max(-2,lg.along-L));trkT=brg(FL.pos,tgt)}
     /* ---- vertical ---- */
-    const capBand=Math.max(80,Math.abs(FL.vs)*0.12);
+    const capBand=Math.max(80,Math.abs(FL.vs)*0.12),CK=cstrNow();FL.cst=CK;
     if(FL.ver==='SRS'){spdT=q.v2+10;vsT=2400;
       if(FL.alt>=acc){if(A>FL.alt+capBand){FL.ver=FL.verArm.includes('OP CLB')?'OP CLB':'CLB';FL.verArm=['ALT']}else{FL.ver='ALT*';FL.verArm=[]}S.phase='CLB'}}
-    if(CLIMBING.includes(FL.ver)){vsT=FL.ver==='EXP CLB'?3500:FL.alt<10000?2800:FL.alt<25000?2000:1300;if(A-FL.alt<capBand)FL.ver='ALT*'}
-    if(DESCENDING.includes(FL.ver)){const pa=Math.max(profileAlt(dtg),A);
-      vsT=FL.ver==='DES'?Math.max(-3500,Math.min(-300,(pa-FL.alt)*3-318*FL.gs/60)):FL.ver==='EXP DES'?-3500:-2200;
-      if(FL.alt-A<capBand)FL.ver='ALT*'}
+    if(CLIMBING.includes(FL.ver)){vsT=FL.ver==='EXP CLB'?3500:FL.alt<10000?2800:FL.alt<25000?2000:1300;
+      const lc=FL.ver==='CLB'&&CK.clb!=null&&CK.clb>=FL.alt-200?CK.clb:null;   /* managed climb: level off at the constraint first */
+      if(lc!=null&&lc-FL.alt<capBand){FL.ver='ALT CST*';FL.capAlt=lc;FL.verArm=['CLB']}else if(lc==null&&A-FL.alt<capBand)FL.ver='ALT*'}
+    if(DESCENDING.includes(FL.ver)){const fl=FL.ver==='DES'&&CK.des!=null&&CK.des<=FL.alt+200?CK.des:null,pa=Math.max(profileAlt(dtg),A,fl??-1e9);
+      const slope=profileAlt(dtg)-profileAlt(Math.max(0,dtg-1));   /* ft per NM: 318 on a 3° segment, 0 where the path is level at a constraint */
+      vsT=FL.ver==='DES'?Math.max(-3500,Math.min(slope>50?-300:0,(pa-FL.alt)*3-Math.max(0,slope)*FL.gs/60)):FL.ver==='EXP DES'?-3500:-2200;
+      if(fl!=null&&FL.alt-fl<capBand){FL.ver='ALT CST*';FL.capAlt=fl;FL.verArm=['DES']}else if(fl==null&&FL.alt-A<capBand)FL.ver='ALT*'}
     if(FL.ver==='V/S'||FL.ver==='FPA'){vsT=FL.ver==='FPA'?Math.tan((FCU.fpa||0)*D2R)*FL.gs*101.27:(FCU.vsVal||0);
       if((vsT>0&&A>FL.alt&&A-FL.alt<capBand)||(vsT<0&&A<FL.alt&&FL.alt-A<capBand))FL.ver='ALT*'}
     if(FL.ver==='ALT*'){if(FL.capAlt==null)FL.capAlt=A;const ca=FL.capAlt;vsT=Math.max(-Math.abs(FL.vs)-200,Math.min(Math.abs(FL.vs)+200,(ca-FL.alt)*5));
-      if(Math.abs(ca-FL.alt)<25){FL.alt=ca;FL.altHold=ca;FL.ver='ALT';FL.capAlt=null;FL.verArm=FL.verArm.filter(x=>x==='DES'||x==='G/S')}}else FL.capAlt=null;
+      if(Math.abs(ca-FL.alt)<25){FL.alt=ca;FL.altHold=ca;FL.ver='ALT';FL.capAlt=null;FL.verArm=FL.verArm.filter(x=>x==='DES'||x==='G/S')}}else if(FL.ver!=='ALT CST*')FL.capAlt=null;
+    /* ALT CST*, ALT CST: level at the constraint; the climb or descent resumes once its waypoint is sequenced */
+    if(FL.ver==='ALT CST*'){const ca=FL.capAlt??FL.alt;vsT=Math.max(-Math.abs(FL.vs)-200,Math.min(Math.abs(FL.vs)+200,(ca-FL.alt)*5));
+      if(Math.abs(ca-FL.alt)<25){FL.alt=ca;FL.altHold=ca;FL.ver='ALT CST';FL.capAlt=null}}
+    if(FL.ver==='ALT CST'){const h=FL.altHold??FL.alt;vsT=(h-FL.alt)*4;
+      if(FL.verArm.includes('CLB')){if(CK.clb==null||CK.clb>h+50){if(A>FL.alt+capBand){FL.ver='CLB';FL.verArm=['ALT']}else{FL.ver='ALT';FL.verArm=[]}}}
+      else if(CK.des==null||CK.des<h-50){if(A<FL.alt-capBand){FL.ver='DES';FL.verArm=['ALT']}else{FL.ver='ALT';FL.verArm=[]}}}
     /* ALT holds the altitude it captured; a new FCU altitude needs a pull or push */
     if(FL.ver==='ALT'){vsT=((FL.altHold??FL.alt)-FL.alt)*4}
-    if(FL.verArm.includes('DES')&&FL.s>=FL.td&&A<FL.alt-250){FL.ver='DES';FL.verArm=['ALT']}
+    if(FL.verArm.includes('DES')&&!FL.ver.startsWith('ALT CST')&&FL.s>=FL.td&&A<FL.alt-250){FL.ver='DES';FL.verArm=['ALT']}
     if(S.phase==='CRZ'&&FL.s>=FL.td&&!DESCENDING.includes(FL.ver)&&!FL.verArm.includes('DES')&&!FL.tdReached){FL.tdReached=true;S.msg='T/D REACHED'}
     if(DESCENDING.includes(FL.ver))FL.tdReached=false;
     /* glideslope */
@@ -181,6 +193,8 @@ function step(dt){if(FL.sig!==planSig()&&!FL.ground)flightReplan();const P=FL.pa
         else if(S.phase==='CRZ')spdT=mmo;
         else if(S.phase==='DES')spdT=FL.ver==='EXP DES'?Math.min(340,mmo):Math.min(FL.alt<dl.alt+1000?dl.spd:mgd.des(),mmo);
         else if(S.phase==='APPR'){const vapp=p2.vapp??sp.VLS+5;spdT={0:sp.GD,1:sp.S,2:sp.F,3:Math.max(vapp,sp.F-10),FULL:vapp}[FL.conf]??vapp}}
+      /* speed constraint (managed speed only) */
+      if((FCU.spdMgd||FCU.spd==null)&&CK.spd!=null&&!['EXP CLB','EXP DES'].includes(FL.ver))spdT=Math.max(sp.VLS,Math.min(spdT,CK.spd));
       if(FL.ver==='FLARE')spdT=Math.min(spdT,FL.ias-1)}
     /* ---- phases ---- */
     if(S.phase==='CLB'&&FL.ver==='ALT'&&Math.abs(FL.alt-crz)<50)S.phase='CRZ';
@@ -210,7 +224,7 @@ function step(dt){if(FL.sig!==planSig()&&!FL.ground)flightReplan();const P=FL.pa
 
 /* ---------- loop ---------- */
 function flightTick(dtReal){if(!FL.active)return;let dt=dtReal*FL.rate;while(dt>0){const h=Math.min(0.5,dt);step(h);dt-=h;if(!FL.running)break}setFma();refreshAll()}
-function refreshAll(){if(typeof render==='function')render();if(window.drawPFD2D)drawPFD2D();if(window.drawFcu)drawFcu();flightUI()}
+function refreshAll(){if(typeof render==='function')render();if(window.drawPFD2D)drawPFD2D();if(window.drawFcu)drawFcu();if(window.drawEcam)drawEcam();flightUI()}
 let _lastFrame=null,_acc=0;
 function frame(ts){if(FL.active&&FL.running){if(_lastFrame!=null){const d=Math.min(0.25,(ts-_lastFrame)/1000);_acc+=d;if(_acc>=0.1){flightTick(_acc);_acc=0}}}_lastFrame=ts;requestAnimationFrame(frame)}
 requestAnimationFrame(frame);

@@ -110,7 +110,9 @@ function drawPFD(g,W,H,powered){g.save();g.setTransform(1,0,0,1,0,0);g.fillStyle
   g.restore();
   L(477,182,543,182,'w',2);L(477,497,543,497,'w',2);L(526,182,526,497,'w',2);
   /* target altitude (cyan) on the tape, drawn before the readout window so it never crosses the present altitude */
-  {const fcu=FCU.alt,y=ay(fcu);if(y>=182&&y<=497){g.save();g.beginPath();g.rect(477,182,49,315);g.clip();g.strokeStyle=PC.b;g.lineWidth=2.5;g.strokeRect(478,y-10,46,20);g.restore()}}
+  /* an altitude constraint that is the next level-off replaces it, in magenta */
+  const cstT=on&&typeof cstTarget==='function'?cstTarget():null,tgtA=cstT??FCU.alt,tgtC=cstT!=null?'m':'b';
+  {const fcu=tgtA,y=ay(fcu);if(y>=182&&y<=497){g.save();g.beginPath();g.rect(477,182,49,315);g.clip();g.strokeStyle=PC[tgtC];g.lineWidth=2.5;g.strokeRect(478,y-10,46,20);g.restore()}}
   /* vertical deviation (green dot): the managed descent path on the altitude tape; low dot = aircraft above the path */
   if(on&&!FL.ground&&['DES','APPR'].includes(S.phase)&&!['G/S*','G/S','LAND','FLARE','ROLL OUT'].includes(FL.ver)&&FL.path){const dtg=FL.path.sThr-FL.s;
     if(dtg>0.5){const pa=profileAlt(dtg)+(alt-FL.alt),y=Math.max(196,Math.min(484,ay(pa)));g.strokeStyle=PC.g;g.lineWidth=2.5;g.beginPath();g.arc(470,y,6,0,7);g.stroke()}}
@@ -124,9 +126,9 @@ function drawPFD(g,W,H,powered){g.save();g.setTransform(1,0,0,1,0,0);g.fillStyle
   L(440,SY,470,SY,'y',5);
   if(FCU.metric){const m=Math.round(alt*0.3048/10)*10,tm=Math.round(FCU.alt*0.3048/10)*10;g.fillStyle='#000';g.fillRect(478,286,64,24);box(478,286,64,24,'y',1.5);T(m+'M',540,298,'g',17,'right');T(tm+'M',540,150,'b',17,'right')}
   /* target altitude and baro reference */
-  const fcu=FCU.alt;
-  if(fcu!=null){const t=fcu>=(TA[o]||13000)?'FL'+String(fcu/100).padStart(3,'0'):String(fcu),y=ay(fcu);
-    if(y<182)T(t,517,170,'b',21,'center');else if(y>497)T(t,517,510,'b',21,'center')}
+  const fcu=tgtA;
+  if(fcu!=null){const t=fcu>=(TA[o]||13000)?'FL'+String(Math.round(fcu/100)).padStart(3,'0'):String(Math.round(fcu)),y=ay(fcu);
+    if(y<182)T(t,517,170,tgtC,21,'center');else if(y>497)T(t,517,510,tgtC,21,'center')}
   {const ta=TA[o]||13000,tl=(TA[destId()]||13000)+2000,blink=Math.floor(Date.now()/500)%2===0;
    const climbAbove=on&&!EFIS.std&&altT>ta+200&&['CLB','CRZ'].includes(S.phase),descBelow=on&&EFIS.std&&altT<tl-200&&['DES','APPR'].includes(S.phase);
    if(EFIS.std){if(!(descBelow&&blink)){box(492,530,56,26,'y',2);T('STD',520,543,'b',20,'center')}}
