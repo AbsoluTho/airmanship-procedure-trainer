@@ -4,7 +4,7 @@ An unofficial A320 **procedure** trainer that runs in the browser (iPad first). 
 
 Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator manuals. The navigation data was typed from charts for training only and must never be used for navigation.
 
-## Status: Phase 2 prototype (v0.11.1)
+## Status: Phase 2 prototype (v0.12.0)
 
 - **MCDU** (Thales FMS2 layout, per FCOM DSC-22): keyboard and scratchpad, INIT A, F-PLN with TMPY (ERASE/INSERT), LAT REV, DEPARTURE, AIRWAYS (with airway-to-airway intersection), ARRIVAL, waypoint insertion, CLR of waypoints and discontinuities.
 - **Exercise** OEJN to OETB: RWY 16C MIGD2E, L677 WEJ, V54 TBK, ILS 31 via D179O, ALTN OEMA, FL340, CI 20, with automatic progress checks.
@@ -12,6 +12,12 @@ Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator
 - **ND** (ROSE LS, ROSE VOR, ROSE NAV, ARC, PLAN; range 10 to 320 NM; CSTR, WPT, ARPT options; ROSE LS and ROSE VOR show the compass only for now): active F-PLN in green, TMPY in yellow dashed, missed approach in blue, alternate route in blue dashed, DME arcs and holds drawn. PLAN centres on the waypoint on the second line of the MCDU F-PLN page. Also live on both NDs in the 3D cockpit (EXT PWR on).
 - **INIT B**: TAXI, ZFW/ZFWCG, BLOCK, TRIP/TIME, RTE RSV, ALTN, FINAL, EXTRA, TOW/LW, TRIP WIND, MIN DEST FOB. **F-PLN** now shows TIME predictions and EFOB at destination once ZFW and BLOCK are entered.
 - **PERF TAKE OFF**: V1/VR/V2 (with V1/VR/V2 DISAGREE), F/S/O speeds, RWY, TO SHIFT, FLAPS/THS, FLEX, TRANS ALT, THR RED/ACC, ENG OUT ACC. Changing the takeoff runway clears the V speeds (CHECK TAKE OFF DATA).
+- **FMGC batch 4** (v0.12.0), page layouts from the FlyByWire A32NX MCDU:
+  - **CO RTE** (INIT A L1): a company route (training database: OEJNOETB1 via D179O, OEJNOETB2 via TBK) or a stored route loads FROM/TO, ALTN and the whole F-PLN (runway, SID, airways, approach), strung without discontinuity. After a FROM/TO entry the **ROUTE** page lists the company routes of the city pair (arrows to browse, INSERT*, RETURN).
+  - **INIT REQUEST*** (INIT A R2): asks the AOC (simulated, two seconds) with the FLT NBR, or the city pair: the answer fills INIT A (FROM/TO, ALTN, CO RTE, COST INDEX, CRZ FL/TEMP, TROPO) and the F-PLN, with the AOC ACT F-PLN UPLINK message; NO ANSWER TO REQUEST otherwise. TRN385 answers with the exercise data.
+  - **Pilot waypoints**: DATA 2/2 STORED WAYPOINTS (up to 99, arrows, CLR on the ident deletes one, DELETE ALL with CONFIRM) and NEW WAYPOINT (IDENT; LAT/LONG `N2830.0/E03700.0` or `2830.0N/03700.0E`; PLACE/BRG/DIST `TBK/090/20`; PLACE-BRG/PLACE-BRG `TBK-170/WEJ-045`; STORE). The same LL, PBD and PBX entries in the F-PLN, NEXT WPT and DIR TO create LL01, PBD01, PBX01... Kept in this browser.
+  - **STORED ROUTES** (DATA 2/2 ROUTES>): store the active F-PLN under a name, browse and delete; a stored route can be entered as a CO RTE. Kept in this browser.
+  - **MCDU MENU**: FMGC in green returns to the last FMGC page; ATSU, AIDS and CFDS menus shown (not simulated); NAV B/UP and SELECT in grey.
 - **Flight set-up save** (v0.11.1): SAVE on the flight controls (enabled once START FLIGHT is possible) keeps the MCDU data (INIT A and B, F-PLN, SEC F-PLN, PERF pages, RAD NAV, winds, FIX INFO, steps), the FCU and the EFIS settings in this browser; LOAD puts them back after a flight or in a later session, IRS aligned, ready for START. One set-up is kept; SAVE replaces it.
 - **FMGC batch 3** (v0.11.0):
   - **Go-around**: TOGA on the flight controls (approach phase, in the air): MAN TOGA, SRS (go-around speed), GA TRK with NAV armed (engages above 100 ft), GA phase, flaps one step up; LVR CLB at the PERF GO AROUND THR RED altitude, CLB at its ACC altitude to the FCU altitude, green dot with flaps retracted on speed and gear up. LOC and G/S are lost (APPR to be armed again).
@@ -74,6 +80,7 @@ Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator
 | `js/mcdu3.js` | LAT REV, NEW DEST, HOLD AT, OFFSET, FIX INFO (MCDU and ND), scratchpad system messages; hold racetrack and offset geometry used by the flight |
 | `js/mcdu4.js` | SEC INIT/PERF pages, STEP ALTS, engine-out condition, VDEV on PROG, RTA |
 | `js/mcdu5.js` | F-PLN pseudo waypoints (T/C, T/D, DECEL), ACTIVATE APPR PHASE after a go-around |
+| `js/mcdu6.js` | CO RTE and ROUTE selection, INIT REQUEST, pilot waypoints (stored, LL/PBD/PBX), STORED ROUTES, MCDU MENU |
 | `js/setup.js` | Save and load of the flight set-up (localStorage) |
 | `js/vnav.js` | Altitude and speed constraints: constrained descent path and T/D, constraints acting on the guidance, vertical predictions |
 | `js/pfd.js` | PFD drawing |

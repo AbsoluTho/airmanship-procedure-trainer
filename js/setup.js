@@ -4,7 +4,7 @@
    PERF, RAD NAV, winds...), the FCU and the EFIS settings in this browser (localStorage), so that a
    later session can go straight to the takeoff: LOAD SETUP puts everything back, ready for START. */
 const SETUP_KEY='airmanship.setup.v1';
-const SETUP_SKIP_S=['page','title','sp','msg','msgs','tmpy','dirTo','hold','phase','apprArm','secMode','msgOff'];
+const SETUP_SKIP_S=['req','rsel','nw','delAll','page','title','sp','msg','msgs','tmpy','dirTo','hold','phase','apprArm','secMode','msgOff'];
 const SETUP_SKIP_FCU=['ap1','ap2','athr','exped','hdgPre','hdgPreT','spdPre','spdPreT','vsPre','vsPreT'];
 function setupRead(){try{const t=localStorage.getItem(SETUP_KEY);return t?JSON.parse(t):null}catch(e){return null}}
 function setupSave(){if(flying()||flightReady().length)return false;
