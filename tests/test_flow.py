@@ -16,6 +16,7 @@ async def run(url,b):
     async def t(s):
         for ch in s: await k('SP' if ch==' ' else ch)
     # system message GPS PRIMARY (white) is shown while the scratchpad is empty and stays until CLR
+    assert await pg.evaluate('FL.rate')==1,'simulation speed starts at x1'
     assert await pg.evaluate("msgShown().t")=='GPS PRIMARY','GPS PRIMARY at power-up'
     await k('CLR');assert await pg.evaluate("msgShown()")==None,'CLR clears GPS PRIMARY'
     await t('OEJN/OETB');await k('R1');await t('OEMA');await k('L2');await t('TRN385');await k('L3');await t('20');await k('L5')
@@ -58,6 +59,10 @@ async def run(url,b):
     await t('1013');await k('L1');await t('2750');await k('R2');assert await pg.evaluate('window.__S().p2.qnh')==1013
     await k('R6');assert 'GO AROUND' in await scr()
     await k('SECF');await k('L1');assert await pg.evaluate('!!window.__S().sec'),'SEC copy'
+    await k('R1');assert 'SEC INIT' in await scr(),'SEC INIT A';await t('35');await k('L5')
+    assert await pg.evaluate('[I().ci,window.__S().sec.data.init.ci]')==[20,35],'SEC INIT keeps its own cost index'
+    await k('RIGHT');assert 'SEC INIT FUEL PRED' in await scr(),'SEC INIT B'
+    await k('SECF');await k('R2');x=await scr();assert x.startswith(' SEC') or 'SEC' in x.split('  ')[0],('SEC PERF',x)
     await k('DATA');await k('L5');assert 'OEJN' in await scr(),'CLOSEST AIRPORTS'
     await k('DATA');await k('L4');assert 'ACTIVE NAV DATA BASE' in await scr()
     await k('DATA');await k('RIGHT');await k('L2');await t('JDW');await k('L1');assert 'VORTAC' in await scr(),'NAVAID page'
@@ -128,6 +133,9 @@ async def run(url,b):
         if(did.des&&!did.q2&&FL.alt<12000){fcuPush('baro',false);did.q2=1}
         if(!did.c1&&FL.conf==='1'&&S.phase==='APPR'){const d=FL.path.sThr-FL.s;if(d<=12.2&&d>11)seen.add('CONF1 AT 12NM');did.c1=1}
         if(!did.c2&&FL.conf==='2'&&S.phase==='APPR'){const d=FL.path.sThr-FL.s;if(d<=8.2&&d>7)seen.add('CONF2 AT 8NM');did.c2=1}
+        if(!did.gr&&FL.gear&&S.phase==='APPR'){const d=FL.path.sThr-FL.s;if(d<=6.2&&d>5.5)seen.add('GEAR AT 6NM');did.gr=FL.t}
+        if(did.gr&&!did.f3&&FL.conf==='3'){if(Math.abs(FL.t-did.gr-5)<=1)seen.add('CONF3 5S AFTER GEAR');did.f3=FL.t}
+        if(did.f3&&!did.ff&&FL.conf==='FULL'){if(Math.abs(FL.t-did.f3-3)<=1)seen.add('FULL 3S AFTER CONF3');did.ff=1}
         if(!did.appr&&dtg<28){fcuButton('appr');fcuButton('ap2');did.appr=1}
         /* constraints: SPD 210 up to JN240, AT OR BELOW 7000 until ORPAR (ALT CST, then CLB again), ALT armed in magenta */
         const ixOf=id=>S.active.legs.findIndex(l=>l.id===id);
@@ -141,7 +149,7 @@ async def run(url,b):
         if(!did.lvl6&&FL.ver==='DES'&&Math.abs(FL.vs)<60&&Math.abs(FL.alt-7000)<40)seen.add('DES LEVEL AT CSTR'),did.lvl6=1;
         if(!did.pr&&S.phase==='CLB'&&FL.alt>8000){const v=vPredict(),q=v&&v.wp[ixOf('RIBIL')];if(q&&q.met)seen.add('RIBIL PREDICTED MET');did.pr=1}}
       seen.add('END:'+FL.stage);return[...seen]})()""")
-    for m in ['SD PAGES IN CRZ','TREND TAKEOFF','TREND LANDING','MACH IN CLB','SPEED IN DES','SD:eng','SD:crz','SD:wheel','SPD CST 210','ALT CST','ALT CST 7000','CLB AFTER ORPAR','ALT ARMED MAGENTA','RIBIL PREDICTED MET','BELOW 7000 AFTER D179O','SPD CST 220 DES','DES LEVEL AT CSTR','DIR TO INSERTED','PATH FROM T-P','FROM LINE SEQUENCED','QNH ABOVE TA','STD SET','PERF CRZ T/D','CONF1 AT 12NM','CONF2 AT 8NM','MAN','SRS','RWY','NAV','THR CLB','CLB','LEVEL7000','ALT','ALT CRZ','HDG','NAV REJOINED','DES','THR IDLE','LOC *','LOC','G/S*','G/S','CAT 3','DUAL','LAND','FLARE','RETARD','ROLL OUT','PH:CLB','PH:CRZ','PH:DES','PH:APPR','PH:DONE','END:STOP']:
+    for m in ['GEAR AT 6NM','CONF3 5S AFTER GEAR','FULL 3S AFTER CONF3','SD PAGES IN CRZ','TREND TAKEOFF','TREND LANDING','MACH IN CLB','SPEED IN DES','SD:eng','SD:crz','SD:wheel','SPD CST 210','ALT CST','ALT CST 7000','CLB AFTER ORPAR','ALT ARMED MAGENTA','RIBIL PREDICTED MET','BELOW 7000 AFTER D179O','SPD CST 220 DES','DES LEVEL AT CSTR','DIR TO INSERTED','PATH FROM T-P','FROM LINE SEQUENCED','QNH ABOVE TA','STD SET','PERF CRZ T/D','CONF1 AT 12NM','CONF2 AT 8NM','MAN','SRS','RWY','NAV','THR CLB','CLB','LEVEL7000','ALT','ALT CRZ','HDG','NAV REJOINED','DES','THR IDLE','LOC *','LOC','G/S*','G/S','CAT 3','DUAL','LAND','FLARE','RETARD','ROLL OUT','PH:CLB','PH:CRZ','PH:DES','PH:APPR','PH:DONE','END:STOP']:
         assert m in seen,f'never seen in the flight: {m}  (seen: {sorted(seen)})'
     await pg.evaluate("window.__flight('reset');window.__ecam.show(false)")
     # ---- second flight: OPEN CLB logic and selected SPD to MACH ----
@@ -184,6 +192,29 @@ async def run(url,b):
     await P('R4');await P('R6')
     r=await pg.evaluate("(()=>{for(let n=0;n<200;n++)step(0.5);const L=S.active.legs;return[L[idxK(S.active,'dest')].id,I().to,L[idxK(S.active,'dest')-1].k,!!S.active.ofst]})()")
     assert r==['OEMA','OEMA','disc',False],f'NEW DEST OEMA after a discontinuity, offset removed: {r}'
+    await pg.evaluate("window.__flight('reset');window.__S().active=clone(window.__plan0)")
+    # ---- fourth flight: STEP ALTS (step climb at LABUN), RTA at TBK, engine failure (EO), VDEV on PROG ----
+    await pg.evaluate("window.__S().active=clone(window.__plan0);window.__S().tmpy=null;window.__S().sp='';window.__S().msg=null;FCU.alt=34000;window.__S().rta=null")
+    await P('PERF');await P('R6');await P('R6');await P('R5');assert 'STEP ALTS' in await pg.evaluate("[...document.querySelectorAll('#scr .ln')].map(l=>l.textContent).join(' ')"),'STEP ALTS from PERF CRZ'
+    for ch in '360/LABUN': await P(ch)
+    await P('L1');assert await pg.evaluate("window.__S().active.legs.find(l=>l.id==='LABUN').step")==36000,'step FL360 at LABUN'
+    r=await pg.evaluate("""(()=>{window.__flight('start');let n=0,ap=0,o={};while(FL.stage!=='STOP'&&n<40000){step(0.5);n++;if(n%10===0)setFma();
+        if(!ap&&FL.alt-groundElev()>1200){fcuButton('ap1');ap=1}if(FL.ver==='ALT'&&FL.alt<8000){FCU.alt=34000;fcuPush('alt',false)}
+        if(S.phase==='CRZ'&&!o.f){FCU.alt=36000;o.f=1}if(n%10===0)msgTick();if(hasMsg('STEP AHEAD'))o.ahead=1;
+        if(o.f&&FL.ver==='CLB'&&!o.at)o.at=S.active.legs[FL.fromIx].id;if(o.at&&FL.ver==='ALT'&&Math.abs(FL.alt-36000)<30)break}
+      return{at:o.at,ahead:!!o.ahead,crz:I().crz,left:S.active.legs.some(l=>l.step!=null),alt:Math.round(FL.alt)}})()""")
+    assert r=={'at':'LABUN','ahead':True,'crz':360,'left':False,'alt':36000},f'step climb at LABUN to FL360: {r}'
+    tgt=await pg.evaluate("(()=>{S.rta={id:'TBK',t:0};const g=rtaGeo(),t=nowUtcS()+g.d/(0.76*sos(FL.alt))*3600;S.rta=null;return hms(t).replace(/:/g,'')})()")
+    rows=await pg.evaluate("fplnRows(window.__S().active).map(r=>r.id||r.k)");await P('FPLN');await pg.evaluate(f"window.__S().fpOff={rows.index('TBK')-1}");await P('R2');await P('R2')
+    for ch in tgt: await P(ch)
+    await P('R1');r=await pg.evaluate("(()=>{for(let n=0;n<1400;n++)step(0.5);const g=rtaGeo();return[S.rta.id,Math.round(g.err),Math.round(FL.mach*100)/100]})()")
+    assert r[0]=='TBK' and abs(r[1])<30 and 0.72<=r[2]<=0.80,f'RTA at TBK met by the managed Mach: {r}'
+    await pg.evaluate("window.__S().rta=null;window.__flight('eng:2')");r=await pg.evaluate("(()=>{for(let n=0;n<400;n++)step(0.5);return[S.eo,Math.round(FL.ias),cfgSpeeds().GD,sdPageSvg('hyd').includes('>LO<'),sdPageSvg('elec').includes('GEN</text>')]})()")
+    assert r[0] and abs(r[1]-r[2])<=5 and r[3] and r[4],f'engine 2 failure: EO condition, green dot, SD pages: {r}'
+    await P('PERF');assert 'CLR*' in await pg.evaluate("[...document.querySelectorAll('#scr .ln')].map(l=>l.textContent).join(' ')"),'EO CLR* on PERF CRZ'
+    await P('R1');assert not await pg.evaluate('window.__S().eo'),'EO CLR* clears the EO condition'
+    await pg.evaluate("window.__flight('eng:2');FCU.alt=7000;fcuPush('alt',false);(()=>{let n=0;while(S.phase!=='DES'&&n<20000){step(0.5);setFma();n++}for(let i=0;i<100;i++)step(0.5)})()")
+    await P('PROG');assert 'VDEV=' in await pg.evaluate("[...document.querySelectorAll('#scr .ln')].map(l=>l.textContent).join(' ')"),'VDEV on PROG in descent'
     await pg.evaluate("window.__flight('reset');window.__S().active=clone(window.__plan0)")
     await pg.click('text=Cockpit 3D');await pg.wait_for_timeout(2500)
     await pg.evaluate('window.__dbg3d.goView(3)');await pg.wait_for_timeout(2500)

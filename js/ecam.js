@@ -25,7 +25,9 @@ function engStep(){const tg=engTarget(),t=flying()?FL.t:0,dt=EC.t==null?99:Math.
   for(let i=0;i<2;i++){const e=EC.eng[i];if(!e||dt>60||!flying()){EC.eng[i]=Object.assign({},tg);continue}
     const mv=(k,r)=>{e[k]+=Math.max(-r*dt,Math.min(r*dt,tg[k]-e[k]))};mv('n1',6);mv('n2',4);mv('egt',30);mv('ff',400)}
   /* small difference between the engines, as on the aircraft */
-  return EC.eng.map((e,i)=>({n1:e.n1+(i?0.2:0),n2:e.n2+(i?0.3:0),egt:e.egt+(i?6:0),ff:e.ff+(i?10:0)}))}
+  /* a failed engine (training failure from the flight bar) windmills: low N1 and N2, cooling EGT, no fuel flow */
+  return EC.eng.map((e,i)=>flying()&&FL.eoEng===i+1?{n1:Math.min(e.n1,4+FL.ias*0.012),n2:Math.min(e.n2,10+FL.ias*0.04),egt:Math.min(e.egt,Math.max(satC()+40,120)),ff:0,fail:true}
+    :{n1:e.n1+(i?0.2:0),n2:e.n2+(i?0.3:0),egt:e.egt+(i?6:0),ff:e.ff+(i?10:0)})}
 
 /* ---------- shared figures ---------- */
 const fobKg=()=>Math.round((flying()?FL.fob:(S.fuel.block!=null?S.fuel.block:null))*1000);
