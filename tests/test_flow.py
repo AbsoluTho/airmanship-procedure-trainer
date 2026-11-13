@@ -77,6 +77,9 @@ async def run(url,b):
     assert 'FCU' in (await pg.evaluate('flightReady().join()')),'FCU altitude required before takeoff'
     await pg.evaluate("window.__FCU.alt=7000;window.__efis('ls')")
     assert await pg.evaluate('flightReady().length')==0,await pg.evaluate('flightReady()')
+    # ---- SAVE SETUP once START is possible ----
+    await pg.evaluate("localStorage.removeItem('airmanship.setup.v1')");await pg.click('[data-fl="setup:save"]')
+    assert (await pg.evaluate("window.__setup.read()&&window.__setup.read().label"))=='OEJN/OETB 16C MIGD2E','setup saved'
     # ---- FIX INFO (LAT REV at the origin): ref fix, radial and radius; crossing of the route computed ----
     await pg.evaluate("window.__plan0=clone(window.__S().active);window.__S().fpOff=0");await k('FPLN');await k('L1');await k('R1')
     assert 'FIX INFO' in await pg.evaluate("[...document.querySelectorAll('#scr .ln')].map(l=>l.textContent).join(' ')"),'FIX INFO page from LAT REV at the origin'
@@ -155,6 +158,10 @@ async def run(url,b):
     for m in ['APPR AT DECEL','GEAR AT 6NM','CONF3 5S AFTER GEAR','FULL 3S AFTER CONF3','SD PAGES IN CRZ','TREND TAKEOFF','TREND LANDING','MACH IN CLB','SPEED IN DES','SD:eng','SD:crz','SD:wheel','SPD CST 210','ALT CST','ALT CST 7000','CLB AFTER ORPAR','ALT ARMED MAGENTA','RIBIL PREDICTED MET','BELOW 7000 AFTER D179O','SPD CST 220 DES','DES LEVEL AT CSTR','DIR TO INSERTED','PATH FROM T-P','FROM LINE SEQUENCED','QNH ABOVE TA','STD SET','PERF CRZ T/D','CONF1 AT 12NM','CONF2 AT 8NM','MAN','SRS','RWY','NAV','THR CLB','CLB','LEVEL7000','ALT','ALT CRZ','HDG','NAV REJOINED','DES','THR IDLE','LOC *','LOC','G/S*','G/S','CAT 3','DUAL','LAND','FLARE','RETARD','ROLL OUT','PH:CLB','PH:CRZ','PH:DES','PH:APPR','PH:DONE','END:STOP']:
         assert m in seen,f'never seen in the flight: {m}  (seen: {sorted(seen)})'
     await pg.evaluate("window.__flight('reset');window.__ecam.show(false)")
+    # ---- LOAD SETUP after a flight: back to the saved set-up, ready for START ----
+    await pg.evaluate("I().ci=99;window.__S().active.legs.splice(3,2);FCU.alt=2000");await pg.click('[data-fl="setup:load"]')
+    r=await pg.evaluate("[I().ci,flightReady().length,window.__S().active.sid,FCU.alt>3000,window.__S().page,FL.active]")
+    assert r==[20,0,'MIGD2E',True,'FPLN',False],f'setup loaded, ready for START: {r}'
     # ---- second flight: OPEN CLB logic and selected SPD to MACH ----
     r=await pg.evaluate("""(()=>{FCU.alt=7000;FCU.spdMgd=true;FCU.mach=false;window.__flight('start');const out={};let n=0,d={};
       while(FL.stage!=='STOP'&&n<12000){step(0.5);setFma();n++;

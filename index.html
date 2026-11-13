@@ -50,6 +50,9 @@
           <button class="fb" type="button" data-fl="pause">PAUSE</button>
           <button class="fb" type="button" data-fl="reset">RESET FLIGHT</button>
         </div>
+        <div class="fl-row"><span class="fl-l">Setup</span>
+          <button class="fb sm" type="button" data-fl="setup:save" title="Save the MCDU, FCU and EFIS set-up (once START is possible)">SAVE</button><button class="fb sm" type="button" data-fl="setup:load" title="Load the saved set-up, ready for START">LOAD</button><span class="fl-l" id="flSetup"></span>
+        </div>
         <div class="fl-row"><span class="fl-l">Speed</span>
           <button class="fb sm" type="button" data-fl="rate:1">×1</button><button class="fb sm" type="button" data-fl="rate:4">×4</button><button class="fb sm" type="button" data-fl="rate:16">×16</button><button class="fb sm" type="button" data-fl="rate:64">×64</button>
         </div>
@@ -137,6 +140,7 @@
 <script src="js/mcdu3.js?v=dbee78bf"></script>
 <script src="js/mcdu4.js?v=926401a9"></script>
 <script src="js/mcdu5.js?v=b613fb8a"></script>
+<script src="js/setup.js?v=2a5f763d"></script>
 <script src="js/pfd.js?v=ca4b8837"></script>
 <script src="js/ecam.js?v=eccd916e"></script>
 <script src="js/sdpages.js?v=fe8668eb"></script>
