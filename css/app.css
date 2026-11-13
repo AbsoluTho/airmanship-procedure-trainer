@@ -21,7 +21,7 @@ button{font:inherit;color:inherit}
 .tab{background:none;border:0;border-bottom:2px solid transparent;padding:8px 16px 9px;font:600 16px/1 var(--f-display);letter-spacing:.08em;text-transform:uppercase;color:var(--ink3);cursor:pointer}
 .tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
 .view{display:none}.view.on{display:block}
-#v-mcdu.on{display:flex;gap:20px;align-items:flex-start;justify-content:center;flex-wrap:wrap}
+#v-mcdu.on{display:flex;gap:10px;align-items:flex-start;justify-content:center;flex-wrap:wrap}
 /* MCDU */
 #mcduHome{flex:0 0 auto;width:min(100%,calc((100dvh - 120px)*563/880),410px)}
 @media (max-width:1000px){#mcduHome{width:min(100%,563px)}}
@@ -74,24 +74,24 @@ button{font:inherit;color:inherit}
 .modal .mcdu{width:min(94vw,calc((100dvh - 90px)*563/880),563px)}
 /* ND + EFIS (photo panels, live overlays) */
 .ndpanel,.pfdpanel{flex:0 0 auto;display:flex;flex-direction:column;gap:6px;
-  width:min(100%,420px,calc((100dvh - 128px)/1.69),calc((100vw - 92px - min(410px,(100dvh - 120px)*0.6398))/2))}
-@media (max-width:1000px){.ndpanel,.pfdpanel{width:min(100%,420px,calc((100vw - 52px)/2))}}
+  width:min(100%,460px,calc((100dvh - 128px)/1.73),calc((100vw - 72px - min(410px,(100dvh - 120px)*0.6398))/2));align-items:center}
+@media (max-width:1000px){.ndpanel,.pfdpanel{width:min(100%,460px,calc((100vw - 42px)/2))}}
 @media (max-width:620px){.ndpanel,.pfdpanel{width:100%}}
 /* flight controls */
-.flight{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;justify-content:center;gap:6px;
-  aspect-ratio:676/401;overflow:auto;box-sizing:border-box}   /* same height as the EFIS panel, so the PFD lines up with the ND */
-.fl-state{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:baseline;font:500 13px var(--f-mono);color:var(--ink2)}
-.fl-state b{font:600 15px var(--f-display);letter-spacing:.08em;color:var(--accent)}
-.fl-ready{margin:0;padding-left:18px;font:12px/1.35 var(--f-body,inherit);color:var(--ink2)}
-.fl-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
-.fl-l{font:600 11px/1 var(--f-display);letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);min-width:58px}
-.fb{background:var(--sunk);border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:8px 11px;font:600 13px/1 var(--f-display);letter-spacing:.06em;cursor:pointer;-webkit-tap-highlight-color:transparent}
-.fb.sm{padding:6px 9px;min-width:40px}
+.flight{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:6px 8px;display:flex;flex-direction:column;justify-content:center;gap:4px;
+  width:82%;aspect-ratio:676/401;overflow:auto;box-sizing:border-box}   /* same height as the EFIS panel, so the PFD lines up with the ND */
+.fl-state{display:flex;flex-wrap:wrap;gap:2px 10px;align-items:baseline;font:500 12px var(--f-mono);color:var(--ink2)}
+.fl-state b{font:600 14px var(--f-display);letter-spacing:.08em;color:var(--accent)}
+.fl-ready{margin:0;padding-left:16px;font:11px/1.3 var(--f-body,inherit);color:var(--ink2)}
+.fl-row{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.fl-l{font:600 10px/1 var(--f-display);letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);min-width:50px}
+.fb{background:var(--sunk);border:1px solid var(--line);color:var(--ink);border-radius:7px;padding:6px 9px;font:600 12px/1 var(--f-display);letter-spacing:.06em;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.fb.sm{padding:5px 7px;min-width:34px}
 .fb.go{background:var(--accent-soft);border-color:#2f6d8f;color:var(--accent)}
 .fb[aria-pressed="true"]{background:var(--accent-soft);border-color:#2f6d8f;color:var(--accent)}
 .fb:disabled{opacity:.45;cursor:not-allowed}
 .fb:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
-.efis{position:relative;width:100%;aspect-ratio:676/401;border-radius:10px;overflow:hidden;user-select:none;-webkit-user-select:none;touch-action:manipulation}
+.efis{position:relative;width:82%;aspect-ratio:676/401;border-radius:10px;overflow:hidden;user-select:none;-webkit-user-select:none;touch-action:manipulation}
 .efis-img{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none;-webkit-user-drag:none}
 .efis button{position:absolute;background:transparent;border:0;padding:0;cursor:pointer;-webkit-tap-highlight-color:transparent;border-radius:6px}
 .efis button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
@@ -101,8 +101,8 @@ button{font:inherit;color:inherit}
 .efb:active{background:rgba(255,255,255,.06)}
 .knob{position:absolute;border-radius:50%;overflow:hidden;pointer-events:none;transition:transform .18s ease-out}
 .knob img{position:absolute;max-width:none;display:block}
-.ndbezel{position:relative;width:100%;aspect-ratio:510/559;border-radius:10px;overflow:hidden}
+.ndbezel{position:relative;width:100%;aspect-ratio:452/559;border-radius:10px;overflow:hidden}
 .ndbezel img{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none}
-#nd,#pfd{position:absolute;left:11.176%;top:11.449%;width:77.451%;height:74.419%;display:block;background:#000}
+#nd,#pfd{position:absolute;left:5.973%;top:11.449%;width:87.389%;height:74.419%;display:block;background:#000}
 @media (prefers-reduced-motion:reduce){.knob{transition:none}}
 @media (max-width:760px){.side{max-width:none}.mark{font-size:20px}}

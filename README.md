@@ -4,7 +4,7 @@ An unofficial A320 **procedure** trainer that runs in the browser (iPad first). 
 
 Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator manuals. The navigation data was typed from charts for training only and must never be used for navigation.
 
-## Status: Phase 2 prototype (v0.5.1)
+## Status: Phase 2 prototype (v0.5.2)
 
 - **MCDU** (Thales FMS2 layout, per FCOM DSC-22): keyboard and scratchpad, INIT A, F-PLN with TMPY (ERASE/INSERT), LAT REV, DEPARTURE, AIRWAYS (with airway-to-airway intersection), ARRIVAL, waypoint insertion, CLR of waypoints and discontinuities.
 - **Exercise** OEJN to OETB: RWY 16C MIGD2E, L677 WEJ, V54 TBK, ILS 31 via D179O, ALTN OEMA, FL340, CI 20, with automatic progress checks.
@@ -13,7 +13,7 @@ Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator
 - **INIT B**: TAXI, ZFW/ZFWCG, BLOCK, TRIP/TIME, RTE RSV, ALTN, FINAL, EXTRA, TOW/LW, TRIP WIND, MIN DEST FOB. **F-PLN** now shows TIME predictions and EFOB at destination once ZFW and BLOCK are entered.
 - **PERF TAKE OFF**: V1/VR/V2 (with V1/VR/V2 DISAGREE), F/S/O speeds, RWY, TO SHIFT, FLAPS/THS, FLEX, TRANS ALT, THR RED/ACC, ENG OUT ACC. Changing the takeoff runway clears the V speeds (CHECK TAKE OFF DATA).
 - **Automatic flight (Phase 2)**, captain's side only: START FLIGHT once the F-PLN, INIT and PERF TAKE OFF are complete. The aircraft flies the active F-PLN on a fixed path and a scripted profile: FLX takeoff, THR RED and ACC from PERF, 250 kt below 10000 ft, ECON climb and Mach cruise at the CRZ FL, descent from T/D on a 3° profile, level at the FAF altitude, LOC and G/S capture, CAT 3 DUAL autoland, roll-out and stop. Pause, speed ×1 to ×64, and skip to T/D or the approach.
-- **PFD** in the display-unit photo, lined up with the ND, flight controls above it: FMA (five columns, new modes boxed for 10 s), attitude and roll scale, FD bars, speed tape (VLS, VMAX, S/F/green dot, V1, target), Mach, altitude tape with target altitude and STD/QNH, vertical speed, heading tape, radio altitude, LOC and G/S deviation with the ILS ident and distance.
+- **PFD** drawn to match the reference A320 PFD photo (layout, colours, attitude shape, tapes, readout window), lined up with the ND, flight controls above it: FMA (five columns, new modes boxed for 10 s), attitude and roll scale, FD bars, speed tape (VLS, VMAX, S/F/green dot, V1, target), Mach, altitude tape with target altitude and STD/QNH, vertical speed, heading tape, radio altitude, LOC and G/S deviation with the ILS ident and distance.
 - **Live during the flight**: ND (aircraft position, GS/TAS, TO waypoint), F-PLN sequencing (passed waypoints disappear, UTC and EFOB), flight phases (PROG, PERF page titles, ACTIVATE APPR PHASE), fuel burn, and the captain's PFD and ND in the 3D cockpit.
 - **Departures** start with a climb on runway track to 400 ft AAL when a SID is inserted, or to 1500 ft AAL for a runway-only (visual) departure, shown as an altitude leg such as `(426)` with `C156°`.
 - **SEC F-PLN** is shown all in white and is revised directly with the normal F-PLN, LAT REV, DEPARTURE, ARRIVAL, AIRWAYS and VERT REV pages, with no temporary flight plan; it is drawn in white on the ND while displayed.

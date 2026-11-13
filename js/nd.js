@@ -121,8 +121,8 @@ function drawND(g,W,H,powered){g.save();g.setTransform(1,0,0,1,0,0);g.fillStyle=
   if(V.m==='PLAN'){const[x,y]=pj(ac.pos);if(x>40&&x<728&&y>100&&y<Hg-60)plane(x,y,ac.hdg+ac.vr)}else plane(V.cx,V.cy,0);
   /* data fields */
   g.textBaseline='alphabetic';g.textAlign='left';
-  g.font=NF(22);g.fillStyle=NC.w;g.fillText('GS',12,40);g.font=NF(31);g.fillStyle=NC.g;g.fillText(flying()?String(Math.round(FL.gs)):'0',68,40);
-  g.font=NF(22);g.fillStyle=NC.w;g.fillText('TAS',94,40);g.font=NF(31);g.fillStyle=NC.g;g.fillText(flying()&&FL.tas>=60?String(Math.round(FL.tas)):'---',148,40);
+  g.font=NF(22);g.fillStyle=NC.w;g.fillText('GS',12,40);g.font=NF(31);g.fillStyle=NC.g;g.fillText(flying()?String(Math.round(FL.gs)):'0',56,40);
+  g.font=NF(22);g.fillStyle=NC.w;g.fillText('TAS',124,40);g.font=NF(31);g.fillStyle=NC.g;g.fillText(flying()&&FL.tas>=60?String(Math.round(FL.tas)):'---',176,40);
   g.font=NF(31);g.fillStyle=NC.g;g.fillText('---',6,74);g.fillStyle=NC.w;g.fillText('/',56,74);g.fillStyle=NC.g;g.fillText('---',70,74);
   if(to&&to.pos&&V.map){const b=Math.round((brg(ac.pos,to.pos)-ac.vr+360)%360)||360,d=gc(ac.pos,to.pos);
     g.textAlign='left';g.font=NF(31);g.fillStyle=NC.w;g.fillText(to.id,520,40);
