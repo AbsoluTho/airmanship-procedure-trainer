@@ -76,7 +76,7 @@ Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator
 | `js/cockpit3d.js` | 3D cockpit scene, pushbuttons, live pedestal MCDUs |
 | `js/app.js` | Exercise checks, tabs, MCDU pop-up |
 | `img/`, `fonts/`, `vendor/three.min.js` | Assets (Three.js r149) |
-| `tools/build_single.py` | Builds `dist/index.html`, one self-contained file for the private test page |
+| `tools/build_single.py` | Builds `dist/index.html`, one self-contained file for the private test page; also stamps the scripts and stylesheet in `index.html` with a hash of their contents (`?v=…`) so that browsers and the home-screen app load new versions instead of cached files |
 | `tools/navdb/` | Scripts used to turn chart positions and OFP coordinates into `navdb.js` |
 | `tests/test_flow.py` | End-to-end test (Playwright + Chrome) of the exercise and the 3D cockpit |
 
