@@ -74,9 +74,13 @@ async def run(url,b):
     assert await pg.evaluate("window.__ecam.page()")=='wheel','SD on the ground: WHEEL'
     await pg.click('[data-ecp="fuel"]');assert await pg.evaluate("window.__ecam.page()")=='fuel','SD FUEL key'
     await pg.click('[data-ecp="fuel"]');assert await pg.evaluate("window.__ecam.page()")=='wheel','second press: back to the automatic page'
-    for key in ['eng','bleed','press','elec','hyd','apu','cond','door','fctl','sts','all']: await pg.click(f'[data-ecp="{key}"]')
+    for key in ['eng','bleed','press','elec','hyd','apu','cond','door','fctl','sts','all','rcl','emer']: await pg.click(f'[data-ecp="{key}"]')
     await pg.click('[data-ecp="clr"]');await pg.click('[data-ecp="tocfg"]');assert await pg.evaluate('window.__EC.toCfg'),'T.O CONFIG test'
-    await pg.click('[data-ecp="mcdu"]');assert not await pg.evaluate("window.__EC.on"),'MCDU key returns to the MCDU'
+    assert await pg.evaluate("!document.querySelector('#ecp').hidden"),'ECAM control panel shown over the ND with the ECAM'
+    await pg.click('#duToggle');assert not await pg.evaluate("window.__EC.on"),'MCDU button returns to the MCDU'
+    assert await pg.evaluate("document.querySelector('#ecp').hidden"),'control panel hidden with the MCDU'
+    await pg.click('#ecpBtn');assert await pg.evaluate("!document.querySelector('#ecp').hidden"),'ND button shows the control panel with the MCDU'
+    await pg.click('#ecpBtn');assert await pg.evaluate("document.querySelector('#ecp').hidden"),'ND button hides it again'
     await pg.evaluate("window.__ecam.show(true)")
     # descent constraints for the flight: SPD 220 and AT OR BELOW 7000 at D179O (DES then flies level at 7000)
     await pg.evaluate("(()=>{const l=window.__S().active.legs.find(l=>l.id==='D179O');l.spd=220;l.alt={t:'-',v:7000}})()")

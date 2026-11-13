@@ -133,21 +133,27 @@ button{font:inherit;color:inherit}
 .fb:disabled{opacity:.45;cursor:not-allowed}
 .fb:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 @media (max-width:760px){.side{max-width:none}.mark{font-size:20px}}
-/* ECAM behind the MCDU: E/WD above SD, ECAM control keys on both sides, same size as the MCDU */
+/* ECAM behind the MCDU: E/WD above SD (reference photos), together the size of the MCDU */
 #mcduHome{position:relative}
 #mcduHome .ecam{display:none}
 #mcduHome.ecam-on .ecam{display:flex}
 #mcduHome.ecam-on>.mcdu{display:none}
-.ecam{width:100%;aspect-ratio:563/880;gap:1.2%;padding:0 1.2%;box-sizing:border-box;background:linear-gradient(#3a4250,#2a313c);border-radius:10px;align-items:stretch;user-select:none;-webkit-user-select:none}
-.ecam-dus{flex:0 0 auto;height:100%;aspect-ratio:1/2;display:flex;flex-direction:column;gap:1.2%;padding:1.2% 0;box-sizing:border-box}
-.ecam-dus .du{flex:1 1 0;min-height:0;position:relative;border-radius:7px;background:linear-gradient(#4a5160,#2f3540);box-shadow:inset 0 1px 0 rgba(255,255,255,.15),inset 0 -2px 4px rgba(0,0,0,.45),0 2px 5px rgba(0,0,0,.5);padding:3.2%}
-#ewd,#sd{width:100%;height:100%;display:block;background:#000;border-radius:3px;box-shadow:0 0 0 2px #15181e}
-.ecp-col{flex:1 1 0;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:1.1%;padding:9% 0 2%}
-.ecp{position:relative;flex:0 0 auto;width:100%;aspect-ratio:1.25;border:0;border-radius:5px;background:linear-gradient(#5a6170,#3d4350);box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 2px 3px rgba(0,0,0,.5);color:#e9ecf2;font:600 clamp(7px,0.82vw,11px)/1.05 "IBM Plex Mono",ui-monospace,monospace;padding:0;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px}
-.ecp i{display:block;width:46%;height:3px;border-radius:2px;background:#1b1f26}
-.ecp.lit i{background:#f4f6fa;box-shadow:0 0 6px rgba(255,255,255,.8)}
-.ecp[data-ecp="mcdu"]{background:linear-gradient(#2f6f9a,#1f4f72)}
-.ecp:active{transform:translateY(1px)}
+.ecam{width:100%;aspect-ratio:563/880;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(#3a4250,#2a313c);border-radius:10px;user-select:none;-webkit-user-select:none;overflow:hidden}
+.ecdu{position:relative;width:86.9%;flex:none}
+.ecdu.ewd{aspect-ratio:676/619}.ecdu.sdu{aspect-ratio:676/597}
+.ecdu img{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none}
+#ewd{position:absolute;left:11.243%;top:13.247%;width:77.219%;height:82.391%;display:block;background:#000}
+#sd{position:absolute;left:11.391%;top:11.390%;width:77.071%;height:82.747%;display:block;background:#000}
+/* MCDU / ECAM switch: same place in both views (top centre) */
 .dutoggle{position:absolute;z-index:3;top:1.1%;left:50%;transform:translateX(-50%);border:1px solid rgba(255,255,255,.35);border-radius:999px;background:rgba(18,24,32,.85);color:#9fe3ff;font:600 11px/1 "IBM Plex Mono",ui-monospace,monospace;letter-spacing:.06em;padding:5px 12px;cursor:pointer}
 .dutoggle:hover{background:rgba(30,40,54,.95)}
-#mcduHome.ecam-on .dutoggle{display:none}
+/* ECAM control panel over the lower half of the ND, and its on/off button in the ND's lower right corner */
+.ecp-pan{position:absolute;z-index:2;left:3%;width:94%;bottom:14.132%;aspect-ratio:676/248;border-radius:6px;overflow:hidden;box-shadow:0 4px 14px rgba(0,0,0,.6)}
+.ecp-pan[hidden]{display:none}
+.ecp-pan img{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none}
+.ecp-k{position:absolute;border:0;background:transparent;padding:0;cursor:pointer;border-radius:4px}
+.ecp-k:active{background:rgba(255,255,255,.12)}
+.ecp-k i{position:absolute;left:30%;width:40%;top:9%;height:11%;border-radius:2px;background:transparent}
+.ecp-k.lit i{background:#f4f6fa;box-shadow:0 0 6px rgba(255,255,255,.9)}
+.ecp-btn{position:absolute;z-index:3;right:2.2%;bottom:2.4%;border:1px solid rgba(255,255,255,.35);border-radius:999px;background:rgba(18,24,32,.85);color:#9fe3ff;font:600 10px/1 "IBM Plex Mono",ui-monospace,monospace;letter-spacing:.06em;padding:4px 9px;cursor:pointer}
+.ecp-btn[aria-pressed="true"]{background:#1f4f72;color:#fff}

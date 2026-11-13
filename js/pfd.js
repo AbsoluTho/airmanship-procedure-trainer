@@ -118,7 +118,7 @@ function drawPFD(g,W,H,powered){g.save();g.setTransform(1,0,0,1,0,0);g.fillStyle
   {const fcu=tgtA,y=ay(fcu);if(y>=182&&y<=497){g.save();g.beginPath();g.rect(477,182,49,315);g.clip();g.strokeStyle=PC[tgtC];g.lineWidth=2.5;g.strokeRect(478,y-10,46,20);g.restore()}}
   /* vertical deviation (green dot): the managed descent path on the altitude tape; low dot = aircraft above the path */
   if(on&&!FL.ground&&['DES','APPR'].includes(S.phase)&&!['G/S*','G/S','LAND','FLARE','ROLL OUT'].includes(FL.ver)&&FL.path){const dtg=FL.path.sThr-FL.s;
-    if(dtg>0.5){const pa=profileAlt(dtg)+(alt-FL.alt),y=Math.max(196,Math.min(484,ay(pa)));g.strokeStyle=PC.g;g.lineWidth=2.5;g.beginPath();g.arc(470,y,6,0,7);g.stroke()}}
+    if(dtg>0.5){const pa=profileAlt(dtg)+(alt-FL.alt),y=Math.max(196,Math.min(484,ay(pa)));g.fillStyle=PC.g;g.beginPath();g.arc(470,y,6.5,0,7);g.fill()}}
   /* readout window: black band with yellow top and bottom, drum box on the right */
   g.fillStyle='#000';g.fillRect(477,323,49,34);g.fillRect(526,313,32,54);
   L(477,323,526,323,'y',2.5);L(477,357,526,357,'y',2.5);box(526,313,32,54,'y',2.5);

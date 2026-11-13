@@ -4,9 +4,7 @@
    simplified flight model (engines, fuel, configuration, flight phase); systems that are not
    simulated are shown in their normal state. Layouts follow the A320 ECAM in a simplified
    form, for procedure training only. */
-const EC={on:false,page:null,manual:false,toCfg:false,toCfgT:-99,stsT:-99,eng:[null,null],t:null,allIx:0};
-const ECP_KEYS=[['ENG','eng'],['BLEED','bleed'],['PRESS','press'],['ELEC','elec'],['HYD','hyd'],['FUEL','fuel'],['APU','apu'],['COND','cond'],
-  ['DOOR','door'],['WHEEL','wheel'],['F/CTL','fctl'],['ALL','all'],['STS','sts'],['RCL','rcl'],['CLR','clr'],['T.O<br>CONFIG','tocfg'],['MCDU','mcdu']];
+const EC={on:false,ecp:false,page:null,manual:false,toCfg:false,toCfgT:-99,stsT:-99,eng:[null,null],t:null,allIx:0};
 const SD_ORDER=['eng','bleed','press','elec','hyd','fuel','apu','cond','door','wheel','fctl'];
 const SD_TITLE={eng:'ENGINE',bleed:'BLEED',press:'CAB PRESS',elec:'ELEC',hyd:'HYD',fuel:'FUEL',apu:'APU',cond:'COND',door:'DOOR/OXY',wheel:'WHEEL',fctl:'F/CTL',sts:'STATUS',crz:'CRUISE'};
 const EC_C={w:'#ffffff',g:'#3df24e',b:'#3fd2ff',a:'#ff9a1f',m:'#ff8cf0',r:'#ff2020',gr:'#8a8b9f',bg:'#000'};
@@ -45,69 +43,75 @@ function autoPage(){if(!flying())return'wheel';
   if(FL.ground)return'wheel';if(FL.gear&&S.phase==='APPR')return'wheel';return'crz'}
 const sdPage=()=>EC.page||autoPage();
 
-/* ---------- drawing helpers (virtual 600 x 600 screen) ---------- */
-function ecCtx(c){const g=c.getContext('2d'),W=c.width,H=c.height,s=Math.min(W,H)/600;g.setTransform(1,0,0,1,0,0);g.fillStyle='#000';g.fillRect(0,0,W,H);
-  g.setTransform(s,0,0,s,(W-600*s)/2,(H-600*s)/2);g.lineCap='round';g.lineJoin='round';
-  const T=(t,x,y,col,px,al,w)=>{g.font=`${w||500} ${Math.round((px||22)*1.12)}px "Helvetica Neue",Helvetica,Arial,sans-serif`;g.fillStyle=EC_C[col]||col;g.textAlign=al||'left';g.textBaseline='middle';g.fillText(t,x,y)};
+/* ---------- drawing helpers: drawn in the pixel coordinates of the reference photo (screen x0,y0,w,h) ---------- */
+function ecTools(g,f){const F=px=>`500 ${Math.round(px*f)}px "Helvetica Neue",Helvetica,Arial,sans-serif`;
+  const T=(t,x,y,col,px,al,w)=>{g.font=F(px||22).replace('500',String(w||500));g.fillStyle=EC_C[col]||col;g.textAlign=al||'left';g.textBaseline='middle';g.fillText(t,x,y)};
   const L=(pts,col,w)=>{g.strokeStyle=EC_C[col]||col;g.lineWidth=w||2.5;g.beginPath();pts.forEach((p,i)=>i?g.lineTo(p[0],p[1]):g.moveTo(p[0],p[1]));g.stroke()};
   const R=(x,y,w,h,col,lw)=>{g.strokeStyle=EC_C[col]||col;g.lineWidth=lw||2;g.strokeRect(x,y,w,h)};
-  const title=(t,x,y)=>{T(t,x,y,'w',26);g.font='500 29px "Helvetica Neue",Helvetica,Arial,sans-serif';const w=g.measureText(t).width;L([[x,y+15],[x+w,y+15]],'w',2)};
-  return{g,T,L,R,title}}
-/* dotted memo line: left text, dots, right text */
-function memo(T,g,x,y,a,b,done){if(done){T(a+' '+b,x,y,'g',22);return}T(a,x,y,'b',22);g.font='500 25px "Helvetica Neue",Helvetica,Arial,sans-serif';
-  const w=g.measureText(a).width,bw=g.measureText(b).width,end=x+255;T('.'.repeat(Math.max(2,Math.floor((end-bw-x-w-6)/7))),x+w+3,y,'b',22);T(b,end,y,'b',22,'right')}
+  const title=(t,x,y,px,al)=>{T(t,x,y,'w',px||26,al);g.font=F(px||26);const w=g.measureText(t).width,x0=al==='center'?x-w/2:x;L([[x0,y+(px||26)*0.62],[x0+w,y+(px||26)*0.62]],'w',1.8)};
+  return{g,T,L,R,title,F}}
+function ecCtx(c,x0,y0,w,h){const g=c.getContext('2d'),s=c.width/w;g.setTransform(1,0,0,1,0,0);g.fillStyle='#000';g.fillRect(0,0,c.width,c.height);
+  g.setTransform(s,0,0,c.height/h,-x0*s,-y0*c.height/h);g.lineCap='round';g.lineJoin='round';return ecTools(g,1)}
+/* dotted memo line: action in cyan with dots, or the done item in green */
+function memo(D,x,y,a,b,done,end){const{T,g,F}=D;if(done){T(a+' '+b,x,y,'g',17);return}T(a,x,y,'b',17);g.font=F(17);
+  const w=g.measureText(a).width,bw=g.measureText(b).width,e=end||x+262;T('.'.repeat(Math.max(2,Math.floor((e-bw-x-w-4)/4.7))),x+w+2,y,'b',17);T(b,e,y,'b',17,'right')}
 
-/* ---------- E/WD ---------- */
-function gauge(D,cx,cy,r,v,min,max,amb,red,txt){const{g,T,L}=D,a0=200,a1=-20,ang=x=>(a0-(Math.max(min,Math.min(max,x))-min)/(max-min)*(a0-a1))*Math.PI/180;
-  g.strokeStyle=EC_C.w;g.lineWidth=3;g.beginPath();g.arc(cx,cy,r,-ang(min),-ang(red??max));g.stroke();
-  if(red!=null){g.strokeStyle=EC_C.r;g.lineWidth=5;g.beginPath();g.arc(cx,cy,r,-ang(red),-ang(max));g.stroke()}
-  if(amb!=null){const a=ang(amb);L([[cx+Math.cos(a)*(r-8),cy-Math.sin(a)*(r-8)],[cx+Math.cos(a)*(r+6),cy-Math.sin(a)*(r+6)]],'a',4)}
-  const a=ang(v);L([[cx+Math.cos(a)*r*0.25,cy-Math.sin(a)*r*0.25],[cx+Math.cos(a)*(r+4),cy-Math.sin(a)*(r+4)]],'g',4);
-  g.fillStyle='#000';g.fillRect(cx+2,cy+r*0.05,r*0.98,r*0.5);D.R(cx+2,cy+r*0.05,r*0.98,r*0.5,'gr',1.5);T(txt,cx+r*0.94,cy+r*0.31,'g',r>55?30:26,'right')}
-function drawEWD(c){const D=ecCtx(c),{g,T,L}=D,E=engStep(),q=S.perf,on=flying();
-  /* N1 */
-  [115,335].forEach((cx,i)=>{const n=E[i].n1;gauge(D,cx,100,72,n,0,110,null,100,(Math.floor(n*10)/10).toFixed(1));
-    [[0,'0'],[50,'5'],[100,'10']].forEach(([v,l])=>{const a=(200-v/110*220)*Math.PI/180;T(l,cx+Math.cos(a)*56,100-Math.sin(a)*56,'w',16,'center')})});
-  T('N1',225,84,'w',22,'center');T('%',225,110,'b',20,'center');
+/* ---------- E/WD (reference photo: screen x 76-598, y 82-592) ---------- */
+function drawEWD(c){const D=ecCtx(c,76,82,522,510),{g,T,L,R}=D,E=engStep(),q=S.perf,on=flying();
+  const flx=q.flex!=null,tl=!on||FL.thr==='TO'?(flx?'FLX':'TOGA'):'CLB',n1l=tl==='FLX'?Math.max(80,92.4-(q.flex-30)*0.26):tl==='TOGA'?92.8:Math.min(91.5,87.4+(on?FL.alt:0)/1e4*1.2);
+  const tla=!on||FL.stage==='STOP'||FL.stage==='ROLLOUT'?0:FL.thr==='TO'?n1l:Math.min(91.5,87.4+FL.alt/1e4*1.2);   /* thrust lever position (cyan circle) */
+  const pol=(cx,cy,r,a)=>[cx+Math.cos(a)*r,cy-Math.sin(a)*r];
+  /* N1: arc from idle (lower left) to 110 %, red above 100 %, amber N1 limit, cyan thrust lever, green needle, readout box */
+  const n1a=v=>(215-Math.max(0,Math.min(110,v))/100*190)*Math.PI/180;
+  [222,432].forEach((cx,i)=>{const cy=150,r=43,n=E[i].n1;
+    g.strokeStyle=EC_C.w;g.lineWidth=2.4;g.beginPath();g.arc(cx,cy,r,-n1a(0),-n1a(100));g.stroke();
+    g.strokeStyle=EC_C.r;g.lineWidth=3.5;g.beginPath();g.arc(cx,cy,r,-n1a(100),-n1a(110));g.stroke();
+    [[0,'',8],[50,'5',8],[100,'10',8]].forEach(([v,l,k])=>{L([pol(cx,cy,r,n1a(v)),pol(cx,cy,r-k,n1a(v))],'w',2);if(l)T(l,...pol(cx,cy,r-16,n1a(v)),'w',13,'center')});
+    L([pol(cx,cy,r+1,n1a(n1l)),pol(cx,cy,r+9,n1a(n1l))],'a',4);
+    g.strokeStyle=EC_C.b;g.lineWidth=2;g.beginPath();g.arc(...pol(cx,cy,r,n1a(tla)),3.5,0,7);g.stroke();
+    L([pol(cx,cy,4,n1a(n)),pol(cx,cy,r-2,n1a(n))],'g',3.2);
+    g.fillStyle='#000';g.fillRect(cx-11,cy+5,64,22);R(cx-11,cy+5,64,22,'#7d8296',1.6);
+    const t=(Math.floor(n*10)/10).toFixed(1);T(t.slice(0,-1),cx+40,cy+17,'g',19,'right');T(t.slice(-1),cx+41,cy+18,'g',14)});
+  T('N1',330,152,'w',18,'center');T('%',330,170,'b',15,'center');
   /* EGT */
-  [115,335].forEach((cx,i)=>gauge(D,cx,232,50,E[i].egt,0,1100,1060,1080,String(Math.round(E[i].egt/5)*5)));
-  T('EGT',225,222,'w',22,'center');T('°C',225,248,'b',20,'center');
-  /* N2, FF */
-  const dig=(v,d)=>v.toFixed(d);
-  [115,335].forEach((cx,i)=>{T(dig(E[i].n2,1),cx+48,310,'g',28,'right');T(String(Math.round(E[i].ff/20)*20),cx+48,352,'g',28,'right')});
-  T('N2',225,300,'w',22,'center');T('%',225,322,'b',18,'center');T('FF',225,344,'w',22,'center');T('KG/H',225,366,'b',16,'center');
+  const ea=v=>(180-Math.max(0,Math.min(1100,v))/1100*180)*Math.PI/180;
+  [222,432].forEach((cx,i)=>{const cy=230,r=38,v=E[i].egt;g.strokeStyle=EC_C.w;g.lineWidth=2.4;g.beginPath();g.arc(cx,cy,r,-ea(0),-ea(1060));g.stroke();
+    g.strokeStyle=EC_C.r;g.lineWidth=3.5;g.beginPath();g.arc(cx,cy,r,-ea(1060),-ea(1100));g.stroke();L([pol(cx,cy,r+1,ea(915)),pol(cx,cy,r+8,ea(915))],'a',3);
+    L([pol(cx,cy,r*0.55,ea(v)),pol(cx,cy,r-1,ea(v))],'g',3.2);g.fillStyle='#000';g.fillRect(cx-22,cy-11,47,22);R(cx-22,cy-11,47,22,'#7d8296',1.6);T(String(Math.round(v/5)*5),cx+21,cy+1,'g',19,'right')});
+  T('EGT',330,220,'w',18,'center');T('°C',330,238,'b',15,'center');
+  /* N2 and FF with the slanted label lines */
+  [[0,247],[1,457]].forEach(([i,x])=>{const n2=E[i].n2.toFixed(1);T(n2.slice(0,-1),x-9,287,'g',19,'right');T(n2.slice(-1),x-8,288,'g',14);T(String(Math.round(E[i].ff/10)*10),x+5,334,'g',19,'right')});
+  T('N2',330,276,'w',18,'center');T('%',330,294,'b',15,'center');L([[281,289],[311,281]],'w',1.8);L([[350,281],[380,289]],'w',1.8);
+  T('FF',330,323,'w',18,'center');T('KG/H',330,341,'b',15,'center');L([[281,337],[311,329]],'w',1.8);L([[350,329],[380,337]],'w',1.8);
   /* thrust limit */
-  const flx=q.flex!=null,tl=!on||FL.thr==='TO'?(flx?'FLX':'TOGA'):FL.thr==='LVR'||FL.thr==='CL'?'CLB':'CLB',n1l=tl==='FLX'?Math.max(80,92.4-(q.flex-30)*0.26):tl==='TOGA'?92.8:Math.min(91.5,87.4+(on?FL.alt:0)/1e4*1.2);
-  T(tl,450,40,'b',26,'left');T(n1l.toFixed(1),560,78,'g',28,'right');T('%',592,78,'b',20,'right');if(tl==='FLX')T('+'+q.flex+'°C',590,114,'b',22,'right');
-  /* FOB */
-  const fob=fobKg();T('FOB :',14,398,'w',22);T(fob!=null&&!isNaN(fob)?String(Math.round(fob/10)*10):'XX',200,398,fob!=null&&!isNaN(fob)?'g':'a',28,'right');T('KG',208,398,'b',20);
+  T(tl,515,97,'b',18);T(n1l.toFixed(1).slice(0,-1),556,117,'g',18,'right');T(n1l.toFixed(1).slice(-1),557,118,'g',14);T('%',566,117,'b',15);if(tl==='FLX')T(q.flex+'°C',575,137,'b',15,'right');
   /* slats and flaps */
   const cf=on?FL.conf:(q.flaps===1?'1+F':String(q.flaps||0)),si={'0':0,'1':1,'1+F':1,'2':2,'3':2,'FULL':3}[cf]??0,fi={'0':0,'1':0,'1+F':1,'2':2,'3':3,'FULL':4}[cf]??0;
-  T('S',432,250,'w',22,'center');T('F',588,250,'w',22,'center');
-  g.fillStyle='#3a3d4e';g.beginPath();g.moveTo(482,242);g.lineTo(532,242);g.lineTo(537,254);g.lineTo(477,254);g.closePath();g.fill();
-  for(let k=1;k<=3;k++){g.fillStyle=EC_C.w;g.beginPath();g.arc(477-k*13,254+k*8,3,0,7);g.fill()}
-  for(let k=1;k<=4;k++){g.fillStyle=EC_C.w;g.beginPath();g.arc(537+k*11,254+k*8,3,0,7);g.fill()}
-  L([[477,254],[477-si*13,254+si*8]],'g',5);L([[537,254],[537+fi*11,254+fi*8]],'g',5);
-  if(cf!=='0')T(cf==='FULL'?'FULL':cf,510,300,'g',26,'center');
+  const wx=440,wy=380;g.lineWidth=2;g.strokeStyle=EC_C.g;g.beginPath();g.moveTo(wx-18,wy+6);g.lineTo(wx-12,wy-4);g.lineTo(wx+14,wy-4);g.lineTo(wx+20,wy+6);g.closePath();g.stroke();
+  L([[wx-26,wy+8],[wx-18,wy+6]],cf==='0'?'g':'w',2);L([[wx+20,wy+6],[wx+28,wy+8]],cf==='0'?'g':'w',2);
+  if(cf!=='0'){for(let k=1;k<=3;k++){g.fillStyle=EC_C.w;g.beginPath();g.arc(wx-26-k*10,wy+8+k*6,2,0,7);g.fill()}for(let k=1;k<=4;k++){g.fillStyle=EC_C.w;g.beginPath();g.arc(wx+28+k*9,wy+8+k*6,2,0,7);g.fill()}
+    L([[wx-26,wy+8],[wx-26-si*10,wy+8+si*6]],'g',4);L([[wx+28,wy+8],[wx+28+fi*9,wy+8+fi*6]],'g',4);T('S',wx-70,wy+10,'w',15,'center');T('F',wx+80,wy+10,'w',15,'center');T(cf,wx,wy+28,'g',18,'center')}
+  /* FOB */
+  const fob=fobKg(),ok=fob!=null&&!isNaN(fob);T('FOB :',84,406,'w',18);T(ok?String(Math.round(fob/10)*10):'XX',210,406,ok?'g':'a',19,'right');T('KG',232,407,'b',16);
   /* memo area */
-  L([[10,425],[590,425]],'w',2);L([[350,435],[350,592]],'w',2);
-  const agl=on?FL.alt-groundElev():0,y0=450,dy=26.5,mx=78;
-  if(!on){[['T.O AUTO BRK','MAX',true],['SIGNS','ON',true],['CABIN','CHECK',true],['SPLRS','ARM',true],['FLAPS','T.O',!!q.flaps],['T.O CONFIG','TEST',EC.toCfg]].forEach(([a,b,d],k)=>{
-      if(k===0)T('T.O',14,y0,'w',22);const a2=k===0?'AUTO BRK':a;
-      if(k===5&&d)T('T.O CONFIG NORMAL',mx,y0+k*dy,'g',22);else memo(T,g,mx,y0+k*dy,a2,d&&b==='CHECK'?'READY':b,d)})}
-  else if(['APPR'].includes(S.phase)&&agl<2000&&!FL.ground){
-    const full=!S.p2.conf3;[['LDG','LDG GEAR','DN',FL.gear],['','SIGNS','ON',true],['','CABIN','READY',true],['','SPLRS','ARM',true],['','FLAPS',full?'FULL':'CONF 3',FL.conf===(full?'FULL':'3')]].forEach(([p,a,b,d],k)=>{
-      if(p)T(p,14,y0,'w',22);memo(T,g,mx,y0+k*dy,a,b,d)})}
-  /* right memos */
+  L([[76,423],[378,423]],'w',2);L([[427,423],[598,423]],'w',2);L([[402,432],[402,570]],'w',2);
+  const agl=on?FL.alt-groundElev():0,x0=84,y0=438,dy=18.5;
+  if(!on){[['AUTO BRK','MAX',true],['SIGNS','ON',true],['CABIN','CHECK',true],['SPLRS','ARM',true],['FLAPS','T.O',!!q.flaps],['T.O CONFIG','TEST',EC.toCfg]].forEach(([a,b,d],k)=>{
+      if(k===0)T('T.O',x0,y0,'w',17);if(k===5&&d)T('T.O CONFIG NORMAL',x0+36,y0+k*dy,'g',17);else memo(D,x0+36,y0+k*dy,a,d&&b==='CHECK'?'READY':b,d,360)})}
+  else if(S.phase==='APPR'&&agl<2000&&!FL.ground){const full=!S.p2.conf3;
+    [['LDG GEAR','DN',FL.gear],['SIGNS','ON',true],['CABIN','READY',true],['SPLRS','ARM',true],['FLAPS',full?'FULL':'CONF 3',FL.conf===(full?'FULL':'3')]].forEach(([a,b,d],k)=>{if(k===0)T('LDG',x0,y0,'w',17);memo(D,x0+36,y0+k*dy,a,b,d,360)})}
   const rm=[];if(on&&(FL.thr==='TO'||(!FL.ground&&agl<1500&&S.phase==='TAKEOFF')))rm.push(['T.O INHIBIT','m']);
-  if(on&&!FL.ground&&S.phase==='APPR'&&agl<800||FL.stage==='ROLLOUT')rm.push(['LDG INHIBIT','m']);
+  if(on&&(!FL.ground&&S.phase==='APPR'&&agl<800||FL.stage==='ROLLOUT'))rm.push(['LDG INHIBIT','m']);
   if(on&&FL.stage==='ROLLOUT')rm.push(['GND SPLRS','g']);
-  if(flying()&&FCU.athr===false&&!FL.ground&&FL.stage==='AIR')rm.push(['A/THR OFF','a']);
-  rm.forEach(([t,c],k)=>T(t,370,y0+k*dy,c,22))}
+  if(!on)rm.push(['PARK BRK','g']);
+  if(on&&FCU.athr===false&&FL.stage==='AIR')rm.push(['A/THR OFF','a']);
+  rm.forEach(([t,c],k)=>T(t,426,y0+k*dy,c,17))}
 
 /* ---------- SD ---------- */
-function drawSD(c){const D=ecCtx(c),{g,T,L,R,title}=D,pg=sdPage(),on=flying(),E=EC.eng[0]?EC.eng:engStep();
-  title(SD_TITLE[pg],18,28);
+/* ---------- SD (reference photo: screen x 77-598, y 68-562; permanent data below y 497) ---------- */
+function drawSD(c){const P=ecCtx(c,77,68,521,494),pg=sdPage(),on=flying(),E=EC.eng[0]?EC.eng:engStep();
+  P.title(SD_TITLE[pg],338,85,19,'center');
+  const g=P.g;g.save();const k=0.838;g.translate(77+(521-600*k)/2,78);g.scale(k,k);const D=ecTools(g,1.12),{T,L,R}=D;
   const used=Math.max(0,((S.fuel.block??0)-(S.fuel.taxi??0.2)-(on?FL.fob:(S.fuel.block??0)-(S.fuel.taxi??0.2)))*1000)+(on?0:0);
   const fu=[Math.round(used/2/10)*10,Math.round(used/2/10)*10+(used>0?10:0)];
   const eng2=(lbl,unit,y,v,col)=>{T(lbl,300,y,'w',21,'center');if(unit)T(unit,300,y+22,'b',18,'center');v.forEach((x,i)=>T(x,i?440:160,y+(unit?11:0),col||'g',26,'center'))};
@@ -141,9 +145,7 @@ function drawSD(c){const D=ecCtx(c),{g,T,L,R,title}=D,pg=sdPage(),on=flying(),E=
     T('PITCH TRIM',300,250,'w',20,'center');T((S.perf.ths||'UP0.0').replace('UP','').replace('DN','-')+'°',300,280,'g',24,'center');T(String(S.perf.ths||'').startsWith('DN')?'DN':'UP',345,280,'g',18);
     T('L ELEV',150,380,'w',20,'center');T('R ELEV',450,380,'w',20,'center');[150,450].forEach(x=>{L([[x,400],[x,490]],'w',2);L([[x-10,445],[x+10,445]],'g',4)});
     T('RUD',300,420,'w',20,'center');g.strokeStyle=EC_C.w;g.lineWidth=2;g.beginPath();g.arc(300,430,70,0.6,Math.PI-0.6);g.stroke();L([[300,470],[300,500]],'g',4)}
-  else if(pg==='door'){g.strokeStyle=EC_C.w;g.lineWidth=2;g.beginPath();g.moveTo(300,60);g.quadraticCurveTo(340,80,340,140);g.lineTo(340,440);g.quadraticCurveTo(300,520,260,440);g.lineTo(260,140);g.quadraticCurveTo(260,80,300,60);g.stroke();
-    [[248,130,'CABIN'],[248,420,'CABIN'],[352,130,'CABIN'],[352,420,'CABIN'],[352,220,'CARGO'],[352,360,'CARGO']].forEach(([x,y,l])=>{g.fillStyle=EC_C.g;g.fillRect(x-6,y-12,12,24);T(l,x<300?x-14:x+14,y,'gr',16,x<300?'right':'left')});
-    T('OXY',470,80,'w',20,'center');T('1850',470,108,'g',24,'center');T('PSI',515,108,'b',16);T('SLIDE',100,300,'w',16,'center')}
+  else if(pg==='door'){}
   else if(pg==='hyd'){[['GREEN',120],['BLUE',300],['YELLOW',480]].forEach(([n,x])=>{T(n,x,80,'w',22,'center');T('3000',x,115,'g',26,'center');L([[x,135],[x,330]],'g',3);
       g.strokeStyle=EC_C.g;g.lineWidth=2.5;g.strokeRect(x-26,330,52,40);T(n==='BLUE'?'ELEC':'ENG '+(n==='GREEN'?1:2),x,395,'w',18,'center');T(n==='BLUE'?'':'PUMP',x,350,'g',16,'center')});
     T('PTU',210,200,'g',18,'center');L([[150,210],[270,210]],'g',2)}
@@ -163,42 +165,49 @@ function drawSD(c){const D=ecCtx(c),{g,T,L,R,title}=D,pg=sdPage(),on=flying(),E=
   else if(pg==='apu'){T('APU',300,80,'w',22,'center');T('AVAIL',300,110,S.elec&&S.elec.apu&&!on?'g':'#000',22,'center');T('N',150,250,'w',22,'center');T('%',150,276,'b',18,'center');T(S.elec&&S.elec.apu&&!on?'100':'0',150,320,'g',28,'center');
     T('EGT',450,250,'w',22,'center');T('°C',450,276,'b',18,'center');T(S.elec&&S.elec.apu&&!on?'345':String(Math.round(satC())),450,320,'g',28,'center');T('FLAP',300,420,'w',18,'center');T('CLOSED',300,446,'g',20,'center')}
   else if(pg==='sts'){T('NORMAL',300,250,'g',30,'center')}
+  g.restore();
+  if(pg==='door')drawDoor(P);
   /* permanent data */
-  L([[10,520],[590,520]],'w',2);L([[200,520],[200,595]],'w',2);L([[400,520],[400,595]],'w',2);
+  {const{T,L}=P;L([[77,497],[598,497]],'w',2);L([[250,497],[250,560]],'w',2);L([[425,497],[425,560]],'w',2);
   const sat=satC(),m=on?FL.mach:0,tat=(sat+273.15)*(1+0.2*m*m)-273.15,sg=v=>(v>=0?'+':'')+Math.round(v);
-  T('TAT',18,545,'w',20);T(sg(tat),130,545,'g',24,'right');T('°C',138,545,'b',18);T('SAT',18,578,'w',20);T(sg(sat),130,578,'g',24,'right');T('°C',138,578,'b',18);
-  const ut=new Date(on?FL.utc0+FL.t*1000:Date.now());T(String(ut.getUTCHours()).padStart(2,'0'),268,560,'g',28,'right');T('H',284,560,'b',20,'center');T(String(ut.getUTCMinutes()).padStart(2,'0'),300,560,'g',24);
+  T('TAT',110,510,'w',17);T(sg(tat),192,510,'g',17,'right');T('°C',210,512,'b',14);T('SAT',110,530,'w',17);T(sg(sat),192,530,'g',17,'right');T('°C',210,532,'b',14);
+  const ut=new Date(on?FL.utc0+FL.t*1000:Date.now());T(String(ut.getUTCHours()).padStart(2,'0'),326,529,'g',17,'right');T('H',336,530,'b',14,'center');T(String(ut.getUTCMinutes()).padStart(2,'0'),345,529,'g',17);
   const gw=S.fuel.zfw!=null&&(on||S.fuel.block!=null)?Math.round((S.fuel.zfw+(on?FL.fob:S.fuel.block-(S.fuel.taxi??0.2)))*1000/100)*100:null;
-  T('GW',408,560,'w',20);T(gw!=null?String(gw):'XX',548,560,gw!=null?'g':'a',26,'right');T('KG',554,560,'b',18)}
+  T('GW',441,509,'w',17);T(gw!=null?String(gw):'XX',547,509,gw!=null?'g':'a',17,'right');T('KG',566,510,'b',14)}}
+/* DOOR/OXY page, drawn on the reference photo layout */
+function drawDoor(D){const{g,T,L}=D;g.strokeStyle=EC_C.w;g.lineWidth=2;g.beginPath();g.moveTo(305,452);g.lineTo(305,160);g.bezierCurveTo(305,128,322,110,338,102);g.bezierCurveTo(354,110,372,128,372,160);g.lineTo(372,452);g.lineTo(366,462);g.moveTo(305,452);g.lineTo(311,462);g.stroke();
+  [[331,122,14,9],[322,143,9,12],[345,143,9,12],[305,174,12,16],[359,174,12,16],[337,220,15,8],[353,236,17,17],[305,310,12,16],[305,338,12,16],[359,310,12,16],[359,338,12,16],[353,371,17,16],[355,393,8,17],[305,420,12,17],[359,420,12,17]].forEach(([x,y,w,h])=>{g.strokeStyle=EC_C.g;g.lineWidth=2;g.strokeRect(x,y,w,h)});
+  L([[300,298],[218,325]],'w',1.8);L([[377,298],[460,325]],'w',1.8);T('SLIDE',279,335,'w',15,'center');T('SLIDE',397,335,'w',15,'center');
+  L([[425,69],[425,95]],'w',1.6);T('CKPT OXY',518,85,'a',17,'center');T('1850',470,104,'g',17,'center');T('PSI',520,104,'b',14,'center');T('1850',568,104,'g',17,'center')}
 
-/* ---------- ECAM control panel, MCDU / ECAM switch ---------- */
-function ecamUI(){const host=$('#ecam');if(!host)return;const pg=sdPage();
-  host.querySelectorAll('[data-ecp]').forEach(b=>{const k=b.dataset.ecp;b.classList.toggle('lit',(EC.page===k)||(k==='tocfg'&&EC.toCfg&&!flying()))})}
+/* ---------- ECAM control panel (photo 676 x 248) over the lower half of the ND; MCDU / ECAM switch ---------- */
+const ECP_PH=[['tocfg',254,43],['emer',480,50,60,48],['eng',186,113],['bleed',254,113],['press',319,113],['elec',386,113],['hyd',454,113],['fuel',519,113],
+  ['apu',186,157],['cond',254,157],['door',319,157],['wheel',386,157],['fctl',454,157],['all',519,157],['clr',186,202],['sts',319,202],['rcl',386,202],['clr2',519,202]];
+const IMG_EWD='img/ecam-ewd.webp',IMG_SD='img/ecam-sd.webp',IMG_ECP='img/ecam-ecp.webp';
+function ecamUI(){const pan=$('#ecp');if(pan){pan.hidden=!EC.ecp;pan.querySelectorAll('[data-ecp]').forEach(b=>{const k=b.dataset.ecp;b.classList.toggle('lit',EC.page===k)})}
+  const nb=$('#ecpBtn');if(nb)nb.setAttribute('aria-pressed',String(!!EC.ecp))}
 function ecpPress(k){
-  if(k==='mcdu'){ecamShow(false);return}
-  if(k==='clr'){EC.page=null}
-  else if(k==='rcl'){EC.page=null}
+  if(k==='clr'||k==='clr2'||k==='rcl'){EC.page=null}
+  else if(k==='emer'){}
   else if(k==='tocfg'){if(!flying()&&S.perf.flaps){EC.toCfg=true}}
   else if(k==='all'){EC.page=SD_ORDER[EC.allIx%SD_ORDER.length];EC.allIx++}
-  else if(k==='sts'){EC.page=EC.page==='sts'?null:'sts'}
   else EC.page=EC.page===k?null:k;
   drawEcam()}
-function ecamShow(on){EC.on=on;const h=$('#mcduHome');if(h)h.classList.toggle('ecam-on',on);const b=$('#duToggle');if(b){b.textContent=on?'MCDU':'ECAM';b.setAttribute('aria-pressed',String(on))}drawEcam()}
-function drawEcam(){if(!EC.on){engStep();return}const a=$('#ewd'),b=$('#sd');if(a&&a.width)drawEWD(a);if(b&&b.width)drawSD(b);ecamUI()}
-function buildEcam(){const home=$('#mcduHome');if(!home||$('#ecam'))return;
-  const keys=ECP_KEYS.map(([l,k])=>`<button type="button" class="ecp" data-ecp="${k}"><i></i><span>${l}</span></button>`);
-  const half=Math.ceil(keys.length/2);
+function ecamShow(on){EC.on=on;EC.ecp=on;const h=$('#mcduHome');if(h)h.classList.toggle('ecam-on',on);const b=$('#duToggle');if(b){b.textContent=on?'MCDU':'ECAM';b.setAttribute('aria-pressed',String(on))}drawEcam();ecamUI()}
+function drawEcam(){if(EC.on){const a=$('#ewd'),b=$('#sd');if(a&&a.width)drawEWD(a);if(b&&b.width)drawSD(b)}else engStep();ecamUI()}
+function buildEcam(){const home=$('#mcduHome');if(!home||$('#ecam'))return;const pc=(v,t)=>(v/t*100).toFixed(3)+'%';
   home.insertAdjacentHTML('afterbegin',`<button type="button" class="dutoggle" id="duToggle" aria-pressed="false" title="Switch between MCDU and ECAM">ECAM</button>
    <div class="ecam" id="ecam" aria-label="ECAM upper and lower displays">
-     <div class="ecp-col">${keys.slice(0,half).join('')}</div>
-     <div class="ecam-dus">
-       <div class="du"><canvas id="ewd" aria-label="Engine and warning display"></canvas></div>
-       <div class="du"><canvas id="sd" aria-label="System display"></canvas></div>
-     </div>
-     <div class="ecp-col">${keys.slice(half).join('')}</div>
+     <div class="ecdu ewd"><img alt="" src="${IMG_EWD}"><canvas id="ewd" aria-label="Engine and warning display"></canvas></div>
+     <div class="ecdu sdu"><img alt="" src="${IMG_SD}"><canvas id="sd" aria-label="System display"></canvas></div>
    </div>`);
+  const nd=$('#ndBezel')&&$('#ndBezel').parentElement;
+  if(nd){nd.insertAdjacentHTML('beforeend',`<div class="ecp-pan" id="ecp" hidden aria-label="ECAM control panel"><img alt="" src="${IMG_ECP}">${ECP_PH.map(([k,x,y,w,h])=>{w=w||46;h=h||32;
+      return`<button type="button" class="ecp-k" data-ecp="${k}" aria-label="${k.toUpperCase()}" style="left:${pc(x-w/2,676)};top:${pc(y-h/2,248)};width:${pc(w,676)};height:${pc(h,248)}"><i></i></button>`}).join('')}</div>
+     <button type="button" class="ecp-btn" id="ecpBtn" aria-pressed="false" title="ECAM control panel on/off">ECP</button>`);
+    $('#ecpBtn').addEventListener('click',()=>{EC.ecp=!EC.ecp;ecamUI()})}
   $('#duToggle').addEventListener('click',()=>ecamShow(!EC.on));
-  home.querySelectorAll('[data-ecp]').forEach(b=>b.addEventListener('click',()=>ecpPress(b.dataset.ecp)));
+  document.querySelectorAll('[data-ecp]').forEach(b=>b.addEventListener('click',()=>ecpPress(b.dataset.ecp)));
   ['#ewd','#sd'].forEach(id=>{const c=$(id);new ResizeObserver(()=>{const d=devicePixelRatio||1,w=Math.round(c.clientWidth*d),h=Math.round(c.clientHeight*d);if(w&&(w!==c.width||h!==c.height)){c.width=w;c.height=h;drawEcam()}}).observe(c)})}
 buildEcam();
 window.drawEcam=drawEcam;window.__EC=EC;window.__ecam={show:ecamShow,press:ecpPress,page:sdPage};
