@@ -83,7 +83,7 @@ P.RADNAV={render(){const r=S.rad,p=S.active;
   put(4,0,'CRS','w','S');rput(4,'CRS','w','S');put(5,0,r.crs1!=null?String(r.crs1).padStart(3,'0'):'[ ]','b');rput(5,r.crs2!=null?String(r.crs2).padStart(3,'0'):'[ ]','b');
   put(6,1,'LS /FREQ','w','S');
   const ap=p&&p.appr&&(APPRS[destId()]||{})[p.appr];               /* FMGS autotunes the LS of the selected approach */
-  const ls=r.ls||(ap&&/^ILS|^LOC/.test(p.appr)?{id:ap.nav,freq:null,auto:true}:null);
+  const ls=r.ls||(ap&&/^ILS|^LOC/.test(p.appr)?{id:ap.nav,freq:ap.freq??null,auto:true}:null);
   if(ls)put(7,0,(ls.id?ls.id+'/':'[  ]/')+(ls.freq!=null?ls.freq.toFixed(2):'---.--'),'b',ls.auto?'S':'L');else put(7,0,'[  ]/[ . ]','b');
   put(8,0,'CRS','w','S');const lc=r.lsCrs!=null?r.lsCrs:(ls&&ls.auto?ap.crs:null);put(9,0,lc!=null?'F'+String(lc).padStart(3,'0'):'[ ]','b',r.lsCrs==null&&lc!=null?'S':'L');
   put(10,0,'ADF1/FREQ','w','S');rput(10,'FREQ/ADF2','w','S');

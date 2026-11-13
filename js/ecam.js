@@ -10,7 +10,7 @@ const SD_TITLE={eng:'ENGINE',bleed:'BLEED',press:'CAB PRESS',elec:'ELEC',hyd:'HY
 const EC_C={w:'#ffffff',g:'#3df24e',b:'#3fd2ff',a:'#ff9a1f',m:'#ff8cf0',r:'#ff2020',gr:'#8a8b9f',bg:'#000'};
 
 /* ---------- engine model (N1, N2, EGT, FF) from the thrust and vertical modes ---------- */
-function engTarget(){const on=flying(),alt=on?FL.alt:elevO(),q=S.perf,flx=q.flex!=null;
+function engTarget(){const on=flying(),alt=on?FL.alt:elevO(),q=S.perf,flx=q.flex!=null&&S.phase!=='GA';
   if(!on||FL.stage==='STOP'||FL.stage==='IDLE')return{n1:19.6,n2:58.9,egt:395,ff:290};
   if(FL.stage==='ROLLOUT')return{n1:FL.ias>70?71:21,n2:FL.ias>70?88:60,egt:FL.ias>70?560:420,ff:FL.ias>70?1300:300};
   if(FL.thr==='TO')return flx?{n1:Math.max(80,92.4-(q.flex-30)*0.26),n2:96.2,egt:715,ff:2750}:{n1:92.8,n2:98.4,egt:760,ff:3000};
@@ -60,7 +60,7 @@ function memo(D,x,y,a,b,done,end){const{T,g,F}=D;if(done){T(a+' '+b,x,y,'g',17);
 
 /* ---------- E/WD (reference photo: screen x 76-598, y 82-592) ---------- */
 function drawEWD(c){const D=ecCtx(c,76,82,522,510),{g,T,L,R}=D,E=engStep(),q=S.perf,on=flying();
-  const flx=q.flex!=null,tl=!on||FL.thr==='TO'?(flx?'FLX':'TOGA'):'CLB',n1l=tl==='FLX'?Math.max(80,92.4-(q.flex-30)*0.26):tl==='TOGA'?92.8:Math.min(91.5,87.4+(on?FL.alt:0)/1e4*1.2);
+  const flx=q.flex!=null&&S.phase!=='GA',tl=!on||FL.thr==='TO'?(flx?'FLX':'TOGA'):'CLB',n1l=tl==='FLX'?Math.max(80,92.4-(q.flex-30)*0.26):tl==='TOGA'?92.8:Math.min(91.5,87.4+(on?FL.alt:0)/1e4*1.2);
   const tla=!on||FL.stage==='STOP'||FL.stage==='ROLLOUT'?0:FL.thr==='TO'?n1l:Math.min(91.5,87.4+FL.alt/1e4*1.2);   /* thrust lever position (cyan circle) */
   const pol=(cx,cy,r,a)=>[cx+Math.cos(a)*r,cy-Math.sin(a)*r];
   /* N1: arc from idle (lower left) to 110 %, red above 100 %, amber N1 limit, cyan thrust lever, green needle, readout box */

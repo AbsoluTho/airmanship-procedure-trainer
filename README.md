@@ -4,7 +4,7 @@ An unofficial A320 **procedure** trainer that runs in the browser (iPad first). 
 
 Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator manuals. The navigation data was typed from charts for training only and must never be used for navigation.
 
-## Status: Phase 2 prototype (v0.10.0)
+## Status: Phase 2 prototype (v0.11.0)
 
 - **MCDU** (Thales FMS2 layout, per FCOM DSC-22): keyboard and scratchpad, INIT A, F-PLN with TMPY (ERASE/INSERT), LAT REV, DEPARTURE, AIRWAYS (with airway-to-airway intersection), ARRIVAL, waypoint insertion, CLR of waypoints and discontinuities.
 - **Exercise** OEJN to OETB: RWY 16C MIGD2E, L677 WEJ, V54 TBK, ILS 31 via D179O, ALTN OEMA, FL340, CI 20, with automatic progress checks.
@@ -12,6 +12,11 @@ Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator
 - **ND** (ROSE LS, ROSE VOR, ROSE NAV, ARC, PLAN; range 10 to 320 NM; CSTR, WPT, ARPT options; ROSE LS and ROSE VOR show the compass only for now): active F-PLN in green, TMPY in yellow dashed, missed approach in blue, alternate route in blue dashed, DME arcs and holds drawn. PLAN centres on the waypoint on the second line of the MCDU F-PLN page. Also live on both NDs in the 3D cockpit (EXT PWR on).
 - **INIT B**: TAXI, ZFW/ZFWCG, BLOCK, TRIP/TIME, RTE RSV, ALTN, FINAL, EXTRA, TOW/LW, TRIP WIND, MIN DEST FOB. **F-PLN** now shows TIME predictions and EFOB at destination once ZFW and BLOCK are entered.
 - **PERF TAKE OFF**: V1/VR/V2 (with V1/VR/V2 DISAGREE), F/S/O speeds, RWY, TO SHIFT, FLAPS/THS, FLEX, TRANS ALT, THR RED/ACC, ENG OUT ACC. Changing the takeoff runway clears the V speeds (CHECK TAKE OFF DATA).
+- **FMGC batch 3** (v0.11.0):
+  - **Go-around**: TOGA on the flight controls (approach phase, in the air): MAN TOGA, SRS (go-around speed), GA TRK with NAV armed (engages above 100 ft), GA phase, flaps one step up; LVR CLB at the PERF GO AROUND THR RED altitude, CLB at its ACC altitude to the FCU altitude, green dot with flaps retracted on speed and gear up. LOC and G/S are lost (APPR to be armed again).
+  - **Missed approach sequencing**: at the go-around the missed approach becomes the active route from the go-around point (T-P), shown green; the heading leg is flown to its altitude, then the waypoints and the published hold, flown as a hold (IMM EXIT). The approach is strung again after the missed approach, behind a discontinuity. ACTIVATE APPR PHASE (CONFIRM) on PERF GO AROUND starts the approach phase for a second approach and landing.
+  - **Pseudo waypoints on the F-PLN**: (T/C), (T/D) and (DECEL) lines with time (UTC in flight) and altitude. The approach phase is activated at DECEL (25 NM before the threshold, magenta D on the ND) when the aircraft is in NAV or LOC; otherwise with ACTIVATE APPR PHASE.
+  - **RAD NAV**: the LS autotuned from the approach shows its frequency (OETB ILS 31 IPKS 111.90; check against the current chart).
 - **FMGC batch 2** (v0.10.0), page layouts from the FlyByWire A32NX MCDU:
   - **SEC INIT A, SEC INIT FUEL PRED and SEC PERF** (SEC INDEX INIT> and PERF>): the SEC F-PLN keeps its own INIT A, INIT B, PERF, speed limit and wind data (copied with COPY ACTIVE); ACTIVATE SEC makes them the active data, SWAP ACTIVE exchanges them.
   - **STEP ALTS** (PERF CRZ STEP ALTS> before the descent, VERT REV STEP ALTS> at en-route waypoints): up to four steps entered as `FL360/LABUN`, edited (altitude, `/WPT`) or cleared with CLR; steps of 1000 ft at least, no step climb after a step descent; DIST and TIME to each step, STEP AHEAD within 20 NM, ABOVE MAX and the STEP ABOVE MAX FL message above REC MAX (EO MAX with one engine). S/C or S/D on the F-PLN at the step waypoint, step climb (cyan) or step descent (white) symbol on the ND. In flight the step starts at the step waypoint (or after it) once the FCU altitude is set to the step altitude: a step climb in CLB, a step descent as a cruise descent in DES at 1000 ft/min; the new level becomes the CRZ FL. STEP AHEAD message 20 NM before.
@@ -67,6 +72,7 @@ Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator
 | `js/flight.js` | Flight guided by the FCU/FMGS modes: lateral and vertical modes, speeds, phases, FMA logic, fuel, flight controls |
 | `js/mcdu3.js` | LAT REV, NEW DEST, HOLD AT, OFFSET, FIX INFO (MCDU and ND), scratchpad system messages; hold racetrack and offset geometry used by the flight |
 | `js/mcdu4.js` | SEC INIT/PERF pages, STEP ALTS, engine-out condition, VDEV on PROG, RTA |
+| `js/mcdu5.js` | F-PLN pseudo waypoints (T/C, T/D, DECEL), ACTIVATE APPR PHASE after a go-around |
 | `js/vnav.js` | Altitude and speed constraints: constrained descent path and T/D, constraints acting on the guidance, vertical predictions |
 | `js/pfd.js` | PFD drawing |
 | `js/sdpages.js` | SD system pages ported from FlyByWire A32NX: ENGINE, CRUISE, WHEEL, FUEL, DOOR/OXY, F/CTL, BLEED, CAB PRESS, ELEC, HYD, APU, COND, STATUS |

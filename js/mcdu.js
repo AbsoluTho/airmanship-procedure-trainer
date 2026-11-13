@@ -136,6 +136,7 @@ P.FPLN={render(){const p=cur(),rows=fplnRows(p),ds=p?dists(p):[];
     const alt_=r.k==='altn'||r.k==='altorig';
     const col=alt_||r.seg==='map'?'b':(flying()&&p===S.active&&!S.tmpy&&n===1&&S.fpOff===0)?'w':base;   /* TO waypoint in white */
     if(r.k==='hold'){fplnHoldRow(r,ln,lb,col,p,n);continue}
+    if(r.k==='pw'){fplnPwRow(r,ln,lb,col);continue}
     if(r.k==='altn'&&n>0){put(lb,1,'DCT','w','S');const a0=legPos({k:'altorig',id:p.legs[idxK(p,'dest')].id,rwy:p.legs[idxK(p,'dest')].rwy}),a1=legPos(r);if(a0&&a1)rput(lb,String(Math.round(gc(a0,a1))),'w','S',19)}
     if(n>0&&!alt_){put(lb,1,(r.via||'').slice(0,6),'w','S');if(r.lbl)put(lb,8,r.lbl,'w','S');if(r.step!=null&&typeof stepKind==='function')put(lb,8,stepKind(p,r.ix),'w','S');
       const d=ds[r.ix];if(d!=null){const t=String(Math.round(d));if(firstD){rput(lb,t+'NM','w','S',21);firstD=false}else rput(lb,t,'w','S',19)}}
@@ -146,7 +147,7 @@ P.FPLN={render(){const p=cur(),rows=fplnRows(p),ds=p?dists(p):[];
     else{const sp=r.spd?String(r.spd):'---',al=r.alt?fAlt(r.alt):'-----';
       const st=24-(4+1+6);put(ln,st,sp.padStart(4),r.spd?'m':'w');put(ln,st+4,'/','w');
       /* with predictions: the predicted altitude, after a magenta star (constraint met) or an amber star (missed) */
-      const vq=r.alt&&tcum&&p===S.active&&!S.tmpy&&!S.secMode&&typeof vPred==='function'?(vPred()||{wp:{}}).wp[r.ix]:null;
+      const vq=r.alt&&tcum&&p===S.active&&!S.tmpy&&!S.secMode&&S.phase!=='GA'&&typeof vPred==='function'?(vPred()||{wp:{}}).wp[r.ix]:null;
       if(vq){const a=Math.round(vq.alt/10)*10,t=a>13000?'FL'+String(Math.round(a/100)).padStart(3,'0'):String(a);put(ln,st+5,('*'+t).padStart(6),'g');put(ln,st+5+Math.max(0,6-t.length-1),'*',vq.met?'m':'a')}
       else put(ln,st+5,al.padStart(6),r.alt?'m':'w')}}
   if(!tmpyFoot()&&p){const di=idxK(p,'dest'),d=p.legs[di];
