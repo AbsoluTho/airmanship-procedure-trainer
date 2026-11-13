@@ -39,6 +39,27 @@ async def run(url,b):
     assert off==[],f'pressing the lit option turns it off: {off}'
     legs=await pg.evaluate('window.__S().active.legs.map(l=>l.k)')
     await pg.evaluate(f'window.__S().fpOff={legs.index("dest")-1}');await k('UP');await k('DOWN')
+    # ---- part 2 pages (FlyByWire layouts) ----
+    scr=lambda: pg.evaluate("[...document.querySelectorAll('#scr .ln')].map(l=>l.textContent).join(' ').replace(/\\s+/g,' ')")
+    await k('INIT');await k('R3');x=await scr();assert 'IRS INIT' in x,('IRS INIT',x,await pg.evaluate('[window.__S().page,window.__S().msg,window.__S().sp]'))
+    await k('L6');await k('R4');await t('270/20/FL100');await k('L1');assert await pg.evaluate('window.__S().wind.clb.length')==1,'CLIMB WIND entry'
+    await k('R5');assert 'CRZ WIND' in await scr()
+    await k('RADNAV');await t('TBK');await k('L1');assert await pg.evaluate('window.__S().rad.vor1.freq')==115.7,'VOR tuned by ident'
+    assert 'IPKS' in await scr(),'LS autotuned from the approach'
+    await k('FPLN');await pg.evaluate('window.__S().fpOff=0');await k('UP');await k('DOWN')
+    await pg.evaluate("window.__S().sp='/+3000'");await k('R2');assert await pg.evaluate('JSON.stringify(window.__S().active.legs[1].alt)')=='{"t":"+","v":3000}','ALT CSTR from F-PLN'
+    await k('R2');assert 'VERT REV' in await scr();await k('L6')
+    await k('PERF');await k('R6');assert 'CLB' in await scr();await k('R6');await k('R6');await k('R6')
+    assert 'QNH' in await scr(),'PERF APPR'
+    await t('1013');await k('L1');await t('2750');await k('R2');assert await pg.evaluate('window.__S().p2.qnh')==1013
+    await k('R6');assert 'GO AROUND' in await scr()
+    await k('SECF');await k('L1');assert await pg.evaluate('!!window.__S().sec'),'SEC copy'
+    await k('DATA');await k('L5');assert 'OEJN' in await scr(),'CLOSEST AIRPORTS'
+    await k('DATA');await k('L4');assert 'ACTIVE NAV DATA BASE' in await scr()
+    await k('DATA');await k('RIGHT');await k('L2');await t('JDW');await k('L1');assert 'VORTAC' in await scr(),'NAVAID page'
+    await k('FUEL');assert 'FUEL PRED' in await scr()
+    await k('PROG');assert 'REC MAX' in await scr();await t('OETB');await k('R4');assert '°/' in await scr()
+    await k('AIRPORT');await k('INIT');await k('RIGHT')
     done=await pg.evaluate("[...document.querySelectorAll('#tasks li.done')].length")
     assert done==14,f'exercise tasks done: {done}/14'
     await pg.click('text=Cockpit 3D');await pg.wait_for_timeout(2500)

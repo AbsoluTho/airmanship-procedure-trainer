@@ -56,7 +56,11 @@ function drawND(g,W,H,powered){g.save();g.setTransform(1,0,0,1,0,0);g.fillStyle=
   const A=S.active,T=S.tmpy,to=toWpt(),inPlan=new Set();
   const label=(t,x,y,col,px,al)=>{g.font=NF(px||22);g.fillStyle=NC[col];g.textAlign=al||'left';g.textBaseline='middle';g.fillText(t,x,y)};
   if(V.map){
-  g.save();g.beginPath();g.arc(V.cx,V.cy,V.R,0,Math.PI*2);g.clip();
+  g.save();g.beginPath();
+  if(V.m==='PLAN'){/* PLAN: the map uses the whole screen outside the data fields (FlyByWire PlanModeUnderlay clip) */
+    const ky=Hg/768;[[45,112],[140,112],[280,56],[488,56],[628,112],[723,112],[723,720],[114,720],[114,633],[45,633]].forEach(([x,y],i)=>i?g.lineTo(x,y*ky):g.moveTo(x,y*ky));g.closePath()}
+  else g.arc(V.cx,V.cy,V.R,0,Math.PI*2);
+  g.clip();const inMap=(x,y,m)=>V.m==='PLAN'?(x>-40&&x<808&&y>-40&&y<Hg+40):Math.hypot(x-V.cx,y-V.cy)<=V.R+(m||0);
   const line=(pts,col,dash,w)=>{g.strokeStyle=NC[col];g.lineWidth=w||3.5;g.setLineDash(dash||[]);g.beginPath();pts.forEach((p,i)=>{const[x,y]=pj(p);i?g.lineTo(x,y):g.moveTo(x,y)});g.stroke();g.setLineDash([])};
   const diamond=(x,y,col,s)=>{g.beginPath();g.moveTo(x,y-s);g.lineTo(x+s,y);g.lineTo(x,y+s);g.lineTo(x-s,y);g.closePath();g.strokeStyle=NC[col];g.lineWidth=3;g.stroke()};
   const star=(x,y,col)=>{g.strokeStyle=NC[col];g.lineWidth=3;g.beginPath();for(let i=0;i<4;i++){const a=i*Math.PI/4;g.moveTo(x-11*Math.cos(a),y-11*Math.sin(a));g.lineTo(x+11*Math.cos(a),y+11*Math.sin(a))}g.stroke()};
@@ -73,16 +77,16 @@ function drawND(g,W,H,powered){g.save();g.setTransform(1,0,0,1,0,0);g.fillStyle=
     else{star(x1,y1,'w');label(r.id,x1+16,y1+2,'w')}}
   for(const[G]of geos)G.wpts.forEach(w=>inPlan.add(w.id));
   if(EFIS.wpt)for(const[id,pos]of Object.entries(DB.wpt)){if(inPlan.has(id))continue;const[x,y]=pj(pos);
-    if(Math.hypot(x-V.cx,y-V.cy)>V.R)continue;diamond(x,y,'m',7);label(id,x+12,y+2,'m',19)}
+    if(!inMap(x,y))continue;diamond(x,y,'m',7);label(id,x+12,y+2,'m',19)}
   /* VOR D / NDB options: navaids from OurAirports (magenta) */
   if((EFIS.vord||EFIS.ndb)&&DB.nav)for(const[id,n]of Object.entries(DB.nav)){const isN=/^NDB/.test(n.type);if(isN?!EFIS.ndb:!EFIS.vord)continue;
-    const[x,y]=pj(n.pos);if(Math.hypot(x-V.cx,y-V.cy)>V.R)continue;g.strokeStyle=NC.m;g.lineWidth=2.5;g.beginPath();
+    const[x,y]=pj(n.pos);if(!inMap(x,y))continue;g.strokeStyle=NC.m;g.lineWidth=2.5;g.beginPath();
     if(isN){g.moveTo(x,y-11);g.lineTo(x+10,y+7);g.lineTo(x-10,y+7);g.closePath()}
     else{if(n.type!=='DME'){g.moveTo(x-12,y);g.lineTo(x+12,y);g.moveTo(x,y-12);g.lineTo(x,y+12)}if(n.type!=='VOR')g.arc(x,y,8,0,Math.PI*2)}
     g.stroke();label(id,x+14,y+14,'m',21)}
   if(EFIS.arpt){const used=new Set([A&&A.legs[0].id,A&&A.legs[idxK(A,'dest')].id,I().altn]);
     for(const[id,ap]of Object.entries(DB.apt)){if(used.has(id))continue;const[x,y]=pj(ap.pos);star(x,y,'m');label(id,x+16,y+2,'m')}}
-  for(const[G,tm]of geos)for(const w of G.wpts){const[x,y]=pj(w.pos);if(Math.hypot(x-V.cx,y-V.cy)>V.R+30)continue;
+  for(const[G,tm]of geos)for(const w of G.wpts){const[x,y]=pj(w.pos);if(!inMap(x,y,30))continue;
     const col=tm?'y':(to&&w.id===to.id&&w.col==='g')?'w':w.col;diamond(x,y,col,9);label(w.id,x+16,y+2,col,26);
     if(EFIS.cstr&&!tm&&(w.alt||w.spd)){let yy=y+25;if(w.alt){label(fAlt(w.alt),x+16,yy,'m',20);yy+=22}if(w.spd)label(String(w.spd),x+16,yy,'m',20);
       g.strokeStyle=NC.m;g.lineWidth=2.5;g.beginPath();g.arc(x,y,17,0,Math.PI*2);g.stroke()}}
@@ -112,7 +116,7 @@ function drawND(g,W,H,powered){g.save();g.setTransform(1,0,0,1,0,0);g.fillStyle=
   /* aircraft symbol */
   const plane=(x,y,rot)=>{g.save();g.translate(x,y);g.rotate(rot*D2R);g.strokeStyle=NC.ac;g.lineWidth=7;g.beginPath();
     g.moveTo(0,-33);g.lineTo(0,35);g.moveTo(-37,-3);g.lineTo(37,-3);g.moveTo(-14,27);g.lineTo(14,27);g.stroke();g.restore()};
-  if(V.m==='PLAN'){const[x,y]=pj(ac.pos);if(Math.hypot(x-V.cx,y-V.cy)<V.R)plane(x,y,ac.hdg+ac.vr)}else plane(V.cx,V.cy,0);
+  if(V.m==='PLAN'){const[x,y]=pj(ac.pos);if(x>40&&x<728&&y>100&&y<Hg-60)plane(x,y,ac.hdg+ac.vr)}else plane(V.cx,V.cy,0);
   /* data fields */
   g.textBaseline='alphabetic';g.textAlign='left';
   g.font=NF(22);g.fillStyle=NC.w;g.fillText('GS',12,40);g.font=NF(31);g.fillStyle=NC.g;g.fillText('0',68,40);

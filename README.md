@@ -4,7 +4,7 @@ An unofficial A320 **procedure** trainer that runs in the browser (iPad first). 
 
 Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator manuals. The navigation data was typed from charts for training only and must never be used for navigation.
 
-## Status: Phase 1 prototype (v0.3.1)
+## Status: Phase 1 prototype (v0.4.0)
 
 - **MCDU** (Thales FMS2 layout, per FCOM DSC-22): keyboard and scratchpad, INIT A, F-PLN with TMPY (ERASE/INSERT), LAT REV, DEPARTURE, AIRWAYS (with airway-to-airway intersection), ARRIVAL, waypoint insertion, CLR of waypoints and discontinuities.
 - **Exercise** OEJN to OETB: RWY 16C MIGD2E, L677 WEJ, V54 TBK, ILS 31 via D179O, ALTN OEMA, FL340, CI 20, with automatic progress checks.
@@ -12,6 +12,16 @@ Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator
 - **ND** (ROSE LS, ROSE VOR, ROSE NAV, ARC, PLAN; range 10 to 320 NM; CSTR, WPT, ARPT options; ROSE LS and ROSE VOR show the compass only for now): active F-PLN in green, TMPY in yellow dashed, missed approach in blue, alternate route in blue dashed, DME arcs and holds drawn. PLAN centres on the waypoint on the second line of the MCDU F-PLN page. Also live on both NDs in the 3D cockpit (EXT PWR on).
 - **INIT B**: TAXI, ZFW/ZFWCG, BLOCK, TRIP/TIME, RTE RSV, ALTN, FINAL, EXTRA, TOW/LW, TRIP WIND, MIN DEST FOB. **F-PLN** now shows TIME predictions and EFOB at destination once ZFW and BLOCK are entered.
 - **PERF TAKE OFF**: V1/VR/V2 (with V1/VR/V2 DISAGREE), F/S/O speeds, RWY, TO SHIFT, FLAPS/THS, FLEX, TRANS ALT, THR RED/ACC, ENG OUT ACC. Changing the takeoff runway clears the V speeds (CHECK TAKE OFF DATA).
+- **More MCDU/FMGC pages** (layouts from FlyByWire A32NX, figures from the simplified model):
+  - IRS INIT (from INIT A; simulated 90 s alignment, ALIGN ON REF), CLIMB/CRZ/DES WIND (from INIT A or VERT REV)
+  - RAD NAV (VOR, ADF tuned by ident or frequency from OurAirports; LS autotuned from the selected approach; the ILS frequency is not in the data yet)
+  - VERT REV (CLB/DES SPD LIM, SPD and ALT constraints); the F-PLN right keys take SPD/ALT entries (for example `250/`, `/+5000`, `/FL100`) or open VERT REV; CLR deletes constraints
+  - PERF CLB, CRZ, DES, APPR (QNH, TEMP, MAG WIND, TRANS ALT, BARO/RADIO minimum, VAPP/VLS, LDG CONF) and GO AROUND, linked by PREV/NEXT PHASE; ACTIVATE APPR PHASE appears once the flight phases exist
+  - SEC INDEX (COPY ACTIVE, SEC F-PLN view, DELETE, ACTIVATE, SWAP), FUEL PRED, PROG (CRZ/OPT/REC MAX, BRG/DIST TO, REPORT, PREDICTIVE GPS)
+  - DATA INDEX 1/2 and 2/2: position, IRS and GPS monitors, A/C STATUS, CLOSEST AIRPORTS, waypoint, navaid and runway lookup
+  - AIRPORT key cycles through origin, destination and alternate on the F-PLN
+  - The PERF key opens the page of the current flight phase. Live in-flight behaviour comes with the automatic flight of a later phase.
+- **ND PLAN** uses the whole screen for the map, so the route runs past the range circle.
 - **Cockpit 3D** (Three.js): cockpit panels as textured planes, touch look and zoom, view presets; BAT 1, BAT 2, EXT PWR and APU MASTER SW clickable; live MCDU screens on the pedestal (powered by EXT PWR).
 
 ## Layout
@@ -25,6 +35,7 @@ Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator
 | `js/data/procedures.js` | SIDs, approaches and airways typed from charts |
 | `js/mcdu.js` | MCDU state, flight-plan logic, pages, input, rendering |
 | `js/data/world.js` | Generated from OurAirports: Saudi airports, runway thresholds and navaids (`tools/navdb/ourairports.py`) |
+| `js/mcdu2.js` | IRS INIT, WIND, RAD NAV, VERT REV, PERF phase pages, SEC, DATA, FUEL PRED, PROG |
 | `js/perf.js` | Simplified fuel, time and speed model used by INIT B, PERF and the F-PLN |
 | `js/nd.js` | ND drawing (ROSE NAV, ARC, PLAN) and the EFIS control strip |
 | `js/cockpit3d.js` | 3D cockpit scene, pushbuttons, live pedestal MCDUs |
