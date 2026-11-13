@@ -28,7 +28,13 @@ async function build3D(){
   /* panels */
   const X=V(1,0,0);
   const MW=2.0,MH=MW*355/1100;
-  plane(basic(mkTex(crop(0,967,1100,355,1.5))),MW,MH,V(0,0.80,-0.85),X,V(0,1,0));
+  const mainP=plane(basic(mkTex(crop(0,967,1100,355,1.5))),MW,MH,V(0,0.80,-0.85),X,V(0,1,0));
+  /* live PFD and ND on the main panel: captain's side only */
+  const NDS=[[286,134,94,95]].map(([x,y,w,h])=>{const c=document.createElement('canvas');c.width=c.height=512;const t=mkTex(c);
+    plane(basic(t),w/1100*MW,h/355*MH,V(((x+w/2)/1100-.5)*MW,(.5-(y+h/2)/355)*MH,0.002),V(1,0,0),V(0,1,0),mainP);return{c,g:c.getContext('2d'),t}});
+  const PFDS=[[167,134,94,95]].map(([x,y,w,h])=>{const c=document.createElement('canvas');c.width=c.height=512;const t=mkTex(c);
+    plane(basic(t),w/1100*MW,h/355*MH,V(((x+w/2)/1100-.5)*MW,(.5-(y+h/2)/355)*MH,0.002),V(1,0,0),V(0,1,0),mainP);return{c,g:c.getContext('2d'),t}});
+  function drawNd3(){NDS.forEach(n=>{drawND(n.g,512,512,S.elec.ext);n.t.needsUpdate=true});PFDS.forEach(n=>{drawPFD(n.g,512,512,S.elec.ext);n.t.needsUpdate=true});dirty=true}
   const oF=V(0,1.52,-0.72),oA=V(0,1.74,0.71),OW=0.92,OL=oA.distanceTo(oF);
   const ovh=plane(basic(mkTex(crop(245,0,615,968,2))),OW,OL,oF.clone().add(oA).multiplyScalar(.5),X,oA.clone().sub(oF));
   const pF=V(0,0.47,-0.80),pA=V(0,0.24,-0.12),PW=0.44,PL=PW*790/488;
@@ -73,7 +79,7 @@ async function build3D(){
   const MS=[[31,21,94,73],[368,21,93,73]];
   const COL={w:'#fff',g:'#3df24e',b:'#3fd2ff',a:'#ffa21f',m:'#ff6cf6',y:'#fff23d'};
   function drawMcdu(){pedG.drawImage(pedBase,0,0);
-    for(const[x,y,w,h]of MS){const X0=x*PS,Y0=y*PS,W0=w*PS,H0=h*PS;pedG.fillStyle='#04060a';pedG.fillRect(X0,Y0,W0,H0);
+    for(const[x,y,w,h]of MS.slice(0,1)){   /* captain's side only */const X0=x*PS,Y0=y*PS,W0=w*PS,H0=h*PS;pedG.fillStyle='#04060a';pedG.fillRect(X0,Y0,W0,H0);
       if(!S.elec.ext||!BUF)continue;const ix=X0+W0*.03,iy=Y0+H0*.05,iw=W0*.94,ih=H0*.9,lh=ih/14,cw=iw/24;
       pedG.textAlign='center';pedG.textBaseline='middle';
       BUF.forEach((row,r)=>row.forEach((c,ci)=>{if(c.ch===' ')return;const fs=(c.s==='S'?0.72:0.95)*Math.min(lh,cw/0.6);
@@ -81,7 +87,7 @@ async function build3D(){
         if(c.ch===BOX){pedG.lineWidth=Math.max(1,fs*.08);pedG.strokeRect(cx-fs*.3,cy-fs*.38,fs*.6,fs*.76)}
         else{pedG.font=`500 ${fs}px "IBM Plex Mono",monospace`;pedG.fillText(c.ch,cx,cy)}}))}
     pedT.needsUpdate=true;dirty=true}
-  window.__draw3D=()=>{if(view==='3d')drawMcdu()};
+  window.__draw3D=()=>{if(view==='3d'){drawMcdu();drawNd3()}};
   /* camera control */
   let yaw=0,pitch=-0.2,dirty=true,tw=null;
   function aimAt(t){const d=t.clone().sub(EYE);return{yaw:Math.atan2(-d.x,-d.z),pitch:Math.atan2(d.y,Math.hypot(d.x,d.z))}}
@@ -111,7 +117,7 @@ async function build3D(){
       if(inR(px,py,[425,25,472,74],pad)){el2.bat1=!el2.bat1;toast('BAT 1 '+(el2.bat1?'AUTO':'OFF'))}
       else if(inR(px,py,[476,25,525,74],pad)){el2.bat2=!el2.bat2;toast('BAT 2 '+(el2.bat2?'AUTO':'OFF'))}
       else if(inR(px,py,[599,161,649,211],pad)){el2.ext=!el2.ext;toast('EXT PWR '+(el2.ext?'ON':'AVAIL'))}
-      else return;drawPanels();drawMcdu()}
+      else return;drawPanels();drawMcdu();drawNd3()}
     else if(hit.object===Ap.m){const px=u*225,py=v*386;if(inR(px,py,[60,85,195,200],pad*2)){el2.apu=!el2.apu;toast('APU MASTER SW '+(el2.apu?'ON':'OFF'));drawPanels()}}
     else{const px=u*488,py=v*790;if(px>=6&&px<=146&&py<=206)openMcdu('capt');else if(px>=348&&px<=488&&py<=206)openMcdu('fo')}}
   /* loop */
@@ -120,7 +126,7 @@ async function build3D(){
   (function loop(){requestAnimationFrame(loop);
     if(tw){const k=Math.min(1,(performance.now()-tw.t0)/550),e=ease(k);yaw=tw.y0+(tw.y1-tw.y0)*e;pitch=tw.p0+(tw.p1-tw.p0)*e;cam.fov=tw.f0+(tw.f1-tw.f0)*e;applyCam();if(k>=1)tw=null}
     if(dirty&&view==='3d'){renderer.render(scene,cam);dirty=false}})();
-  drawPanels();drawMcdu();
+  drawPanels();drawMcdu();drawNd3();
   window.__dbg3d={cam,scene,get yaw(){return yaw},get pitch(){return pitch},tapAt:(x,y)=>tap({clientX:x,clientY:y,type:'pointerup'}),goView:(i)=>goView(VIEWS[i][1],VIEWS[i][2]),
     proj:(w,u,v)=>{const m={elec:E.m,apu:Ap.m,ped:ped}[w];const g=m.geometry.parameters;const p=new T.Vector3((u-.5)*g.width,(.5-v)*g.height,0);m.localToWorld(p);p.project(cam);const r=cvs.getBoundingClientRect();return[r.left+(p.x+1)/2*r.width,r.top+(1-p.y)/2*r.height]}};
 }
