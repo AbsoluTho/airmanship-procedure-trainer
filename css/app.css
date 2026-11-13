@@ -72,7 +72,7 @@ button{font:inherit;color:inherit}
 .modal .mhead span{flex:1}
 .modal .mcdu{width:min(94vw,calc((100dvh - 90px)*563/880),563px)}
 /* ND + EFIS (photo panels, live overlays) */
-.ndpanel{flex:0 0 auto;width:min(100%,calc((100dvh - 128px)/1.43),480px);display:flex;flex-direction:column;gap:6px}
+.ndpanel{flex:0 0 auto;width:min(100%,calc((100dvh - 128px)/1.69),480px);display:flex;flex-direction:column;gap:6px}
 .efis{position:relative;width:100%;aspect-ratio:676/401;border-radius:10px;overflow:hidden;user-select:none;-webkit-user-select:none;touch-action:manipulation}
 .efis-img{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none;-webkit-user-drag:none}
 .efis button{position:absolute;background:transparent;border:0;padding:0;cursor:pointer;-webkit-tap-highlight-color:transparent;border-radius:6px}
@@ -83,8 +83,8 @@ button{font:inherit;color:inherit}
 .efb:active{background:rgba(255,255,255,.06)}
 .knob{position:absolute;border-radius:50%;overflow:hidden;pointer-events:none;transition:transform .18s ease-out}
 .knob img{position:absolute;max-width:none;display:block}
-.ndbezel{position:relative;width:100%;aspect-ratio:676/559;border-radius:10px;overflow:hidden}
+.ndbezel{position:relative;width:100%;aspect-ratio:510/559;border-radius:10px;overflow:hidden}
 .ndbezel img{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none}
-#nd{position:absolute;left:8.432%;top:11.449%;width:58.432%;height:74.419%;display:block;background:#000}
+#nd{position:absolute;left:11.176%;top:11.449%;width:77.451%;height:74.419%;display:block;background:#000}
 @media (prefers-reduced-motion:reduce){.knob{transition:none}}
 @media (max-width:760px){.side{max-width:none}.mark{font-size:20px}}
