@@ -73,6 +73,12 @@ function drawND(g,W,H,powered){g.save();g.setTransform(1,0,0,1,0,0);g.fillStyle=
   for(const[G]of geos)G.wpts.forEach(w=>inPlan.add(w.id));
   if(EFIS.wpt)for(const[id,pos]of Object.entries(DB.wpt)){if(inPlan.has(id))continue;const[x,y]=pj(pos);
     if(Math.hypot(x-V.cx,y-V.cy)>V.R)continue;diamond(x,y,'m',7);label(id,x+12,y+2,'m',19)}
+  /* VOR D / NDB options: navaids from OurAirports (magenta) */
+  if((EFIS.vord||EFIS.ndb)&&DB.nav)for(const[id,n]of Object.entries(DB.nav)){const isN=/^NDB/.test(n.type);if(isN?!EFIS.ndb:!EFIS.vord)continue;
+    const[x,y]=pj(n.pos);if(Math.hypot(x-V.cx,y-V.cy)>V.R)continue;g.strokeStyle=NC.m;g.lineWidth=2.5;g.beginPath();
+    if(isN){g.moveTo(x,y-11);g.lineTo(x+10,y+7);g.lineTo(x-10,y+7);g.closePath()}
+    else{if(n.type!=='DME'){g.moveTo(x-12,y);g.lineTo(x+12,y);g.moveTo(x,y-12);g.lineTo(x,y+12)}if(n.type!=='VOR')g.arc(x,y,8,0,Math.PI*2)}
+    g.stroke();label(id,x+14,y+14,'m',21)}
   if(EFIS.arpt){const used=new Set([A&&A.legs[0].id,A&&A.legs[idxK(A,'dest')].id,I().altn]);
     for(const[id,ap]of Object.entries(DB.apt)){if(used.has(id))continue;const[x,y]=pj(ap.pos);star(x,y,'m');label(id,x+16,y+2,'m')}}
   for(const[G,tm]of geos)for(const w of G.wpts){const[x,y]=pj(w.pos);if(Math.hypot(x-V.cx,y-V.cy)>V.R+30)continue;
@@ -95,9 +101,12 @@ function drawND(g,W,H,powered){g.save();g.setTransform(1,0,0,1,0,0);g.fillStyle=
     g.strokeStyle=NC.w;g.lineWidth=3.5;g.beginPath();g.arc(V.cx,V.cy,V.R,-Math.PI/2-1.25,-Math.PI/2+1.25);g.stroke();
     for(let h=Math.ceil((hdg-70)/5)*5;h<=hdg+70;h+=5){const a=h-hdg;tick(a,V.R,V.R+(h%10?13:22));if(h%10===0)num(h,a)}
     selHdg(48);tick(0,V.R-18,V.R+20,'ac',6)}
-  else{if(V.m!=='LS')ring(V.R/2,180,null);if(V.m==='NAV'||V.m==='PLAN'){const[x,y]=pol(-45,V.R/2);label(String(rl(EFIS.range/4)),x,y,'b',23,'center')}
+  else{const k=V.R/250;if(V.m!=='LS')ring(V.R/2,180,null);
+    /* range labels lower left of the rings (FlyByWire ROSE/PLAN underlay) */
+    if(V.m==='NAV'||V.m==='PLAN'){label(String(rl(EFIS.range/4)),V.cx-74*k,V.cy+84*k,'b',25);label(String(rl(EFIS.range/2)),V.cx-172*k,V.cy+166*k,'b',25)}
     g.strokeStyle=NC.w;g.lineWidth=3.5;g.beginPath();g.arc(V.cx,V.cy,V.R,0,Math.PI*2);g.stroke();
-    if(V.m==='PLAN')[['N',0],['E',90],['S',180],['W',270]].forEach(([t,a])=>{tick(a,V.R-14,V.R+14);const[x,y]=pol(a,V.R+36);label(t,x,y,'w',32,'center')});
+    if(V.m==='PLAN')[['N',0],['E',90],['S',180],['W',270]].forEach(([t,a])=>{const[x,y]=pol(a,V.R*0.856);label(t,x,y,'w',29,'center');
+      const[ax,ay]=pol(a,V.R*0.97),[b1x,b1y]=pol(a-1.4,V.R*0.932),[b2x,b2y]=pol(a+1.4,V.R*0.932);g.fillStyle=NC.w;g.beginPath();g.moveTo(ax,ay);g.lineTo(b1x,b1y);g.lineTo(b2x,b2y);g.closePath();g.fill()});
     else{for(let h=0;h<360;h+=5){const a=h-hdg;tick(a,V.R,V.R+(h%10?13:22));if(h%10===0)num(h,a)}selHdg(180);tick(0,V.R-18,V.R+20,'ac',6)}}
   /* aircraft symbol */
   const plane=(x,y,rot)=>{g.save();g.translate(x,y);g.rotate(rot*D2R);g.strokeStyle=NC.ac;g.lineWidth=7;g.beginPath();

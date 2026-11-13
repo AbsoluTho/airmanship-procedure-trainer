@@ -215,7 +215,7 @@ P.ARR={items(){const p=cur(),d=p.legs[idxK(p,'dest')],t=APPRS[d.id]||{};
   if(k==='R1'){if(!p.appr)return err('NOT ALLOWED');S.arr={list:'VIA',off:0};return}
   if(k==='L2'){S.arr={list:'STAR',off:0};return}
   if(s==='L'&&n>=3&&n<=5){const x=this.items()[S.arr.off+n-3];if(!x)return;if(!x.id)return err('NOT ALLOWED');
-    if(S.arr.list==='APPR'){const d=p.legs[idxK(p,'dest')];if(!APPRS[d.id][x.id])return err('NOT IN DATA BASE');
+    if(S.arr.list==='APPR'){const d=p.legs[idxK(p,'dest')];if(!(APPRS[d.id]||{})[x.id])return err('NOT IN DATA BASE');
       const q=edit();q.appr=x.id;q.via=null;q.star=null;buildArr(q);S.arr={list:'VIA',off:0}}
     else if(S.arr.list==='VIA'){const q=edit();q.via=x.id==='NO VIA'?null:x.id;buildArr(q);S.arr={list:'STAR',off:0}}
     else{edit().star='NO STAR'}return}
@@ -253,26 +253,28 @@ P.AWY={render(){const p=cur(),a=S.awy;
 /* INIT B (fuel and weight). Units: tonnes. */
 const dashF='---.-/----';
 function num(v,lo,hi,dp){if(!new RegExp('^\\d{1,3}(\\.\\d{1,'+(dp||1)+'})?$').test(v))return'F';const x=+v;return x<lo||x>hi?'R':x}
-P.INITB={render(){const f=S.fuel,pr=predict(),B=BOX;
-  cput(1,'INIT');put(1,22,'←');
-  put(2,1,'TAXI','w','S');rput(2,'ZFW/ZFWCG','w','S',23);
+/* INIT FUEL PRED (INIT B). Layout follows the FlyByWire A32NX MCDU (GPL-3.0). Units: tonnes. */
+const at=(r,end,t,col,s)=>put(r,end-String(t).length+1,t,col,s);   /* right-aligned, last character at column end */
+P.INITB={render(){const f=S.fuel,pr=predict(),B=BOX,D='---.-',T='----';
+  put(1,5,'INIT FUEL PRED');put(1,22,'←');
+  put(2,0,'TAXI','w','S');put(2,15,'ZFW/ZFWCG','w','S');
   put(3,0,f1(f.taxi??0.2),'b',f.taxi!=null?'L':'S');
-  if(f.zfw!=null)rput(3,f1(f.zfw)+'/'+f1(f.cg),'b');else rput(3,B+B+'.'+B+'/'+B+B+'.'+B,'a');
-  put(4,1,'TRIP /TIME','w','S');rput(4,'BLOCK','w','S',23);
-  put(5,0,pr?f1(pr.trip.fuel)+'/'+hhmm(pr.trip.time):dashF,pr?'g':'w');
-  if(f.block!=null)rput(5,f1(f.block),'b');else rput(5,B+B+'.'+B,'a');
-  put(6,1,'RTE RSV/%','w','S');
-  segs(7,0,[[pr?f1(pr.rsv):'---.-','b',f.rsv!=null?'L':'S'],['/','b'],[(pr?pr.pct:(f.rsvPct??5)).toFixed(1),'b',f.rsvPct!=null?'L':'S']]);
-  put(8,1,'ALTN /TIME','w','S');rput(8,'TOW/   LW','w','S',23);
-  if(pr)segs(9,0,[[f1(pr.altn.fuel),'b',f.altn!=null?'L':'S'],['/'+hhmm(pr.altn.time),'g']]);else put(9,0,dashF,'w');
-  rput(9,pr?f1(pr.tow)+'/'+f1(pr.lw):'---.-/---.-',pr?'g':'w');
-  put(10,1,'FINAL/TIME','w','S');rput(10,'TRIP WIND','w','S',23);
-  if(pr)segs(11,0,[[f1(pr.final.fuel),'b',f.final!=null?'L':'S'],['/','b'],[hhmm(pr.final.time),'b',f.finalTime!=null?'L':'S']]);
-  else segs(11,0,[['---.-/','w'],[hhmm(f.finalTime??30),'b','S']]);
-  const w=f.wind||0;rput(11,(w<0?'HD':'TL')+String(Math.abs(w)).padStart(3,'0'),'b',f.wind!=null?'L':'S');
-  put(12,0,'EXTRA/TIME','w','S');rput(12,'MIN DEST FOB','w','S',23);
-  put(13,0,pr?f1(pr.extra.fuel)+'/'+hhmm(Math.abs(pr.extra.time)):dashF,pr?(pr.extra.fuel<0?'a':'g'):'w');
-  rput(13,pr?f1(pr.minFob):'---.-',pr?'b':'w',f.minFob!=null?'L':'S')},
+  if(f.zfw!=null){at(3,17,f1(f.zfw),'b');put(3,18,'/','b');at(3,23,f1(f.cg),'b')}else{at(3,17,B+B+'.'+B,'a');put(3,18,'/','a');at(3,23,B+B+'.'+B,'a')}
+  put(4,0,'TRIP','w','S');put(4,5,'/TIME','w','S');put(4,19,'BLOCK','w','S');
+  at(5,4,pr?f1(pr.trip.fuel):D,pr?'g':'w',pr?'S':'L');put(5,5,'/','w');at(5,9,pr?hhmm(pr.trip.time):T,pr?'g':'w',pr?'S':'L');
+  if(f.block!=null)at(5,23,f1(f.block),'b');else at(5,23,B+B+'.'+B,'a');
+  put(6,0,'RTE RSV/%','w','S');
+  at(7,4,pr?f1(pr.rsv):D,pr?'b':'w',pr&&f.rsv==null?'S':'L');put(7,5,'/','w');put(7,6,(pr?pr.pct:(f.rsvPct??5)).toFixed(1),'b',f.rsvPct!=null?'L':'S');
+  put(8,0,'ALTN','w','S');put(8,5,'/TIME','w','S');put(8,15,'TOW/','w','S');put(8,22,'LW','w','S');
+  at(9,4,pr?f1(pr.altn.fuel):D,pr?'b':'w',pr&&f.altn==null?'S':'L');put(9,5,'/','w');at(9,9,pr?hhmm(pr.altn.time):T,pr?'g':'w',pr?'S':'L');
+  at(9,17,pr?f1(pr.tow):D,pr?'g':'w',pr?'S':'L');put(9,18,'/','w');at(9,23,pr?f1(pr.lw):D,pr?'g':'w',pr?'S':'L');
+  put(10,0,'FINAL/TIME','w','S');put(10,15,'TRIP WIND','w','S');
+  at(11,4,pr?f1(pr.final.fuel):D,pr?'b':'w',pr&&f.final==null?'S':'L');put(11,5,'/','w');
+  at(11,9,hhmm(pr?pr.final.time:(f.finalTime??30)),'b',f.finalTime!=null?'L':'S');
+  {const w=f.wind||0,sz=f.wind!=null?'L':'S';put(11,19,w<0?'HD':'TL','b',sz);put(11,21,String(Math.abs(w)).padStart(3,'0'),'b',sz)}
+  put(12,0,'MIN DEST FOB','w','S');put(12,14,'EXTRA/TIME','w','S');
+  at(13,4,pr?f1(pr.minFob):D,pr?'b':'w',pr&&f.minFob==null?'S':'L');
+  {const neg=pr&&pr.extra.fuel<0,c=pr?(neg?'a':'g'):'w',sz=pr?'S':'L';at(13,18,pr?f1(pr.extra.fuel):D,c,sz);put(13,19,'/','w');at(13,23,pr?hhmm(Math.abs(pr.extra.time)):T,c,sz)}},
  lsk(s,n){const f=S.fuel,v=S.sp,k=s+n;if(!v)return;const C=v==='CLR';
   const chk=x=>x==='F'?(err('FORMAT ERROR'),false):x==='R'?(err('ENTRY OUT OF RANGE'),false):true;
   switch(k){
@@ -290,7 +292,7 @@ P.INITB={render(){const f=S.fuel,pr=predict(),B=BOX;
     if(m[2]){const t=+m[2].slice(0,2)*60+ +m[2].slice(2);if(+m[2].slice(2)>59||t>90)return err('ENTRY OUT OF RANGE');f.finalTime=t;f.final=null}return ok()}
   case'R5':{if(C){f.wind=null;return ok()}const m=v.match(/^(HD|TL|H|T|-|\+)?(\d{1,3})$/);if(!m)return err('FORMAT ERROR');
     const x=+m[2];if(x>250)return err('ENTRY OUT OF RANGE');f.wind=(m[1]&&/^(HD|H|-)$/.test(m[1]))?-x:x;return ok()}
-  case'R6':if(C){f.minFob=null;return ok()}{const x=num(v,0,40);if(!chk(x))return;f.minFob=x;return ok()}
+  case'L6':if(C){f.minFob=null;return ok()}{const x=num(v,0,40);if(!chk(x))return;f.minFob=x;return ok()}
   case'R3':return err('NOT IN PROTOTYPE');
   default:return err('NOT ALLOWED')}}};
 
@@ -298,24 +300,24 @@ P.INITB={render(){const f=S.fuel,pr=predict(),B=BOX;
 function orig(){const p=S.active;return p?p.legs[0].id:null}
 function elevO(){const o=orig();return o?DB.apt[o].elev:0}
 function defRed(){return Math.round((elevO()+1500)/10)*10}
-P.PERFTO={render(){const q=S.perf,pr=predict(),f=S.fuel,B=BOX;
-  cput(1,'TAKE OFF');
-  put(2,1,'V1','w','S');put(2,7,'FLP RETR','w','S');rput(2,'RWY','w','S',24);
-  put(4,1,'VR','w','S');put(4,7,'SLT RETR','w','S');rput(4,'TO SHIFT','w','S',24);
-  put(6,1,'V2','w','S');put(6,7,'CLEAN','w','S');rput(6,'FLAPS/THS','w','S',24);
+/* PERF TAKE OFF. Layout follows the FlyByWire A32NX MCDU (GPL-3.0). */
+P.PERFTO={render(){const q=S.perf,f=S.fuel,B=BOX,rw=S.active&&S.active.rwy;
+  csegs(1,[['TAKE OFF RWY ','w'],[(rw||'---').padStart(3),rw?'g':'w']]);
+  put(2,1,'V1','w','S');put(2,5,'FLP RETR','w','S');
+  put(4,1,'VR','w','S');put(4,5,'SLT RETR','w','S');rput(4,'TO SHIFT ','w','S');
+  put(6,1,'V2','w','S');put(6,7,'CLEAN','w','S');rput(6,'FLAPS/THS','w','S');
   [[3,q.v1],[5,q.vr],[7,q.v2]].forEach(([r,x])=>x?put(r,0,String(x),'b'):put(r,0,B+B+B,'a'));
   const tow=f.zfw!=null&&f.block!=null?f.zfw+f.block-(f.taxi??0.2):null,cs=tow?charSpeeds(tow):null;
   [[3,'F',cs&&cs.F],[5,'S',cs&&cs.S],[7,'O',cs&&cs.O]].forEach(([r,l,x])=>{put(r,7,l+'=','w');put(r,9,x?String(x):'---',x?'g':'w')});
-  const rw=S.active&&S.active.rwy;rput(3,rw||'---',rw?'g':'w');
-  if(q.shift!=null)segs(5,24-9,[['[M]','b','S'],[String(q.shift).padStart(5),'b'],['*','b']]);else rput(5,'[M][   ]*','b');
-  if(q.flaps)rput(7,q.flaps+'/'+(q.ths?q.ths:'[   ]'),'b');else rput(7,'[]/[   ]','b');
-  put(8,1,'TRANS ALT','w','S');rput(8,'FLEX TO TEMP','w','S',24);
-  const o=orig();put(9,0,String(q.ta??(o&&TA[o]||'-----')),'b',q.ta!=null?'L':'S');
+  if(q.shift!=null)segs(5,COLS-9,[['[M]','b','S'],[String(q.shift).padStart(5),'b'],['*','b']]);else segs(5,COLS-8,[['[M]','b','S'],['[  ]*','b']]);
+  rput(7,q.flaps?q.flaps+'/'+(q.ths||'[   ]'):'[]/[   ]','b');
+  put(8,0,'TRANS ALT','w','S');rput(8,'FLEX TO TEMP','w','S');
+  const o=orig();put(9,0,String(q.ta??(o&&TA[o]||'[   ]')),'b',q.ta!=null?'L':'S');
   rput(9,q.flex!=null?q.flex+'°':'[  ]°','b');
-  put(10,0,'THR RED/ACC','w','S');rput(10,'ENG OUT ACC','w','S',24);
-  segs(11,0,[[String(q.thr??defRed()),'b',q.thr!=null?'L':'S'],['/','b'],[String(q.acc??defRed()),'b',q.acc!=null?'L':'S']]);
-  rput(11,String(q.eoacc??defRed()),'b',q.eoacc!=null?'L':'S');
-  rput(12,'NEXT ','w','S',23);rput(13,'PHASE>')},
+  put(10,0,'THR RED/ACC','w','S');rput(10,'ENG OUT ACC','w','S');
+  segs(11,0,[[String(q.thr??defRed()).padStart(5),'b',q.thr!=null?'L':'S'],['/','b'],[String(q.acc??defRed()).padEnd(5),'b',q.acc!=null?'L':'S']]);
+  rput(11,String(q.eoacc??defRed()).padStart(5),'b',q.eoacc!=null?'L':'S');
+  rput(12,'NEXT ','w','S');rput(13,'PHASE>')},
  lsk(s,n){const q=S.perf,v=S.sp,k=s+n;
   if(k==='R6')return err('NOT IN PROTOTYPE');if(!v)return;const C=v==='CLR';
   const vs=k==='L1'?'v1':k==='L2'?'vr':k==='L3'?'v2':null;
