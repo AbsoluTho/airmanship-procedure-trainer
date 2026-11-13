@@ -37,15 +37,16 @@ function planGeo(p,base){const G={lines:[],wpts:[],rwys:[]};let prev=null,vr=0;
   const crs=t=>{const m=String(t||'').match(/(\d{3})/);return m?+m[1]:null};
   p.legs.forEach((l,ix)=>{const col=l.seg==='map'?'b':base;
     if(l.k==='orig'||l.k==='dest'){const ap=DB.apt[l.id],r=l.rwy&&ap.rwy[l.rwy],pos=r?r.pos:ap.pos;vr=ap.var||0;
-      if(l.k==='dest'&&prev)G.lines.push({pts:[prev,pos],col});
+      if(l.k==='dest'&&prev)G.lines.push({pts:[prev,pos],col,ix});
       G.rwys.push({id:l.id,rwy:l.rwy,pos,crsT:r?r.crs+vr:null,len:r?r.len/1852:0});prev=pos;return}
     if(l.k==='wpt'){const pos=DB.wpt[l.id];if(!pos){prev=null;return}
-      if(prev)G.lines.push({pts:l.lbl==='ARC'&&l.ctr&&DB.wpt[l.ctr]?arcPts(prev,pos,DB.wpt[l.ctr]):[prev,pos],col});
+      if(prev)G.lines.push({pts:l.lbl==='ARC'&&l.ctr&&DB.wpt[l.ctr]?arcPts(prev,pos,DB.wpt[l.ctr]):[prev,pos],col,ix});
       G.wpts.push({id:l.id,pos,col,alt:l.alt,spd:l.spd,ix});prev=pos;return}
     if(l.k==='tp'){prev=l.pos;return}
     if(l.k==='ca'&&prev){const o=p.legs[0],ap=DB.apt[o.id],r=ap.rwy[o.rwy];if(!r){prev=null;return}
       const q=dst(r.pos,r.crs+vr,r.len/1852+l.aal/320);G.lines.push({pts:[prev,q],col});prev=q;return}
     if(l.k==='hdg'&&prev){const c=crs(l.lbl);if(c==null){prev=null;return}const q=dst(prev,c+vr,5);G.lines.push({pts:[prev,q],col});prev=q;return}
+    if(l.k==='hold'&&prev&&l.fix){G.lines.push({pts:holdLoop(prev,l.crs+vr,l.turn!=='L',holdLen(l),HOLD_R),col,ix});return}   /* pilot-entered hold */
     if(l.k==='hold'&&prev){const c=crs(l.lbl);if(c!=null)G.lines.push({pts:holdPts(prev,c+vr,/R$/.test(l.id)),col});return}
     prev=null});
   return G}
@@ -77,7 +78,14 @@ function drawND(g,W,H,powered){g.save();g.setTransform(1,0,0,1,0,0);g.fillStyle=
   const geos=[];if(A)geos.push([planGeo(A,'g'),false]);if(T)geos.push([planGeo(T,'y'),true]);if(S.secMode&&S.sec)geos.push([planGeo(S.sec,'w'),'sec']);
   if(A&&I().altn&&DB.apt[I().altn]){const d=A.legs[idxK(A,'dest')],dp=legPos(d),ap=DB.apt[I().altn].pos;line([dp,ap],'b',[14,10]);
     const[x,y]=pj(ap);star(x,y,'b');label(I().altn,x+16,y+2,'b')}
-  for(const[G,tm]of geos)for(const L of G.lines)line(L.pts,tm==='sec'?'w':tm?'y':L.col,tm===true?[16,10]:null);
+  /* offset: the original route dashed between the entry point and the rejoin point, the offset path solid */
+  const ofR=p=>{if(!p||!p.ofst)return null;const ie=p.legs.findIndex(l=>l.seg==='arr'||l.k==='dest');return[p.ofst.ix0??0,ie]};
+  const oA=ofR(A),oT=ofR(T);
+  for(const[G,tm]of geos){const o=tm===true?oT:tm?null:oA;for(const L of G.lines){const inO=o&&L.ix!=null&&L.ix>o[0]&&L.ix<=o[1];
+    line(L.pts,tm==='sec'?'w':tm?'y':L.col,tm===true||inO?[16,10]:null)}}
+  for(const[pl,c]of[[A,'g'],[T,'y']]){if(!pl||!pl.ofst)continue;let Pp=null;try{Pp=pl===A&&flying()&&FL.path?FL.path:buildPath(pl)}catch(e){}
+    if(Pp&&Pp.ofstStart!=null){const seg=Pp.pts.filter(q=>q.s>=Pp.ofstStart-0.01&&q.s<=Pp.ofstEnd+0.01).map(q=>q.p);if(seg.length>1)line(seg,c,c==='y'?[16,10]:null)}}
+  if(typeof ndFixInfo==='function')ndFixInfo(g,pj,V);
   for(const[G]of geos)for(const r of G.rwys){const[x1,y1]=pj(r.pos);
     if(r.crsT!=null){let[x2,y2]=pj(dst(r.pos,r.crsT,r.len));let dx=x2-x1,dy=y2-y1,L=Math.hypot(dx,dy);
       if(L<16){const k=16/Math.max(L,1e-3);dx*=k;dy*=k;L=16}
@@ -158,7 +166,7 @@ function drawND(g,W,H,powered){g.save();g.setTransform(1,0,0,1,0,0);g.fillStyle=
     g.fillText(d<20?d.toFixed(1):String(Math.round(d)),708,76);g.font=NF(23);g.fillStyle=NC.b;g.fillText('NM',756,76)}
   if(T){g.textAlign='center';g.font=NF(20);g.fillStyle=NC.y;g.fillText('TMPY',384,Hg-20)}
   /* message box (GPS PRIMARY until cleared on the MCDU) */
-  if(S.msg==='GPS PRIMARY'){const bw=438,bx=384-bw/2,by=Hg-70;g.strokeStyle=NC.w;g.lineWidth=2.5;g.strokeRect(bx,by,bw,33);label('GPS PRIMARY',384,by+18,'w',27,'center')}
+  if(hasMsg('GPS PRIMARY')){const bw=438,bx=384-bw/2,by=Hg-70;g.strokeStyle=NC.w;g.lineWidth=2.5;g.strokeRect(bx,by,bw,33);label('GPS PRIMARY',384,by+18,'w',27,'center')}
   g.restore()}
 
 /* ---------- pseudo waypoints from the vertical profile ---------- */

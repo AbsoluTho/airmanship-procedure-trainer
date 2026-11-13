@@ -11,7 +11,7 @@ const FL={active:false,running:false,rate:4,t:0,utc0:0,path:null,s:0,seg:1,xtk:0
 const KT2NMS=1/3600;
 
 /* ---------- lateral path from the F-PLN ---------- */
-function buildPath(){const p=S.active,pts=[];let vr=DB.apt[p.legs[0].id].var||0;
+function buildPath(plan){const p=plan||S.active,pts=[],holds=[];let vr=DB.apt[p.legs[0].id].var||0;
   const push=(pos,ix)=>{const last=pts[pts.length-1];if(last&&gc(last.p,pos)<0.01){if(ix!=null)last.ix=ix;return}pts.push({p:pos,ix})};
   let tp=-1;p.legs.forEach((l,i)=>{if(l.k==='tp')tp=i});   /* after a DIR TO the path starts at the turn point */
   for(let ix=Math.max(0,tp);ix<p.legs.length;ix++){const l=p.legs[ix];
@@ -22,11 +22,17 @@ function buildPath(){const p=S.active,pts=[];let vr=DB.apt[p.legs[0].id].var||0;
     if(l.k==='wpt'){const pos=DB.wpt[l.id];if(!pos)continue;const prev=pts[pts.length-1];
       if(l.lbl==='ARC'&&l.ctr&&DB.wpt[l.ctr]&&prev)arcPts(prev.p,pos,DB.wpt[l.ctr]).slice(1,-1).forEach(q=>push(q,null));
       push(pos,ix);continue}
-    if(l.k==='dest'){const ap=DB.apt[l.id],r=ap.rwy[l.rwy];push(r.pos,ix);push(dst(r.pos,r.crs+(ap.var||0),r.len/1852*0.75),null);break}}
+    /* pilot-entered hold (HOLD page): one racetrack circuit after its fix, repeated in flight until the exit */
+    if(l.k==='hold'&&l.fix&&pts.length){const F=pts[pts.length-1];const loop=holdLoop(F.p,l.crs+vr,l.turn!=='L',holdLen(l),HOLD_R);
+      F.h0=ix;loop.slice(1).forEach((q,k)=>{pts.push({p:q,ix:k===loop.length-2?ix:null})});pts[pts.length-1].h1=ix;holds.push(ix);continue}
+    if(l.k==='dest'){const ap=DB.apt[l.id],r=ap.rwy[l.rwy];if(!r){push(ap.pos,ix);break}push(r.pos,ix);push(dst(r.pos,r.crs+(ap.var||0),r.len/1852*0.75),null);break}}
+  if(p.ofst)offsetPts(pts,p);
   let s=0;pts.forEach((q,i)=>{if(i)s+=gc(pts[i-1].p,q.p);q.s=s});
   const thr=pts.find(q=>q.ix!=null&&p.legs[q.ix].k==='dest')||pts[pts.length-1];
-  return{pts,len:s,sThr:thr.s}}
-const planSig=()=>{const p=S.active;return p?p.legs.map(l=>l.k+(l.id||'')+(l.rwy||'')).join('|')+(p.appr||''):''};
+  const H=holds.map(ix=>{const i0=pts.findIndex(q=>q.h0===ix),i1=pts.findIndex(q=>q.h1===ix);return{ix,i0,s0:pts[i0].s,s1:pts[i1].s}}).filter(h=>h.i0>=0);
+  const oe=pts.find(q=>q.oe),os_=pts.find(q=>q.os);
+  return{pts,len:s,sThr:thr.s,holds:H,ofstEnd:oe?oe.s:null,ofstStart:os_?os_.s:null}}
+const planSig=()=>{const p=S.active;return p?p.legs.map(l=>l.k+(l.id||'')+(l.rwy||'')+(l.k==='hold'?[l.crs,l.turn,l.time,l.dist].join(','):'')).join('|')+(p.appr||'')+(p.ofst?'|OFST'+p.ofst.side+p.ofst.nm:''):''};
 /* the active F-PLN changed in flight (DIR TO, ENABLE ALTN, new approach...): rebuild the path from the present position */
 function flightReplan(){const P=buildPath();FL.path=P;const pr=project(P,FL.pos,1,P.pts.length-1);FL.s=pr?pr.s:0;FL.seg=pr?pr.i:1;FL.fromIx=0;
   for(const pt of P.pts)if(pt.ix!=null&&pt.s<=FL.s+0.05&&pt.ix>FL.fromIx)FL.fromIx=pt.ix;FL.td=P.sThr-tdDist();FL.sig=planSig();FL.tdReached=false}
@@ -42,7 +48,7 @@ function project(P,pos,from,to){let best=null;const a=P.pts;
   return best}
 
 /* ---------- final approach course (LOC) ---------- */
-function destRwy(){const p=S.active,d=p.legs[idxK(p,'dest')],a=DB.apt[d.id];return{a,r:a.rwy[d.rwy],tdze:a.rwy[d.rwy].tdze??a.elev}}
+function destRwy(){const p=S.active,d=p.legs[idxK(p,'dest')],a=DB.apt[d.id],r=a.rwy[d.rwy]||Object.values(a.rwy)[0]||{pos:a.pos,crs:0,len:2000};return{a,r,tdze:r.tdze??a.elev}}   /* NEW DEST without a runway yet: the first runway */
 function locGeo(pos){const d=destRwy(),c=d.r.crs+(d.a.var||0),q=enu(d.r.pos,pos),u=[Math.sin(c*D2R),Math.cos(c*D2R)];
   const along=-(q[0]*u[0]+q[1]*u[1]),xtk=(u[0]*q[1]-u[1]*q[0])*-1;return{crs:c,along,xtk}}   /* along: NM before the threshold */
 function faf(){const p=S.active,di=idxK(p,'dest');for(let i=di-1;i>0;i--){const l=p.legs[i];if(l.k==='wpt'&&l.alt&&l.seg==='arr')return l.alt.v}return destRwy().tdze+1500}
@@ -72,8 +78,8 @@ function flightStart(){const miss=flightReady();if(miss.length)return miss;
   const P=buildPath(),o=DB.apt[orig()],r=o.rwy[S.active.rwy],tr=r.crs+(o.var||0);
   Object.assign(FL,{active:true,running:true,t:0,utc0:Date.now(),path:P,s:0,seg:1,xtk:0,pos:r.pos,hdgT:tr,trkT:tr,roll:0,pitch:0,alt:r.tdze??o.elev,vs:0,ias:0,tas:0,gs:0,mach:0,
     ground:true,lat:'RWY',latArm:FCU.hdgMgd?'NAV':null,ver:'SRS',verArm:[FCU.lvlch?'CLB':'OP CLB'],thr:'TO',conf:q2conf(),gear:true,
-    fob:S.fuel.block-(S.fuel.taxi??0.2),fromIx:0,cst:null,acc:0,accT:0,soe:false,opSmall:false,spdIsMach:false,capAlt:null,altHold:null,fmaT:{},loc:false,gsCap:false,tdReached:false,stage:'ROLL',lvrT:null});
-  FCU.athr=true;FL.td=P.sThr-tdDist();FL.sig=planSig();S.phase='TAKEOFF';if(S.msg==='GPS PRIMARY')S.msg=null;setFma();flightTick(0);return[]}
+    fob:S.fuel.block-(S.fuel.taxi??0.2),fromIx:0,inHold:null,holdExit:null,hsActive:null,cst:null,acc:0,accT:0,soe:false,opSmall:false,spdIsMach:false,capAlt:null,altHold:null,fmaT:{},loc:false,gsCap:false,tdReached:false,stage:'ROLL',lvrT:null});
+  FCU.athr=true;FL.td=P.sThr-tdDist();FL.sig=planSig();S.phase='TAKEOFF';setFma();flightTick(0);return[]}
 function q2conf(){const f=S.perf.flaps;return f===1?'1+F':String(f||1)}
 function flightReset(){Object.assign(FL,{active:false,running:false,path:null,stage:'IDLE',fma:{c1:[],c2:[],c3:[],c4:[],c5:[]},ias:0,gs:0,tas:0,vs:0});
   FCU.ap1=FCU.ap2=FCU.athr=FCU.loc=FCU.appr=FCU.exped=false;if(FCU.spdMgd)FCU.mach=false;S.phase='PREFLIGHT';S.apprArm=false;refreshAll()}
@@ -126,6 +132,11 @@ function step(dt){const ias0=FL.ias;if(FL.sig!==planSig()&&!FL.ground)flightRepl
   const agl=()=>FL.alt-gnd;
   const pr=['NAV','RWY','RWY TRK'].includes(FL.lat)?project(P,FL.pos,FL.seg-2,FL.seg+6):project(P,FL.pos,1,P.pts.length-1);
   if(pr){FL.s=FL.lat==='NAV'?Math.max(FL.s,pr.s):pr.s;FL.seg=pr.i;FL.xtk=pr.xtk}
+  /* hold: at the end of each circuit, back to the fix for another one until IMM EXIT */
+  if(P.holds)for(const h of P.holds){if(FL.holdExit===h.ix)continue;if(['NAV'].includes(FL.lat)&&FL.s>=h.s1-0.05&&FL.s<h.s1+2){FL.s=h.s0+Math.max(0,FL.s-h.s1);FL.seg=h.i0+1}}
+  {const h=(P.holds||[]).find(h=>FL.s>=h.s0-0.05&&FL.s<h.s1-0.05&&FL.lat==='NAV');FL.inHold=h?h.ix:null;if(!h&&FL.holdExit!=null&&!(P.holds||[]).some(x=>x.ix===FL.holdExit))FL.holdExit=null}
+  /* the offset ends once its rejoin point is passed */
+  if(S.active.ofst&&P.ofstEnd!=null&&FL.s>P.ofstEnd+0.5)delete S.active.ofst;
   const dtg=P.sThr-FL.s;
   const fi=FL.fromIx;for(const pt of P.pts)if(pt.ix!=null&&pt.s<=FL.s+0.05&&pt.ix>FL.fromIx)FL.fromIx=pt.ix;
   if(FL.fromIx!==fi&&S.page==='FPLN'&&!S.secMode)S.fpOff=0;   /* waypoint sequenced: the F-PLN starts again at the FROM line */
@@ -176,7 +187,7 @@ function step(dt){const ias0=FL.ias;if(FL.sig!==planSig()&&!FL.ground)flightRepl
     /* ALT holds the altitude it captured; a new FCU altitude needs a pull or push */
     if(FL.ver==='ALT'){vsT=((FL.altHold??FL.alt)-FL.alt)*4}
     if(FL.verArm.includes('DES')&&!FL.ver.startsWith('ALT CST')&&FL.s>=FL.td&&A<FL.alt-250){FL.ver='DES';FL.verArm=['ALT']}
-    if(S.phase==='CRZ'&&FL.s>=FL.td&&!DESCENDING.includes(FL.ver)&&!FL.verArm.includes('DES')&&!FL.tdReached){FL.tdReached=true;S.msg='T/D REACHED'}
+    if(S.phase==='CRZ'&&FL.s>=FL.td&&!DESCENDING.includes(FL.ver)&&!FL.verArm.includes('DES')&&!FL.tdReached){FL.tdReached=true;msg2('T/D REACHED',false,()=>!flying()||!FL.tdReached)}
     if(DESCENDING.includes(FL.ver))FL.tdReached=false;
     /* glideslope */
     const gsArmed=FCU.appr&&lg;
@@ -203,6 +214,8 @@ function step(dt){const ias0=FL.ias;if(FL.sig!==planSig()&&!FL.ground)flightRepl
         else if(S.phase==='DES'){const em=iasOf(0.80*sos(FL.alt),FL.alt),v=FL.ver==='EXP DES'?340:FL.alt<dl.alt+1000?dl.spd:mgd.des();
           mm=FL.ver==='EXP DES'?em<340:mmo<v;spdT=FL.ver==='EXP DES'?Math.min(340,em):Math.min(v,mmo)}
         else if(S.phase==='APPR'){const vapp=p2.vapp??sp.VLS+5;spdT={0:sp.GD,1:sp.S,2:sp.F,3:Math.max(vapp,sp.F-10),FULL:vapp}[FL.conf]??vapp}}
+      /* managed speed in a hold: the hold speed, from the deceleration point before its fix */
+      {const hs=holdSpd(),nh=(P.holds||[]).find(h=>FL.holdExit!==h.ix&&h.s1>FL.s);if(nh&&(FL.inHold===nh.ix||nh.s0-FL.s<=Math.max(0,FL.ias-hs)*0.07+2)){FL.hsActive=nh.ix;if(FCU.spdMgd||FCU.spd==null){spdT=Math.min(spdT,hs);mm=false}}else FL.hsActive=null}
       FL.spdIsMach=!FCU.spdMgd&&FCU.spd!=null?FCU.mach:mm;if(FCU.spdMgd)FCU.mach=mm;
       /* speed constraint (managed speed only) */
       if((FCU.spdMgd||FCU.spd==null)&&CK.spd!=null&&!['EXP CLB','EXP DES'].includes(FL.ver))spdT=Math.max(sp.VLS,Math.min(spdT,CK.spd));

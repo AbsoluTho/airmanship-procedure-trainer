@@ -1,7 +1,7 @@
 'use strict';
 /* ================= state ================= */
 let S;
-function freshState(){return{page:'INIT',title:'',sp:'',msg:'GPS PRIMARY',
+function freshState(){return{page:'INIT',title:'',sp:'',msg:null,msgs:[{t:'GPS PRIMARY',a:false}],
   init:{from:null,to:null,altn:null,flt:null,ci:null,crz:null,temp:null,tropo:null,gnd:null},
   active:null,tmpy:null,fpOff:0,lr:0,dep:{list:'RWY',off:0},arr:{list:'APPR',off:0},awy:null,
   fuel:{zfw:null,cg:null,block:null,taxi:null,rsv:null,rsvPct:null,altn:null,final:null,finalTime:null,wind:null,minFob:null},
@@ -127,7 +127,7 @@ function planCentre(p){const rows=fplnRows(p);for(let j=Math.min(S.fpOff+1,rows.
 P.FPLN={render(){const p=cur(),rows=fplnRows(p),ds=p?dists(p):[];
   if(p){const c=planCentre(p);if(c)EFIS.ctr=c}
   const pr=predict(),tcum=pr&&p===S.active?pr.cum:null;
-  put(1,1,'FROM','w','S');if(S.secMode)put(1,6,'SEC','w');else if(S.tmpy)put(1,6,'TMPY','y');if(I().flt)rput(1,I().flt,'w','L',23);
+  put(1,1,'FROM','w','S');if(S.secMode)put(1,6,'SEC','w');else if(S.tmpy)put(1,6,'TMPY','y');else if(p&&p.ofst)put(1,6,'OFST '+p.ofst.side+p.ofst.nm,'g');if(I().flt)rput(1,I().flt,'w','L',23);
   const base=S.tmpy?'y':'g';let firstD=true;
   for(let n=0;n<5;n++){const r=rows[S.fpOff+n];if(!r)break;const ln=3+2*n,lb=ln-1;
     if(n===0){put(lb,8,flying()?'UTC':'TIME','w','S');rput(lb,'SPD/ALT','w','S',22)}
@@ -135,6 +135,7 @@ P.FPLN={render(){const p=cur(),rows=fplnRows(p),ds=p?dists(p):[];
     if(r.k==='disc'){put(ln,0,dash('F-PLN DISCONTINUITY'),'w');continue}
     const alt_=r.k==='altn'||r.k==='altorig';
     const col=alt_||r.seg==='map'?'b':(flying()&&p===S.active&&!S.tmpy&&n===1&&S.fpOff===0)?'w':base;   /* TO waypoint in white */
+    if(r.k==='hold'){fplnHoldRow(r,ln,lb,col,p,n);continue}
     if(r.k==='altn'&&n>0){put(lb,1,'DCT','w','S');const a0=legPos({k:'altorig',id:p.legs[idxK(p,'dest')].id,rwy:p.legs[idxK(p,'dest')].rwy}),a1=legPos(r);if(a0&&a1)rput(lb,String(Math.round(gc(a0,a1))),'w','S',19)}
     if(n>0&&!alt_){put(lb,1,(r.via||'').slice(0,6),'w','S');if(r.lbl)put(lb,8,r.lbl,'w','S');
       const d=ds[r.ix];if(d!=null){const t=String(Math.round(d));if(firstD){rput(lb,t+'NM','w','S',21);firstD=false}else rput(lb,t,'w','S',19)}}
@@ -350,7 +351,7 @@ P.PERFTO={render(){const q=S.perf,f=S.fuel,B=BOX,rw=S.active&&S.active.rwy;
   if(k==='R6')return err('NOT IN PROTOTYPE');if(!v)return;const C=v==='CLR';
   const vs=k==='L1'?'v1':k==='L2'?'vr':k==='L3'?'v2':null;
   if(vs){if(C){q[vs]=null;return ok()}if(!/^\d{2,3}$/.test(v))return err('FORMAT ERROR');const x=+v;if(x<90||x>350)return err('ENTRY OUT OF RANGE');
-    q[vs]=x;ok();if(q.v1&&q.vr&&q.v2&&!(q.v1<=q.vr&&q.vr<=q.v2))S.msg='V1/VR/V2 DISAGREE';return}
+    q[vs]=x;ok();if(vDisagree())msg2('V1/VR/V2 DISAGREE',true,()=>!vDisagree());return}
   const minA=elevO()+400;
   switch(k){
   case'R1':return err('NOT ALLOWED');
@@ -371,12 +372,21 @@ P.MENU={render(){cput(1,'MCDU MENU');rput(2,'SELECT ','w','S');put(3,0,'<FMGC','
  lsk(s,n){if(s==='L'&&n===1||s==='R'&&n===6)return go('INIT');return err('NOT IN PROTOTYPE')}};
 P.BLANK={render(){cput(1,S.title)},lsk(){return err('NOT IN PROTOTYPE')}};
 
+/* ================= scratchpad messages =================
+   Type I (S.msg): entry errors, shown over the scratchpad, which keeps its text; any key or CLR removes them.
+   Type II (S.msgs): system messages, white or amber, kept in a list and shown while the scratchpad is empty
+   (amber first, newest first); CLR removes the one shown, and each goes by itself once its condition is resolved.
+   Message texts follow the FlyByWire A32NX NXSystemMessages (GPL-3.0). */
+const vDisagree=()=>{const q=S.perf;return!!(q.v1&&q.vr&&q.v2&&!(q.v1<=q.vr&&q.vr<=q.v2))};
+function msg2(t,amber,res){if(!S.msgs)S.msgs=[];if(S.msgs.some(m=>m.t===t))return;S.msgs.unshift({t,a:!!amber,res:res||null});S.msgs.sort((x,y)=>(y.a?1:0)-(x.a?1:0))}
+const hasMsg=t=>!!(S.msgs&&S.msgs.some(m=>m.t===t));
+function msgShown(){if(S.msg)return{t:S.msg,a:false};if(S.sp)return null;return S.msgs&&S.msgs[0]||null}
 /* ================= input ================= */
 function err(m){S.msg=m}
 function ok(){S.sp='';S.msg=null}
 function go(pg){S.page=pg;if(pg==='FPLN'){}}
 function typeCh(ch){if(S.msg)S.msg=null;if(S.sp==='CLR')S.sp='';if(S.sp.length<22)S.sp+=ch}
-function clrKey(){if(S.msg){S.msg=null;return}if(S.sp)S.sp=S.sp.slice(0,-1);else S.sp='CLR'}
+function clrKey(){if(S.msg){S.msg=null;return}if(!S.sp&&S.msgs&&S.msgs.length){S.msgs.shift();return}if(S.sp)S.sp=S.sp.slice(0,-1);else S.sp='CLR'}
 const TITLES={DIR:'DIR TO',PROG:'PROG',DATA:'DATA INDEX',RADNAV:'RADIO NAV',FUEL:'FUEL PRED',SECF:'SEC INDEX',ATC:'ATC MENU'};
 function press(k){
   if(k.length===1&&/[A-Z0-9./]/.test(k))typeCh(k);
@@ -399,10 +409,10 @@ function press(k){
 const SEC_PAGES=['FPLN','LATREV','DEP','ARR','AWY','VREV'];
 const scr=$('#scr');
 function takeoffRwyCheck(){const r=S.active&&S.active.rwy||null,q=S.perf;
-  if(r!==q.rwyRef){if(q.rwyRef&&(q.v1||q.vr||q.v2)){q.v1=q.vr=q.v2=null;S.msg='CHECK TAKE OFF DATA'}q.rwyRef=r}}
-function render(){takeoffRwyCheck();clr();P[S.page].render();
+  if(r!==q.rwyRef){if(q.rwyRef&&(q.v1||q.vr||q.v2)){q.v1=q.vr=q.v2=null;msg2('CHECK TAKE OFF DATA',true,()=>!!(S.perf.v1&&S.perf.vr&&S.perf.v2))}q.rwyRef=r}}
+function render(){takeoffRwyCheck();if(typeof msgTick==='function')msgTick();if(S.msgs)S.msgs=S.msgs.filter(m=>!(m.res&&m.res()));clr();P[S.page].render();
   if(S.secMode&&SEC_PAGES.includes(S.page))for(const row of BUF)for(const x of row)if('gamy'.includes(x.c))x.c='w';   /* SEC F-PLN data is all white */
-  if(S.msg)put(14,0,S.msg,'w');else put(14,0,S.sp,'w');
+  {const m=msgShown();if(m)put(14,0,m.t,m.a?'a':'w');else put(14,0,S.sp,'w')}
   let h='';for(const row of BUF){h+='<div class="ln">';for(const x of row){
     const cl='c c-'+x.c+(x.s==='S'?' s':'');h+=x.ch===BOX?`<span class="${cl}"><i class="bx"></i></span>`:`<span class="${cl}">${x.ch==='<'?'&lt;':x.ch==='>'?'&gt;':x.ch==='&'?'&amp;':x.ch}</span>`}h+='</div>'}
   scr.innerHTML=h;if(window.drawND2D)drawND2D();tasks();if(window.__draw3D)window.__draw3D()}
