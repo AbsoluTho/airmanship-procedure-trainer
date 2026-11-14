@@ -378,6 +378,7 @@ const dirRows=()=>S.tmpy&&S.dirTo?3:4;
   if((k==='LEFT'||k==='RIGHT')&&P[S.page].arrow){P[S.page].arrow(k==='RIGHT'?1:-1);return render()}
   return press0(k)};window.__press=press}
 /* F-PLN right keys: SPD/ALT entry or VERT REV */
+P.FPLN.arrow=function(){S.fplnB=!S.fplnB};   /* F-PLN A (TIME, SPD/ALT) ⇄ F-PLN B (EFOB, T.WIND) */
 {const lsk0=P.FPLN.lsk;P.FPLN.lsk=function(s,n){if(s==='R'&&n<6){const p=cur();if(!p)return err('NOT ALLOWED');const r=fplnRows(p)[S.fpOff+n-1];if(!r)return;
   if(r.k!=='wpt')return err('NOT ALLOWED');return vrevFromFpln(r)}return lsk0.call(this,s,n)}}
 /* phase control for the automatic flight of a later phase (and for tests) */

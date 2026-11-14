@@ -144,7 +144,7 @@ P.FPLN={render(){const p=cur(),rows=fplnRows(p),ds=p?dists(p):[];
   put(1,1,'FROM','w','S');if(S.secMode)put(1,6,'SEC','w');else if(S.tmpy)put(1,6,'TMPY','y');else if(p&&p.ofst)put(1,6,'OFST '+p.ofst.side+p.ofst.nm,'g');if(I().flt)rput(1,I().flt,'w','L',23);
   const base=S.tmpy?'y':'g';let firstD=true;
   for(let n=0;n<5;n++){const r=rows[S.fpOff+n];if(!r)break;const ln=3+2*n,lb=ln-1;
-    if(n===0){put(lb,8,flying()?'UTC':'TIME','w','S');rput(lb,'SPD/ALT','w','S',22)}
+    if(n===0){put(lb,8,S.fplnB?'EFOB':flying()?'UTC':'TIME','w','S');rput(lb,S.fplnB?'T.WIND':'SPD/ALT','w','S',22)}
     if(r.k==='end'){put(ln,0,dash(r.t),'w');continue}
     if(r.k==='disc'||r.k==='altdisc'){put(ln,0,dash('F-PLN DISCONTINUITY'),'w');continue}
     const alt_=r.k==='altn'||r.k==='altorig'||r.k==='altwpt';
@@ -158,13 +158,19 @@ P.FPLN={render(){const p=cur(),rows=fplnRows(p),ds=p?dists(p):[];
     const id=(r.k==='orig'||r.k==='dest'||alt_)?r.id+(r.rwy||''):r.id;
     const tm=tcum&&!alt_&&tcum[r.ix]!=null?(flying()?utcStr(FL.utc0+(pr.trip.at(tcum[r.ix])+1)*60000):hhmm(pr.trip.at(tcum[r.ix])+(r.k==='orig'?0:1))):null;
     put(ln,0,id.slice(0,7),col);if(tm)put(ln,8,tm,col);else put(ln,8,'----','w');
+    /* F-PLN B (← →): EFOB and true wind at each waypoint in place of TIME and SPD/ALT */
+    if(S.fplnB){put(ln,8,'    ','w');const D=pr&&pr.D,c=tcum&&tcum[r.ix];
+      if(D&&c!=null&&!alt_){const gone=flying()?Math.max(0,D-Math.max(0,FL.path.sThr-FL.s)):0,f0=flying()?FL.fob:S.fuel.block-pr.taxi,fr=Math.max(0,c-gone)/D;
+        put(ln,8,f1(Math.max(0,f0-pr.trip.fuel*fr)).padStart(4),col)}else put(ln,8,'--.-','w');
+      const ph=r.seg==='dep'?'clb':(r.seg==='arr'||r.k==='dest')?'des':'crz',wl=(S.wind&&S.wind[ph])||[],w=wl[0];
+      rput(ln,w?String(w.dir).padStart(3,'0')+'°/'+String(w.spd).padStart(3,'0'):'---°/---',w?col:'w');continue}
     if(r.k==='orig'){rput(ln,'---/'+String(DB.apt[r.id].elev).padStart(6),col)}
     else{const sp=r.spd?String(r.spd):'---',al=r.alt?fAlt(r.alt):'-----';
       const st=24-(4+1+6);put(ln,st,sp.padStart(4),r.spd?'m':'w');put(ln,st+4,'/','w');
       /* with predictions: the predicted altitude, after a magenta star (constraint met) or an amber star (missed) */
       const vq=r.alt&&tcum&&p===S.active&&!S.tmpy&&!S.secMode&&S.phase!=='GA'&&typeof vPred==='function'?(vPred()||{wp:{}}).wp[r.ix]:null;
-      if(vq){const a=Math.round(vq.alt/10)*10,t=a>13000?'FL'+String(Math.round(a/100)).padStart(3,'0'):String(a);put(ln,st+5,('*'+t).padStart(6),'g');put(ln,st+5+Math.max(0,6-t.length-1),'*',vq.met?'m':'a')}
-      else put(ln,st+5,al.padStart(6),r.alt?'m':'w')}}
+      if(r.alt){put(ln,st+5,al.padStart(6),'m');if(vq)put(ln,st+5+Math.max(0,6-al.length-1),'*',vq.met?'m':'a')}   /* the constraint stays shown */
+      else put(ln,st+5,al.padStart(6),'w')}}
   if(!tmpyFoot()&&p){const di=idxK(p,'dest'),d=p.legs[di];
     let tot=0;ds.forEach((x,ix)=>{if(ix<=di&&x)tot+=x});if(flying()&&p===S.active)tot=Math.max(0,FL.path.sThr-FL.s);   /* distance to the runway counts down in flight */
     put(12,1,'DEST','w','S');put(12,8,flying()?'UTC':'TIME','w','S');rput(12,'DIST','w','S',17);rput(12,'EFOB','w','S',24);
