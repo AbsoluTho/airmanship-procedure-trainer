@@ -222,6 +222,8 @@ async def run(url,b):
     assert th==[['1/UP0.4','2/UP0.4','2/DN1.2','3/UP0.4'],False,True],f'THS formats; V speeds not required for START (computed when blank): {th}'
     pf=await pg.evaluate("(()=>{const fd=EFIS.fd;EFIS.fd=true;drawPFD2D();const ok=!flying()&&S.fuel.zfw!=null;EFIS.fd=fd;return ok})()")
     assert pf,'pre-flight FMA conditions (INIT B, FD)'
+    vs=await pg.evaluate("(()=>{const o=[];const v0=[FL.ver,FCU.vsVal,FL.stage,FCU.ap1];FL.stage='AIR';FCU.ap1=true;for(const v of[1500,-500,0]){FL.ver='V/S';FCU.vsVal=v;setFma();o.push(FL.fma.c2[0][0])}[FL.ver,FCU.vsVal,FL.stage,FCU.ap1]=v0;setFma();return o})()")
+    assert vs==['V/S +1500','V/S -500','V/S 0'],f'FMA V/S value: {vs}'
     fk=await pg.evaluate("(()=>{S.page='FPLN';S.fpOff=6;press('FPLN');return S.fpOff})()")
     assert fk==0,f'F-PLN key shows the F-PLN from the top: {fk}'
     h2=await pg.evaluate("(()=>{const L=window.__S().active.legs,i=L.findIndex(l=>l.k==='hold');return[L[i+1].k+':'+L[i+1].id,L[i+2].k]})()")

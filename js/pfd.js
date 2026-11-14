@@ -24,7 +24,7 @@ function drawPFD(g,W,H,powered){g.save();g.setTransform(1,0,0,1,0,0);g.fillStyle
   const cols=[[55,170],[170,290],[290,423],[423,537],[537,628]],F=preF||FL.fma;
   [170,290,423,537].forEach(x=>L(x,42,x,120,'#c9ccd6',1.5));
   ['c1','c2','c3','c4','c5'].forEach((c,k)=>{const[x1,x2]=cols[k],xm=(x1+x2)/2;(F[c]||[]).forEach((ln,j)=>{if(!ln||!ln[0])return;
-    const flash=ln[2]&&Math.floor(FL.t*2)%2===0,fs=k>=3?22:25;if(!flash)T(ln[0],xm,60+27*j,ln[1],fs,'center');
+    const flash=ln[2]&&Math.floor(FL.t*2)%2===0,fs=k>=3?22:(ln[0].length>7&&k===1?21:25);if(!flash)T(ln[0],xm,60+27*j,ln[1],fs,'center');
     if(j===0&&k<3&&on&&FL.t-(FL.fmaT[c]??-99)<10){g.font=PF(25);const tw=g.measureText(ln[0]).width;box(xm-tw/2-6,45,tw+12,30,'w',1.5)}})});
   if(F.msg)T(F.msg,(55+423)/2,114,'w',23,'center');
   if(F.land){const xm=(170+423)/2;T(F.land,xm,60,'g',25,'center');if(on&&FL.t-(FL.fmaT.land??-99)<10){g.font=PF(25);const tw=g.measureText(F.land).width;box(xm-tw/2-6,45,tw+12,30,'w',1.5)}}
