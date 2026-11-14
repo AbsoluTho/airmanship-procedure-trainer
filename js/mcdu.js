@@ -25,9 +25,11 @@ function dropSeg(p,...segs){p.legs=p.legs.filter(l=>!segs.includes(l.seg))}
 /* first departure leg: climb on runway track to 400 ft AAL (SID) or 1500 ft AAL (runway only, visual departure) */
 function caLeg(p,aal){const ap=DB.apt[p.legs[0].id],r=ap.rwy[p.rwy],a=Math.round((r.tdze??ap.elev)+aal);
   return{k:'ca',id:'('+a+')',lbl:'C'+String(r.crs).padStart(3,'0')+'°',ca:a,aal,seg:'dep',via:p.sid||''}}
-function setRunway(p,r){p.rwy=r;p.legs[0].rwy=r;dropSeg(p,'dep');p.sid=null;p.trans=null;
+/* NO SID: the runway threshold only, followed by a discontinuity (no climb leg, no SID) */
+function setNoSid(p){dropSeg(p,'dep');p.legs=p.legs.filter((l,i)=>!(i>0&&l.k==='ca'));p.sid=null;p.trans=null;p.noSid=true;if(p.legs[1]&&p.legs[1].k!=='disc')p.legs.splice(1,0,{k:'disc'});normalize(p)}
+function setRunway(p,r){p.rwy=r;p.legs[0].rwy=r;dropSeg(p,'dep');p.sid=null;p.trans=null;p.noSid=false;
   p.legs.splice(1,0,caLeg(p,1500));if(p.legs[2].k!=='disc')p.legs.splice(2,0,{k:'disc'});normalize(p)}
-function setSid(p,sid){dropSeg(p,'dep');p.sid=sid;const legs=[caLeg(p,400),...clone(SIDS[p.legs[0].id][p.rwy][sid]).map(l=>Object.assign(l,{seg:'dep',via:sid}))];
+function setSid(p,sid){dropSeg(p,'dep');p.sid=sid;p.noSid=false;const legs=[caLeg(p,400),...clone(SIDS[p.legs[0].id][p.rwy][sid]).map(l=>Object.assign(l,{seg:'dep',via:sid}))];
   p.legs.splice(1,0,...legs);const nx=p.legs[1+legs.length],last=legs[legs.length-1];
   if(nx&&nx.k!=='disc'&&!(nx.k==='wpt'&&nx.id===last.id))p.legs.splice(1+legs.length,0,{k:'disc'});
   p.sid=sid;p.trans=null;normalize(p)}
@@ -197,12 +199,12 @@ P.LATREV={render(){const p=cur(),l=S.lr===-1?{k:'altn',id:I().altn,rwy:I().altnR
 
 P.DEP={items(){const p=cur(),o=p.legs[0],ap=DB.apt[o.id];
   if(S.dep.list==='RWY')return Object.entries(ap.rwy).map(([id,r])=>({id,txt:('<'+id).padEnd(6)+(r.len+'M').padStart(6)+'  CRS'+r.crs}));
-  if(S.dep.list==='SID'){const t=(SIDS[o.id]||{})[p.rwy];return t?Object.keys(t).map(id=>({id,txt:'<'+id})):[{id:null,txt:'<NO SID'}]}
+  if(S.dep.list==='SID'){const t=(SIDS[o.id]||{})[p.rwy];return[{id:'NOSID',txt:'<NO SID'}].concat(t?Object.keys(t).map(id=>({id,txt:'<'+id})):[])}
   return[{id:'NONE',txt:'<NO TRANS'}]},
  render(){const p=cur(),o=p.legs[0],c=S.tmpy?'y':'g';
   csegs(1,[['DEPARTURES','w'],[' FROM ','w','S'],[o.id,'g']]);
   put(2,1,'RWY','w','S');put(2,9,'SID','w','S');put(2,17,'TRANS','w','S');
-  put(3,1,p.rwy||'---',p.rwy?c:'w');put(3,9,p.sid||'------',p.sid?c:'w');put(3,17,p.sid?(p.trans||'------'):'------',p.trans?c:'w');
+  put(3,1,p.rwy||'---',p.rwy?c:'w');put(3,9,p.sid||(p.noSid?'NONE':'------'),p.sid||p.noSid?c:'w');put(3,17,p.sid?(p.trans||'------'):'------',p.trans?c:'w');
   cput(4,{RWY:'AVAILABLE RUNWAYS',SID:'AVAILABLE SIDS',TRANS:'AVAILABLE TRANS'}[S.dep.list],'w','S');
   const it=this.items();for(let n=0;n<4;n++){const x=it[S.dep.off+n];if(x)put(5+2*n,0,x.txt,'b')}
   if(!tmpyFoot())put(13,0,'<RETURN')},
@@ -213,7 +215,7 @@ P.DEP={items(){const p=cur(),o=p.legs[0],ap=DB.apt[o.id];
   if(k==='R1'){if(!p.rwy)return err('NOT ALLOWED');S.dep={list:p.sid?'TRANS':'SID',off:0};return}
   if(s==='L'&&n>=2&&n<=5){const x=this.items()[S.dep.off+n-2];if(!x)return;if(!x.id)return err('NOT ALLOWED');
     if(S.dep.list==='RWY'){setRunway(edit(),x.id);S.dep={list:'SID',off:0}}
-    else if(S.dep.list==='SID'){setSid(edit(),x.id);S.dep={list:'TRANS',off:0}}
+    else if(S.dep.list==='SID'){if(x.id==='NOSID'){setNoSid(edit());return}setSid(edit(),x.id);S.dep={list:'TRANS',off:0}}
     else{edit().trans='NONE'}return}
   return err('NOT ALLOWED')},
  slew(d){const n=this.items().length;S.dep.off=Math.max(0,Math.min(Math.max(0,n-4),S.dep.off-d))}};

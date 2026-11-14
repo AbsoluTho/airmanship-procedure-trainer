@@ -27,7 +27,7 @@ async def run(url,b):
     await t('340/46');await k('L6')
     assert await pg.evaluate('window.__S().init.temp')==-46,'unsigned CRZ temp should be negative'
     await t('360');await k('R5');assert await pg.evaluate('window.__S().init.tropo')==36000,'3-digit TROPO'
-    await k('FPLN');await k('L1');await k('L1');await k('L2');await k('DOWN');await k('L5');await k('R6')
+    await k('FPLN');await k('L1');await k('L1');await k('L2');await k('DOWN');await k('DOWN');await k('L5');await k('R6')
     legs=await pg.evaluate('window.__S().active.legs.map(l=>l.id||"-")')
     await pg.evaluate(f'window.__S().fpOff={(await pg.evaluate("fplnRows(window.__S().active).map(r=>r.id||r.k)")).index("MIGDA")}');await k('L1');await k('R5')
     await t('L677');await k('L1');await t('V54');await k('L2');await t('TBK');await k('R2');await k('R6')
@@ -225,6 +225,10 @@ async def run(url,b):
         if(o.f&&FL.ver==='CLB'&&!o.at)o.at=S.active.legs[FL.fromIx].id;if(o.at&&FL.ver==='ALT'&&Math.abs(FL.alt-36000)<30)break}
       return{at:o.at,ahead:!!o.ahead,crz:I().crz,left:S.active.legs.some(l=>l.step!=null),alt:Math.round(FL.alt)}})()""")
     assert r=={'at':'LABUN','ahead':True,'crz':360,'left':False,'alt':36000},f'step climb at LABUN to FL360: {r}'
+    # DIR TO with the keys: the key beside a waypoint of the list selects that waypoint
+    await P('DIR');i=await pg.evaluate("dirList().findIndex(x=>x.l.id==='TBK')");assert 0<=i<4,i
+    await P('L'+str(3+i));assert await pg.evaluate("window.__S().dirTo")=='TBK','DIR TO: the key beside TBK selects TBK'
+    await P('L6');assert await pg.evaluate("!window.__S().tmpy"),'DIR TO erased'
     tgt=await pg.evaluate("(()=>{S.rta={id:'TBK',t:0};const g=rtaGeo(),t=nowUtcS()+g.d/(0.76*sos(FL.alt))*3600;S.rta=null;return hms(t).replace(/:/g,'')})()")
     rows=await pg.evaluate("fplnRows(window.__S().active).map(r=>r.id||r.k)");await P('FPLN');await pg.evaluate(f"window.__S().fpOff={rows.index('TBK')-1}");await P('R2');await P('R2')
     for ch in tgt: await P(ch)
@@ -269,6 +273,12 @@ async def run(url,b):
     await P('L5');await pg.evaluate("S=freshState();window.__S().msgs=[];render()")
     for ch in 'MYRTE': await P(ch)
     await P('L1');assert await pg.evaluate("window.__S().active.legs.filter(l=>l.k==='wpt').length")==r[6],'stored route used as CO RTE'
+    # NO SID: LAT REV at the origin, DEPARTURE, NO SID: the runway threshold only
+    await pg.evaluate("window.__S().sp='';window.__S().fpOff=0");await P('FPLN');await pg.evaluate("window.__S().fpOff=0");await P('L1');await P('L1');await P('R1')
+    await P('L1');await P('L2')   # runway list, 16C: the SID list opens
+    assert '<NO SID' in await pg.evaluate("[...document.querySelectorAll('#scr .ln')].map(l=>l.textContent).join(' ')"),'NO SID in the SID list'
+    await P('L2');await P('R6');ns=await pg.evaluate("(()=>{const L=window.__S().active.legs;return[L[0].rwy,L[1].k,L.some(l=>l.k==='ca'||l.seg==='dep'),window.__S().active.noSid]})()")
+    assert ns==['16C','disc',False,True],f'NO SID: runway then discontinuity: {ns}'
     await P('PERF');await P('MENU');assert 'MCDU MENU' in await pg.evaluate("[...document.querySelectorAll('#scr .ln')].map(l=>l.textContent).join(' ')")
     await P('L1');assert await pg.evaluate("window.__S().page")=='PERFTO','MCDU MENU: FMGC returns to the last FMGC page'
     await pg.evaluate("localStorage.removeItem('airmanship.stored.v1')")

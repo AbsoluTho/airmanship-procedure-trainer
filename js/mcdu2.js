@@ -346,15 +346,17 @@ function directTo(id){if(!flying()||FL.ground)return err('NOT ALLOWED');
   q.legs.splice(from+1,ti-from-1,{k:'tp',id:'T-P',pos:FL.pos.slice(),seg:'enr'});S.dirTo=id;normalize(q);ok()}
 P.DIR={render(){cput(1,'DIR TO',S.tmpy&&S.dirTo?'y':'w');put(2,1,'DIR TO','w','S');
   if(S.tmpy&&S.dirTo){put(3,0,'*'+S.dirTo,'y');rput(2,'RADIAL IN','w','S');rput(3,'[ ]°','b');put(4,1,'WITH','w','S');put(5,0,'*ABEAM PTS','b')}else put(3,0,'[     ]','b');
-  put(6,1,'F-PLN WPTS','w','S');const L=dirList();for(let j=0;j<3;j++){const x=L[(S.dirOff||0)+j];if(x)put(7+2*j,0,'<'+x.l.id+(x.l.k==='dest'?(x.l.rwy||''):''),'g')}
+  put(6,1,'F-PLN WPTS','w','S');const L=dirList();for(let j=0;j<dirRows();j++){const x=L[(S.dirOff||0)+j];if(x)put(7+2*j,0,'<'+x.l.id+(x.l.k==='dest'?(x.l.rwy||''):''),'g')}
   if(S.tmpy&&S.dirTo){put(12,1,'DIR TO','a','S');put(13,0,'←ERASE','a');rput(13,'INSERT*','a')}},
  lsk(s,n){const k=s+n;
   if(k==='L1'){const v=S.sp;if(!v)return;if(!/^[A-Z0-9]{2,5}$/.test(v))return err('FORMAT ERROR');return directTo(v)}
-  if(s==='L'&&n>=4&&n<=6&&!(n===6&&S.tmpy&&S.dirTo)){const x=dirList()[(S.dirOff||0)+n-4];if(!x)return;return directTo(x.l.id)}
+  if(s==='L'&&n>=3&&n<3+dirRows()){const x=dirList()[(S.dirOff||0)+n-3];if(!x)return;return directTo(x.l.id)}   /* the waypoint beside the key */
   if(k==='L6'&&S.tmpy){S.tmpy=null;S.dirTo=null;return ok()}
   if(k==='R6'&&S.tmpy&&S.dirTo){S.active=S.tmpy;S.tmpy=null;S.dirTo=null;FCU.hdgMgd=true;if(flying()){FL.lat='NAV';FL.latArm=null}ok();return go('FPLN')}
   return err('NOT ALLOWED')},
- slew(d){const n=dirList().length;S.dirOff=Math.max(0,Math.min(Math.max(0,n-3),(S.dirOff||0)-d))}};
+ slew(d){const n=dirList().length;S.dirOff=Math.max(0,Math.min(Math.max(0,n-dirRows()),(S.dirOff||0)-d))}};
+/* F-PLN waypoints shown on DIR TO: L3 to L6, or L3 to L5 while the temporary F-PLN shows ERASE/INSERT on L6 */
+const dirRows=()=>S.tmpy&&S.dirTo?3:4;
 /* ---------- keys ---------- */
 {const press0=press;press=function(k){
   if(S.secMode&&/^(DIR|PROG|PERF|INIT|DATA|FPLN|RADNAV|FUEL|SECF|ATC|MENU|AIRPORT)$/.test(k)){S.secOff=S.fpOff;S.fpOff=S.fpOffMain||0;S.secMode=false}
