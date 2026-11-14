@@ -10,16 +10,42 @@
 Object.assign(S,{hold:null,fix:[null,null,null,null],fixPg:1,msgOff:{}});
 
 /* ---------- hold geometry and speed ---------- */
-const HOLD_R=1.1;                                   /* turn radius (NM): 180° in one minute at about 210 kt */
-const holdLen=l=>l.dist!=null?l.dist:180*(l.time??1)/60;   /* leg length (NM); time converted at 180 kt, as the FlyByWire HOLD page */
+/* FlyByWire HX leg: turn radius from the hold ground speed at 25 deg of bank, legs of 1 min (1.5 min above 14000 ft) at that ground
+   speed, or the distance entered. Ground speed taken as the TAS of the hold speed at the hold altitude (no wind). */
+const holdAlt=l=>l&&l.alt?l.alt.v:(flying()?FL.alt:elevO());
+const holdTas=l=>holdSpd()*(1+holdAlt(l)/1000*0.02);
+const holdR=l=>{const v=holdTas(l)/1.94384;return v*v/(9.81*Math.tan(25*D2R))/1852};
+const holdLen=l=>l&&l.dist!=null?l.dist:(l&&l.time!=null?l.time:(holdAlt(l)<=14000?1:1.5))*holdTas(l)/60;
 /* racetrack from the fix: turn to the outbound leg, outbound, turn, inbound back to the fix (crsT true inbound course) */
 function holdLoop(F,crsT,right,L,r){const t=crsT*D2R,u=[Math.sin(t),Math.cos(t)],sg=right?1:-1,v=[Math.cos(t)*sg,-Math.sin(t)*sg];
   const P=(x,y)=>[F[0]+y/60,F[1]+x/(60*Math.cos(F[0]*D2R))],out=[P(0,0)];
-  for(let i=1;i<=12;i++){const a=Math.PI*i/12;out.push(P(r*v[0]+r*(-Math.cos(a)*v[0]+Math.sin(a)*u[0]),r*v[1]+r*(-Math.cos(a)*v[1]+Math.sin(a)*u[1])))}
-  for(let i=0;i<=12;i++){const a=Math.PI*i/12,cx=r*v[0]-L*u[0],cy=r*v[1]-L*u[1];out.push(P(cx+r*(Math.cos(a)*v[0]-Math.sin(a)*u[0]),cy+r*(Math.cos(a)*v[1]-Math.sin(a)*u[1])))}
+  for(let i=1;i<=18;i++){const a=Math.PI*i/18;out.push(P(r*v[0]+r*(-Math.cos(a)*v[0]+Math.sin(a)*u[0]),r*v[1]+r*(-Math.cos(a)*v[1]+Math.sin(a)*u[1])))}
+  for(let i=0;i<=18;i++){const a=Math.PI*i/18,cx=r*v[0]-L*u[0],cy=r*v[1]-L*u[1];out.push(P(cx+r*(Math.cos(a)*v[0]-Math.sin(a)*u[0]),cy+r*(Math.cos(a)*v[1]-Math.sin(a)*u[1])))}
   out.push(P(0,0));return out}
-/* hold speed: about green dot, not above 230 kt up to 14000 ft (240 kt above) */
-function holdSpd(){const gw=flying()?gwNowF():gwNow();const o=gw?charSpeeds(gw).O:210,alt=flying()?FL.alt:elevO();return Math.round(Math.min(alt<=14000?230:240,Math.max(170,o)))}
+/* hold entry (FlyByWire HoldEntryTransition sectors). The angle is from the track arriving at the fix to the inbound course:
+   right hold: teardrop -177..-110, parallel beyond +70 (or -177..-180), direct otherwise; left hold mirrored.
+   Teardrop: 30 deg from the outbound course to the holding side for about the leg length, turn in the hold direction and intercept
+   the inbound course. Parallel: outbound course on the non-holding side, turn away from the hold direction (about 225 deg) back
+   through the holding side and intercept the inbound course at 45 deg. Direct: the racetrack itself. Returns the points between the
+   first passage of the fix and its second passage (empty for a direct entry). */
+function holdEntryType(trkIn,crsT,right){const ea=((crsT-trkIn+540)%360)-180;
+  if(right)return ea>-177&&ea<-110?'TEARDROP':(ea>70||ea<=-177)?'PARALLEL':'DIRECT';
+  return ea>110&&ea<177?'TEARDROP':(ea>=177||ea<-70)?'PARALLEL':'DIRECT'}
+function holdEntry(F,trkIn,crsT,right,L,R){const ty=trkIn==null?'DIRECT':holdEntryType(trkIn,crsT,right);if(ty==='DIRECT')return{type:ty,pts:[]};
+  const sg=right?1:-1,c=crsT*D2R,u=[Math.sin(c),Math.cos(c)],v=[Math.cos(c)*sg,-Math.sin(c)*sg];
+  const toLL=(x,y)=>{const e=x*v[0]+y*u[0],n=x*v[1]+y*u[1];return[F[0]+n/60,F[1]+e/(60*Math.cos(F[0]*D2R))]};
+  /* frame: y along the inbound course, x toward the holding side; headings in degrees from the inbound course, positive toward the holding side */
+  let x=0,y=0,h=(((trkIn-crsT)*sg)%360+540)%360-180;const ds=0.1,dh=ds/R/D2R,out=[];let n=0;
+  const nrm=a=>((a%360)+540)%360-180,stepTo=(tgt,dir)=>{let e=nrm(tgt-h);const d=dir||Math.sign(e);const turn=dir?Math.min(dh,((d>0?e:-e)+360)%360):Math.min(dh,Math.abs(e));h=nrm(h+d*turn);x+=ds*Math.sin(h*D2R);y+=ds*Math.cos(h*D2R);if(++n%3===0)out.push(toLL(x,y))};
+  const hdg1=ty==='TEARDROP'?150:180,run=ty==='TEARDROP'?L/Math.cos(30*D2R):L;
+  while(Math.abs(nrm(hdg1-h))>0.5&&n<4000)stepTo(hdg1,0);   /* first turn, the short way */
+  const x0=x,y0=y;while(Math.hypot(x-x0,y-y0)<run&&n<4000)stepTo(hdg1,0);
+  const dir=ty==='TEARDROP'?1:-1;let forced=true;   /* teardrop: turn in the hold direction; parallel: away from it, back over the holding side */
+  while(n<6000){const tgt=-Math.max(-45,Math.min(45,x*60));const e=nrm(tgt-h);if(forced&&Math.abs(e)<30)forced=false;stepTo(tgt,forced?dir:0);
+    if(!forced&&Math.abs(x)<0.05&&Math.abs(h)<4)break;if(y>-0.2&&!forced)break}
+  return{type:ty,pts:out}}
+/* hold speed: green dot, not above 230 kt up to 14000 ft (240 kt above) */
+function holdSpd(){const gw=flying()?gwNowF():gwNow();const o=gw?charSpeeds(gw).O:210,alt=flying()?FL.alt:elevO();return Math.round(Math.min(alt<=14000?230:240,o))}
 /* database holds: the holds of the published missed approaches (fix, inbound course, turn) */
 let _holds=null;
 function HOLDS(){if(_holds)return _holds;_holds={};for(const t of Object.values(APPRS||{}))for(const ap of Object.values(t||{})){const m=ap&&ap.missed||[];
@@ -70,18 +96,18 @@ const lrLeg=()=>S.lr===-1?{k:'altn',id:I().altn,rwy:I().altnRwy}:cur().legs[S.lr
 const isFromLeg=()=>flying()&&!FL.ground&&!S.secMode&&S.lr===FL.fromIx;
 const fixInfoOk=l=>!S.secMode&&(l.k==='orig'&&!flying()||isFromLeg());
 const offsetOk=l=>isFromLeg()&&(l.k==='wpt'||l.k==='tp'||l.k==='ca'||l.k==='orig');
-P.LATREV={render(){const p=cur(),l=lrLeg(),isW=l.k==='wpt',isO=l.k==='orig',isD=l.k==='dest',isA=l.k==='altn',ppos=l.k==='tp'||l.k==='ca';
-  csegs(1,[[S.secMode?'SEC LAT REV':'LAT REV','w'],[' FROM ','w','S'],[isD&&l.rwy?l.id+l.rwy:(ppos&&l.k==='tp'?'PPOS':l.id),'g']]);
-  const pos=legPos(l);if(pos)cput(2,fmtLL(pos),'g','S');
+P.LATREV={render(){const p=cur(),l=lrLeg(),isPp=isFromLeg(),isW=l.k==='wpt'&&!isPp,isO=l.k==='orig'&&!isPp,isD=l.k==='dest',isA=l.k==='altn',ppos=l.k==='tp'||l.k==='ca'||isPp;
+  csegs(1,[[S.secMode?'SEC LAT REV':'LAT REV','w'],[' FROM ','w','S'],[isD&&l.rwy?l.id+l.rwy:(isPp||l.k==='tp'?'PPOS':l.id),'g']]);
+  const pos=isPp?FL.pos:legPos(l);if(pos)cput(2,fmtLL(pos),'g','S');
   if(isO)put(3,0,'<DEPARTURE');   /* FBW: DEPARTURE on the origin in any phase */
   if(isD||isA||isAptWpt(l))rput(3,'ARRIVAL>');else if(fixInfoOk(l))rput(3,'FIX INFO>');
   if(!isD&&!isA){rput(4,'LL XING/INCR/NO','w','S',23);rput(5,'[  ]°/[ ]°/[]','b')}
   if(offsetOk(l)){const o=p.ofst;put(4,1,'OFFSET','w','S');put(5,0,o?o.side+o.nm:'[  ]',o&&S.tmpy?'y':'b')}
   if((isO&&!flying())||isW||isD){rput(6,'NEXT WPT ','w','S');rput(7,'[    ]','b')}
-  if(isW)put(7,0,'<HOLD');
+  if(isW||isPp)put(7,0,'<HOLD');   /* in flight from the FROM line: HOLD at the present position */
   if(isD){put(6,1,'ALTN','w','S');put(7,0,I().altn?'<'+I().altn:'[    ]','b')}
   if(isW&&I().altn&&!S.secMode){put(8,1,'ENABLE','b','S');put(9,0,'{ALTN','b')}
-  if(!isD&&!isA&&(!ppos||l.k==='tp')){rput(8,'NEW DEST ','w','S');rput(9,'[  ]','b')}
+  if(!isD&&!isA&&(!ppos||l.k==='tp'||isPp)){rput(8,'NEW DEST ','w','S');rput(9,'[  ]','b')}
   if(isW)rput(11,'AIRWAYS>');
   if(!tmpyFoot())put(13,0,'<RETURN')},
  lsk(s,n){const p=cur(),l=lrLeg(),k=s+n,v=S.sp;
@@ -98,23 +124,29 @@ P.LATREV={render(){const p=cur(),l=lrLeg(),isW=l.k==='wpt',isO=l.k==='orig',isD=
     const m=v.match(/^([LR])(\d{1,2})$/)||v.match(/^(\d{1,2})([LR])$/);if(!m)return err('FORMAT ERROR');
     const side=/[LR]/.test(m[1])?m[1]:m[2],nm=+(/[LR]/.test(m[1])?m[2]:m[1]);if(nm<1||nm>50)return err('ENTRY OUT OF RANGE');
     q.ofst={side,nm,pos0:FL.pos.slice(),ix0:FL.fromIx};return ok()}
+  /* HOLD at PPOS (FCOM): the present position becomes the hold fix, inbound course the present track, right turns, 1 min (1.5 min above
+     FL140); after the hold the F-PLN continues to the next waypoint */
+  if(k==='L3'&&isFromLeg()){const nx=p.legs[S.lr+2];if(nx&&nx.k==='hold'&&nx.fix==='PPOS'){S.hold=S.lr+2;return go('HOLD')}
+    const q=edit(),vr=magVarOf(q);DB.wpt.PPOS=FL.pos.slice();const fx=W('PPOS',{seg:'enr'});
+    const d={crs:Math.round((FL.trkT-vr+360)%360)||360,turn:'R',time:FL.alt<=14000?1:1.5,dist:null,type:'COMPUTED'};
+    q.legs.splice(S.lr+1,0,fx,makeHold(fx,d));normalize(q);S.hold=q.legs.findIndex((x,i)=>i>S.lr&&x.k==='hold');return go('HOLD')}
   if(k==='L3'&&l.k==='wpt'){const nx=p.legs[S.lr+1];if(nx&&nx.k==='hold'){S.hold=S.lr+1;return go('HOLD')}
     const q=edit(),fx=q.legs[S.lr];   /* hold, then its fix repeated and a discontinuity: the exit can be joined to a new route or a NEW DEST */
     q.legs.splice(S.lr+1,0,makeHold(fx,holdDefault(q,S.lr)),W(fx.id,{seg:fx.seg||'enr'}),{k:'disc'});normalize(q);S.hold=S.lr+1;return go('HOLD')}
   if(k==='L3'&&l.k==='dest'){if(!v)return;if(v==='CLR'){I().altn=null;I().altnRwy=null;return ok()}if(!/^[A-Z]{4}$/.test(v))return err('FORMAT ERROR');if(!DB.apt[v])return err('NOT IN DATA BASE');I().altn=v;I().altnRwy=null;return ok()}
-  if(k==='L4'&&l.k==='wpt'&&I().altn&&!S.secMode){enableAltn(S.lr);return go('FPLN')}
+  if(k==='L4'&&l.k==='wpt'&&!isFromLeg()&&I().altn&&!S.secMode){enableAltn(S.lr);return go('FPLN')}
   if(k==='R3'&&(l.k==='wpt'||l.k==='dest'||l.k==='orig'&&!flying())){if(!v)return;if(!/^[A-Z0-9]{2,5}$/.test(v))return err('FORMAT ERROR');
     if(!fixReg(v))return err('NOT IN DATA BASE');insertWpt(edit(),l.k==='dest'?S.lr-1:S.lr,v,true);ok();return go('FPLN')}
   if(k==='R4'&&(l.k==='wpt'||l.k==='orig'||l.k==='tp')){if(!v)return;if(!/^[A-Z]{4}$/.test(v))return err('FORMAT ERROR');if(!DB.apt[v])return err('NOT IN DATA BASE');
     newDest(edit(),S.lr,v);   /* the origin is allowed too (return flight plan, immediate return) */S.fpOff=0;ok();return go('FPLN')}
-  if(k==='R5'&&l.k==='wpt'){S.awy={idx:S.lr,rows:[]};return go('AWY')}
+  if(k==='R5'&&l.k==='wpt'&&!isFromLeg()){S.awy={idx:S.lr,rows:[]};return go('AWY')}
   if(k==='R2')return err('NOT IN PROTOTYPE');
   return err('NOT ALLOWED')}};
 
 /* ---------- HOLD AT (FlyByWire CDUHoldAtPage) ---------- */
 P.HOLD={render(){const p=cur(),l=p&&p.legs[S.hold];if(!l||l.k!=='hold'){S.page='FPLN';return P.FPLN.render()}
   const tm=!!S.tmpy&&!S.secMode,c=tm?'y':'b',mod=l.type==='MODIFIED',sz=x=>mod&&x?'L':'S';
-  const time=l.time!=null?l.time:l.dist*60/180,dist=l.dist!=null?l.dist:180*l.time/60;
+  const time=l.time!=null?l.time:l.dist*60/holdTas(l),dist=l.dist!=null?l.dist:holdLen(l);   /* time converted at the hold ground speed */
   csegs(1,[[(mod?'':l.type+' ')+'HOLD','w'],[' AT ','w','S'],[l.fix.padEnd(7),'g']]);
   put(2,0,'INB CRS','w','S');put(3,0,String(l.crs).padStart(3,'0')+'°',c,sz(l.crs!==l.def.crs));
   put(4,0,'TURN','w','S');put(5,0,l.turn,c,sz(l.turn!==l.def.turn));if(mod){rput(4,'REVERT TO','w','S');rput(5,(l.def.type)+'→','b')}

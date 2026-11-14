@@ -25,14 +25,8 @@ function toWpt(){const p=S.active;if(!p)return null;const from=flying()?FL.fromI
 /* ---------- flight-plan geometry (lat/lon polylines) ---------- */
 function arcPts(a,b,c){const r=gc(c,a),b1=brg(c,a);let d=((brg(c,b)-b1+540)%360)-180;const n=Math.max(4,Math.ceil(Math.abs(d)/4)),out=[];
   for(let i=0;i<=n;i++)out.push(dst(c,b1+d*i/n,r));return out}
-function holdPts(F,crsT,right){const L=3.5,rt=1.5,t=crsT*D2R,sg=right?1:-1;
-  const u=[Math.sin(t),Math.cos(t)],v=[Math.cos(t)*sg,-Math.sin(t)*sg];
-  const P=(x,y)=>[F[0]+y/60,F[1]+x/(60*Math.cos(F[0]*D2R))],pts=[];
-  const add=(cx,cy,f)=>{for(let i=0;i<=12;i++){const a=Math.PI*i/12,[e,n]=f(a);pts.push(P(cx+e,cy+n))}};
-  pts.push(P(-L*u[0],-L*u[1]));
-  add(rt*v[0],rt*v[1],a=>[rt*(-Math.cos(a)*v[0]+Math.sin(a)*u[0]),rt*(-Math.cos(a)*v[1]+Math.sin(a)*u[1])]);
-  add(rt*v[0]-L*u[0],rt*v[1]-L*u[1],a=>[rt*(Math.cos(a)*v[0]-Math.sin(a)*u[0]),rt*(Math.cos(a)*v[1]-Math.sin(a)*u[1])]);
-  return pts}
+/* published hold (missed approach): the same racetrack as a flown hold (FBW HX leg dimensions) */
+function holdPts(F,crsT,right){return holdLoop(F,crsT,right,holdLen(null),holdR(null))}
 /* from: the FROM leg in flight. The flown route behind it is erased; the FROM waypoint and the active leg stay (FBW: display from the FROM leg) */
 function planGeo(p,base,from){const G={lines:[],wpts:[],rwys:[]};let prev=null,vr=0;from=from??-1;
   const crs=t=>{const m=String(t||'').match(/(\d{3})/);return m?+m[1]:null};
@@ -47,7 +41,10 @@ function planGeo(p,base,from){const G={lines:[],wpts:[],rwys:[]};let prev=null,v
     if(l.k==='ca'&&prev){const o=p.legs[0],ap=DB.apt[o.id],r=ap.rwy[o.rwy];if(!r){prev=null;return}
       const q=dst(r.pos,r.crs+vr,r.len/1852+Math.min(3,l.aal/320));G.lines.push({pts:[prev,q],col,ix});prev=q;return}
     if(l.k==='hdg'&&prev){const c=crs(l.lbl);if(c==null){prev=null;return}const q=dst(prev,c+vr,5);G.lines.push({pts:[prev,q],col,ix});prev=q;return}
-    if(l.k==='hold'&&prev&&l.fix){G.lines.push({pts:holdLoop(prev,l.crs+vr,l.turn!=='L',holdLen(l),HOLD_R),col,ix});return}   /* pilot-entered hold */
+    if(l.k==='hold'&&prev&&l.fix){const R=l._R??holdR(l),L=l._L??holdLen(l),right=l.turn!=='L',LL=G.lines[G.lines.length-1],a=LL&&LL.pts.length>1?LL.pts[LL.pts.length-2]:null;
+      /* the entry is drawn until the racetrack itself is reached (FBW: the entry path is removed once flown) */
+      const en=flying()&&FL.inHold===ix?{pts:[]}:holdEntry(prev,a?brg(a,prev):null,l.crs+vr,right,L,R);
+      if(en.pts.length)G.lines.push({pts:[prev,...en.pts,prev],col,ix});G.lines.push({pts:holdLoop(prev,l.crs+vr,right,L,R),col,ix});return}   /* pilot-entered hold */
     if(l.k==='hold'&&prev){const c=crs(l.lbl);if(c!=null)G.lines.push({pts:holdPts(prev,c+vr,/R$/.test(l.id)),col,ix});return}
     prev=null});
   if(from>=0){G.lines=G.lines.filter(L=>L.ix==null||L.ix>from);G.wpts=G.wpts.filter(w=>w.ix>=from)}
