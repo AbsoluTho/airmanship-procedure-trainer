@@ -379,7 +379,7 @@ P.PERFTO={render(){const q=S.perf,f=S.fuel,B=BOX,rw=S.active&&S.active.rwy;
   case'R1':return err('NOT ALLOWED');
   case'R2':{if(C){q.shift=null;return ok()}if(!/^\d{1,4}$/.test(v))return err('FORMAT ERROR');const p=S.active,rw=p&&p.rwy&&DB.apt[p.legs[0].id].rwy[p.rwy];
     if(!rw)return err('NOT ALLOWED');if(+v>=rw.len)return err('ENTRY OUT OF RANGE');q.shift=+v||null;return ok()}
-  case'R3':{if(C){q.flaps=null;q.ths=null;return ok()}const m=v.match(/^([123])?(?:\/(?:(UP|DN)(\d(?:\.\d)?)|(\d(?:\.\d)?)(UP|DN)))?$/);
+  case'R3':{if(C){q.flaps=null;q.ths=null;return ok()}const m=v.match(/^([123])?(?:\/(?:(UP|DN)(\d?\.\d|\d(?:\.\d)?)|(\d?\.\d|\d(?:\.\d)?)(UP|DN)))?$/);   /* 1/UP0.4, 1/0.4UP, 1/.4UP, 1/UP.4, /.4UP */
     if(!m||(!m[1]&&!m[2]&&!m[5]))return err('FORMAT ERROR');const dir=m[2]||m[5],val=m[3]||m[4];
     if(val!=null&&+val>5)return err('ENTRY OUT OF RANGE');if(m[1])q.flaps=+m[1];if(dir)q.ths=dir+(+val).toFixed(1);
     if(!q.flaps)return err('FORMAT ERROR');return ok()}
