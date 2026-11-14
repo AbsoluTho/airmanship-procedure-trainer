@@ -6,8 +6,9 @@
 const LVP={on:false};
 const IMG_LVG='img/lv-gear.webp',IMG_LVGL='img/lv-gear-lever.webp',IMG_LVT='img/lv-thr.webp',IMG_LVTL='img/lv-thr-l.webp',IMG_LVTR='img/lv-thr-r.webp',
   IMG_LVF='img/lv-flaps.webp',IMG_LVFK='img/lv-flaps-knob.webp';
-/* thrust lever detents on the quadrant image (y of the CL notch = 262) and the side buttons */
-const THR_POS=[['TOGA','TOGA',197],['FLX','FLX/MCT',226],['CL','CL',262],['N50','50% N1',336],['IDLE','IDLE',410],['REVIDLE','IDLE REV',470],['REVMAX','MAX REV',540]];
+/* thrust lever positions on the quadrant image (y of the scale marks: TOGA, FLX/MCT, CL, the white 0 line, the REV zone to FULL);
+   the centre of the handles is put on the mark */
+const THR_POS=[['TOGA','TOGA',198],['FLX','FLX/MCT',226],['CL','CL',260],['N50','50% N1',334],['IDLE','IDLE',408],['REVIDLE','IDLE REV',452],['REVMAX','MAX REV',500]];
 const FLP_Y=[60,120,180,240,290];
 /* layout: thrust quadrant on the left over the full height, its buttons beside it; landing gear panel (smaller) top right,
    flaps lever (knob and gate only) below it */
@@ -18,8 +19,8 @@ function leversSvg(){const G='#3cff3c',B='#3ad7ff',R='#ff3b30',ln='#e8eef5';
   let s=`<rect x="0" y="0" width="600" height="530" fill="#2a313c"/>`;
   /* ---- thrust levers: quadrant image 316 x 688 (gate and scales), the two handles slide from TOGA down to MAX REV ---- */
   {const k=530/688;s+=`<g transform="scale(${k})"><image href="${IMG_LVT}" x="0" y="0" width="316" height="688"/>`;
-    const dy=THR_POS.find(p=>p[0]===LV.thr)[2]-197;
-    s+=`<image href="${IMG_LVTL}" x="34" y="${4+dy}" width="128" height="117"/><image href="${IMG_LVTR}" x="170" y="${4+dy}" width="128" height="117"/></g>`}
+    const y=THR_POS.find(p=>p[0]===LV.thr)[2]-58;   /* handle images 117 high: centre on the mark */
+    s+=`<image href="${IMG_LVTL}" x="34" y="${y}" width="128" height="117"/><image href="${IMG_LVTR}" x="170" y="${y}" width="128" height="117"/></g>`}
   THR_POS.forEach(([k,l],i)=>{s+=btn(250,8+i*74.5,86,62,'thr',k,l.replace('/',' /'),LV.thr===k,k.startsWith('REV')?'#ff9a55':null,12)});
   /* ---- landing gear panel (image 676 x 333), smaller, top right ---- */
   {const x0=342,k=252/676;s+=`<g transform="translate(${x0},8) scale(${k})"><image href="${IMG_LVG}" x="0" y="0" width="676" height="333"/>`;

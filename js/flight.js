@@ -106,7 +106,7 @@ const VFE={'0':999,'1':230,'1+F':215,'2':200,'3':185,'FULL':177},VLE=280;
 let PM_AUTO=false;   /* test hook: a pilot monitoring that moves the levers (off in the app) */
 function lever(k,v){
   if(k==='thr'){if(!['IDLE','REVIDLE','REVMAX','N50','CL','FLX','TOGA'].includes(v))return;
-    if(v.startsWith('REV')&&!(FL.active&&FL.ground))return;   /* reverse on the ground only */
+    if(v.startsWith('REV')&&FL.active&&!FL.ground)return;   /* no reverse in flight; on the ground the levers go into the REV zone (reverse thrust acts on the landing roll) */
     LV.thr=v;if(!FL.active)return;
     if(FL.stage==='LINEUP'&&(v==='FLX'||v==='TOGA')){FL.stage='ROLL';FL.thr='TO'}   /* the take-off roll starts at FLX/MCT or TOGA */
     else if(FL.stage==='AIR'){if(v==='TOGA'&&!['TO','LVR'].includes(FL.thr))goAround();else if(v==='CL'&&['TO','LVR','MCT'].includes(FL.thr))FL.thr='CL';else if(v==='FLX'&&FL.thr!=='TO')FL.thr='MCT'}}
