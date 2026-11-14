@@ -23,7 +23,7 @@ function leversSvg(){const G='#3cff3c',B='#3ad7ff',R='#ff3b30',ln='#e8eef5';
     s+=`<image href="${IMG_LVTL}" x="34" y="${y}" width="128" height="117"/><image href="${IMG_LVTR}" x="170" y="${y}" width="128" height="117"/></g>`}
   THR_POS.forEach(([k,l],i)=>{s+=btn(217,2+i*54.3,59,48,'thr',k,l.replace('FLX/MCT','FLX MCT').replace('50% N1','50%N1'),LV.thr===k,k.startsWith('REV')?'#ff9a55':null,12)});
   /* ENG MASTER panel (image 563 x 392): master levers OFF (down) or ON (up); always ON while the engines run (flight) */
-  {const k=201/563;s+=`<g transform="translate(37,388) scale(${k})"><image href="${IMG_LVE}" x="0" y="0" width="563" height="392"/>`;
+  {const k=214/563;s+=`<g transform="translate(0,381) scale(${k})">   /* same width as the thrust quadrant, right under it */<image href="${IMG_LVE}" x="0" y="0" width="563" height="392"/>`;
     [[1,108,80,IMG_LVM1],[2,384,84,IMG_LVM2]].forEach(([n,x,w,im])=>{const on=LV['m'+n];s+=`<image href="${im}" x="${x}" y="${on?74:162}" width="${w}" height="89"/>`+hit(x-20,60,w+40,200,'master',n)});
     s+=`</g>`}
   /* ---- right top: landing gear panel (image 676 x 333, frame trimmed: x 10..660), larger ---- */
