@@ -77,7 +77,7 @@ function fcuButton(b){const air=inAir();
   if(b==='ap1'||b==='ap2'){const o=b==='ap1'?'ap2':'ap1';if(FCU[b]){FCU[b]=false}else{if(!air||FL.alt-groundElev()<100)return fcuRefresh();FCU[b]=true;if(!FCU.appr&&!FCU.loc)FCU[o]=false}}
   if(b==='athr')FCU.athr=!FCU.athr;
   if(b==='loc'){if(!hasLsSel())return fcuRefresh();if(FCU.loc){FCU.loc=false}else{FCU.loc=true;FCU.appr=false}}
-  if(b==='appr'){if(!hasLsSel())return fcuRefresh();if(FCU.appr){FCU.appr=false;if(FCU.ap1&&FCU.ap2)FCU.ap2=false}else{FCU.appr=true;FCU.loc=false}}
+  if(b==='appr'){if(!(typeof hasLs==='function'&&hasLs()))return fcuRefresh();if(FCU.appr){FCU.appr=false;if(FCU.ap1&&FCU.ap2)FCU.ap2=false}else{FCU.appr=true;FCU.loc=false}}
   if(b==='exped'){FCU.exped=!FCU.exped;fcuEvent('exped')}
   if(b==='spdmach'){FCU.mach=!FCU.mach;FCU.spdPre=null;if(!FCU.spdMgd)FCU.spd=curSpd()}
   if(b==='trkfpa'){FCU.trkFpa=!FCU.trkFpa;if(flying()){if(FL.lat==='HDG')FL.lat='TRK';else if(FL.lat==='TRK')FL.lat='HDG';if(FL.ver==='V/S')FL.ver='FPA';else if(FL.ver==='FPA')FL.ver='V/S'}}

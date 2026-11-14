@@ -31,7 +31,7 @@ async def run(url,b):
     legs=await pg.evaluate('window.__S().active.legs.map(l=>l.id||"-")')
     await pg.evaluate(f'window.__S().fpOff={(await pg.evaluate("fplnRows(window.__S().active).map(r=>r.id||r.k)")).index("MIGDA")}');await k('L1');await k('R5')
     await t('L677');await k('L1');await t('V54');await k('L2');await t('TBK');await k('R2');await k('R6')
-    await k('L6');await k('R1');await k('L3');await k('L4');await k('R6')
+    await k('L6');await k('R1');await k('L3');await k('L5');await k('R6')
     legs=await pg.evaluate('window.__S().active.legs.map(l=>l.k)')
     await pg.evaluate(f'window.__S().fpOff={(await pg.evaluate("fplnRows(window.__S().active).map(r=>r.k)")).index("disc")-1}');await k('CLR');await k('L2');await k('R6')
     await k('INIT');await k('RIGHT');await t('58.4/27.5');await k('R1');await t('8.6');await k('R2')
@@ -53,7 +53,7 @@ async def run(url,b):
     await k('L6');await k('R4');await t('270/20/FL100');await k('L1');assert await pg.evaluate('window.__S().wind.clb.length')==1,'CLIMB WIND entry'
     await k('R5');assert 'CRZ WIND' in await scr()
     await k('RADNAV');await t('TBK');await k('L1');assert await pg.evaluate('window.__S().rad.vor1.freq')==115.7,'VOR tuned by ident'
-    assert 'IPKS/111.90' in await scr(),'LS autotuned from the approach, with its frequency'
+    assert 'ITBK/109.50' in await scr(),'LS autotuned from the approach, with its frequency'
     await k('FPLN');await pg.evaluate('window.__S().fpOff=0');await k('UP');await k('DOWN')
     assert await pg.evaluate("window.__S().active.legs[1].id")=='(426)','first SID leg: 400 ft AAL on runway track'
     await pg.evaluate("window.__S().sp='/+3000'");await k('R3');assert await pg.evaluate('JSON.stringify(window.__S().active.legs[2].alt)')=='{"t":"+","v":3000}','ALT CSTR from F-PLN'
@@ -79,7 +79,9 @@ async def run(url,b):
     await k('L6');assert await pg.evaluate("!window.__S().tmpy"),'temporary F-PLN erased'
     await k('FUEL');assert 'FUEL PRED' in await scr()
     await k('PROG');assert 'REC MAX' in await scr();await t('OETB');await k('R4');assert '°/' in await scr()
-    await k('AIRPORT');await k('INIT');await k('RIGHT')
+    await k('AIRPORT')
+    await pg.evaluate(f'window.__S().fpOff={(await pg.evaluate("fplnRows(window.__S().active).map(r=>r.k)")).index("dest")-1}');await k('UP');await k('DOWN')   # OETB back at the PLAN centre
+    await k('INIT');await k('RIGHT')
     done=await pg.evaluate("[...document.querySelectorAll('#tasks li.done')].length")
     assert done==14,f'exercise tasks done: {done}/14'
     alt_rows=await pg.evaluate("fplnRows(window.__S().active).map(r=>r.k).join(',')")
@@ -163,7 +165,7 @@ async def run(url,b):
         if(FL.fma.c2&&FL.fma.c2[1]&&FL.fma.c2[1][1]==='m')seen.add('ALT ARMED MAGENTA');
         if(FL.ver==='ALT CST'){did.cst=1;if(Math.abs(FL.alt-7000)<30&&FL.fromIx<ixOf('ORPAR'))seen.add('ALT CST 7000')}
         if(did.cst&&FL.ver==='CLB'&&FL.fromIx>=ixOf('ORPAR'))seen.add('CLB AFTER ORPAR');
-        if(!did.d136&&FL.fromIx>=ixOf('D136O')){if(FL.alt<=7000)seen.add('BELOW 7000 AFTER D179O');did.d136=1}
+        if(!did.d136&&FL.fromIx>=ixOf('MUPVA')){if(FL.alt<=7000)seen.add('BELOW 7000 AFTER D179O');did.d136=1}
         if(FL.fromIx>=ixOf('D179O'))did.d179=1;
         if(did.d179&&S.phase==='DES'&&FL.spdT<=221)seen.add('SPD CST 220 DES');
         if(!did.lvl6&&FL.ver==='DES'&&Math.abs(FL.vs)<60&&Math.abs(FL.alt-7000)<40)seen.add('DES LEVEL AT CSTR'),did.lvl6=1;
@@ -211,7 +213,8 @@ async def run(url,b):
     await P('L2');await P('R6');assert await pg.evaluate("JSON.stringify([window.__S().active.ofst.side,window.__S().active.ofst.nm])")=='["R",10]','OFFSET R10 inserted'
     x=await pg.evaluate("""(()=>{const P0=buildPath(Object.assign(clone(S.active),{ofst:undefined}));for(let n=0;n<700;n++)step(0.5);return project(P0,FL.pos,1,P0.pts.length-1).xtk})()""")
     assert 9<x<11,f'aircraft 10 NM right of the route: {x}'
-    await pg.evaluate("window.__S().sp='';window.__S().fpOff=0");await P('FPLN');await pg.evaluate("window.__S().fpOff=0");await P('L2')
+    await pg.evaluate("window.__S().sp='';window.__S().fpOff=0");await P('FPLN');await pg.evaluate("window.__S().fpOff=0")
+    n=await pg.evaluate("(()=>{const R=fplnRows(S.active);for(let n=2;n<6;n++)if(R[n-1]&&R[n-1].k==='wpt')return n})()");await P('L'+str(n))   # first waypoint below the FROM line
     for ch in 'OEMA': await P(ch)
     await P('R4');await P('R6')
     r=await pg.evaluate("(()=>{for(let n=0;n<200;n++)step(0.5);const L=S.active.legs;return[L[idxK(S.active,'dest')].id,I().to,L[idxK(S.active,'dest')-1].k,!!S.active.ofst]})()")
@@ -254,7 +257,7 @@ async def run(url,b):
     assert r==['MAN TOGA','SRS','GA TRK','GA','3'],f'go-around: MAN TOGA, SRS, GA TRK, GA phase, flaps one step up: {r}'
     assert await pg.evaluate("(()=>{for(let i=0;i<4;i++)step(0.5);return FL.lat})()")=='NAV','NAV on the missed approach above 100 ft'
     rows=await pg.evaluate("fplnRows(window.__S().active).filter(r=>r.ix>=FL.fromIx).map(r=>r.id||r.k).slice(0,7).join(' ')")
-    assert rows=='T-P (3500) MUPVA HOLD R disc D179O D136O',f'missed approach active, approach strung again: {rows}'
+    assert rows=='T-P TBK MUPVA HOLD R disc D179O MUPVA',f'missed approach active, approach strung again: {rows}'
     r=await pg.evaluate("""(()=>{let n=0;while(n<6000&&FL.inHold==null){step(0.5);n++}return[FL.inHold!=null,Math.round(FL.alt),FL.conf,FL.gear,S.active.legs[FL.fromIx].id]})()""")
     assert r[0] and abs(r[1]-6000)<60 and r[2]=='0' and r[3] is False and r[4]=='MUPVA',f'missed approach flown to the hold at MUPVA, 6000 ft, clean: {r}'
     await pg.evaluate("window.__S().fpOff=0");await P('FPLN');await pg.evaluate("window.__S().fpOff=0");await P('R2');assert await pg.evaluate('FL.holdExit!=null'),'IMM EXIT'
@@ -265,7 +268,7 @@ async def run(url,b):
     # ---- CO RTE, ROUTE selection, INIT REQUEST, STORED ROUTES, MCDU MENU (fresh MCDU) ----
     await pg.evaluate("S=freshState();window.__S().msgs=[];render()")
     for ch in 'OEJNOETB2': await P(ch)
-    await P('L1');assert await pg.evaluate("[I().from,I().to,I().altn,window.__S().active.via]")==['OEJN','OETB','OEMA','TBK'],'CO RTE OEJNOETB2 loaded'
+    await P('L1');assert await pg.evaluate("[I().from,I().to,I().altn,window.__S().active.via]")==['OEJN','OETB','OEMA','D043O'],'CO RTE OEJNOETB2 loaded'
     await pg.evaluate("S=freshState();window.__S().msgs=[];window.__reqMs(50);render()")
     for ch in 'TRN385': await P(ch)
     await P('L3');await P('R2');await pg.wait_for_timeout(300)
@@ -282,6 +285,16 @@ async def run(url,b):
     assert '<NO SID' in await pg.evaluate("[...document.querySelectorAll('#scr .ln')].map(l=>l.textContent).join(' ')"),'NO SID in the SID list'
     await P('L2');await P('R6');ns=await pg.evaluate("(()=>{const L=window.__S().active.legs;return[L[0].rwy,L[1].k,L.some(l=>l.k==='ca'||l.seg==='dep'),window.__S().active.noSid]})()")
     assert ns==['16C','disc',False,True],f'NO SID: runway then discontinuity: {ns}'
+    # ---- Madinah from the charts: STAR + approach via + RNP final, FMA FINAL APP; Tabuk VOR approach; SIDs on every runway ----
+    r=await pg.evaluate("""(()=>{const p=newPlan('OEJN','OEMA');setRunway(p,'16C');p.appr='RNP36';p.via='MA428';p.star='BOVE1F';buildArr(p);
+      const ids=p.legs.filter(l=>l.seg==='arr'||l.k==='dest').map(l=>l.id).join(' ');
+      const S0=S.active;S.active=p;const fl={lat:FL.lat,ver:FL.ver,arm:FL.verArm,la:FL.latArm,st:FL.stage};FL.stage='AIR';FL.lat='LOC';FL.ver='G/S';FL.verArm=[];FL.latArm=null;
+      const ap=FCU.ap1;FCU.ap1=true;setFma();const fma=FL.fma.c2&&FL.fma.c2[0]&&FL.fma.c2[0][0];
+      Object.assign(FL,{lat:fl.lat,ver:fl.ver,verArm:fl.arm,latArm:fl.la,stage:fl.st});FCU.ap1=ap;S.active=S0;
+      return[ids,fma,Object.keys(STARS.OEMA).length,Object.keys(SIDS.OEMA).sort().join(),Object.keys(APPRS.OETB).join()]})()""")
+    assert r[0]=='BOVET MA409 MA425 MA401 MA426 MA427 MA428 MUVDA MA510 OEMA',f'STAR BOVE1F + via MA428 + RNP36: {r[0]}'
+    assert r[1]=='FINAL APP',f'RNP approach FMA: {r[1]}'
+    assert r[2]==32 and r[3]=='17,18,35,36' and r[4]=='ILS24,VOR24,VOR06,VOR13,VOR31',f'chart data: {r[2:]}'
     await P('PERF');await P('MENU');assert 'MCDU MENU' in await pg.evaluate("[...document.querySelectorAll('#scr .ln')].map(l=>l.textContent).join(' ')")
     await P('L1');assert await pg.evaluate("window.__S().page")=='PERFTO','MCDU MENU: FMGC returns to the last FMGC page'
     await pg.evaluate("localStorage.removeItem('airmanship.stored.v1')")

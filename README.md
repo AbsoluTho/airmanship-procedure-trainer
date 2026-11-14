@@ -4,7 +4,7 @@ An unofficial A320 **procedure** trainer that runs in the browser (iPad first). 
 
 Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator manuals. The navigation data was typed from charts for training only and must never be used for navigation.
 
-## Status: Phase 2 prototype (v0.12.3)
+## Status: Phase 2 prototype (v0.13.0)
 
 - **MCDU** (Thales FMS2 layout, per FCOM DSC-22): keyboard and scratchpad, INIT A, F-PLN with TMPY (ERASE/INSERT), LAT REV, DEPARTURE, AIRWAYS (with airway-to-airway intersection), ARRIVAL, waypoint insertion, CLR of waypoints and discontinuities.
 - **Exercise** OEJN to OETB: RWY 16C MIGD2E, L677 WEJ, V54 TBK, ILS 31 via D179O, ALTN OEMA, FL340, CI 20, with automatic progress checks.
@@ -12,6 +12,11 @@ Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator
 - **ND** (ROSE LS, ROSE VOR, ROSE NAV, ARC, PLAN; range 10 to 320 NM; CSTR, WPT, ARPT options; ROSE LS and ROSE VOR show the compass only for now): active F-PLN in green, TMPY in yellow dashed, missed approach in blue, alternate route in blue dashed, DME arcs and holds drawn. PLAN centres on the waypoint on the second line of the MCDU F-PLN page. Also live on both NDs in the 3D cockpit (EXT PWR on).
 - **INIT B**: TAXI, ZFW/ZFWCG, BLOCK, TRIP/TIME, RTE RSV, ALTN, FINAL, EXTRA, TOW/LW, TRIP WIND, MIN DEST FOB. **F-PLN** now shows TIME predictions and EFOB at destination once ZFW and BLOCK are entered.
 - **PERF TAKE OFF**: V1/VR/V2 (with V1/VR/V2 DISAGREE), F/S/O speeds, RWY, TO SHIFT, FLAPS/THS, FLEX, TRANS ALT, THR RED/ACC, ENG OUT ACC. Changing the takeoff runway clears the V speeds (CHECK TAKE OFF DATA).
+- **Navigation database from the charts** (v0.13.0): `tools/navdb/procgen.py` turns the airport files in `tools/navdb/charts/` into `js/data/procgen.js`. Fix positions are worked out from chart geometry (VOR radial/DME, distance on the extended centreline, track and distance from another fix), anchored on OurAirports thresholds and VORs; where two charts place the same fix, the generator prints the difference (most under 1 NM). Training data only, never for navigation.
+  - **Tabuk (OETB)**: ILS 24 (ITBK 109.5, vias D043O, D179O, D061T), VOR 24, VOR 06, VOR 13, VOR 31. No SIDs or STARs published (NO SID). The old ILS 31 was removed: it is not on the charts.
+  - **Madinah (OEMA)**: 52 SIDs (RNAV 1C/1J/1K/1L, conventional VOR/DME 1D/1M/1N/1P with DME arcs, radar MADINAH 1T/1Z), 32 STARs for runways 17, 18, 35, 36, and 10 approaches (ILS 17, ILS 35, RNP 17/18/35/36, VOR 17/18/35/36).
+  - **STARs** on the ARRIVAL page (listed for the runway of the approach). A fix shared by the STAR, the via and the final approach is kept once, where the later part starts.
+  - **VOR and RNP approaches**: armed with APPR, flown on the runway final; FMA APP NAV and FINAL, then FINAL APP. LOC, LS display and LS autotune stay ILS-only.
 - **Physics and FMA** (v0.12.3): takeoff roll acceleration 5 per cent slower; landing roll deceleration 5 kt/s above 40 kt, then 3.5 kt/s. Takeoff lateral FMA: RWY on the ground, RWY TRK once airborne (NAV armed), NAV from 400 ft AAL. DES pushed before T/D starts an early descent at 1000 ft/min until the path is met; armed DES starts the descent when the path reaches the aircraft. The vertical deviation dot shows in cruise from 25 NM before T/D, coming down from the top of the altitude tape. VR: cyan hollow circle on the speed tape during the takeoff roll, a little smaller than the green dot.
 - **DIR TO and NO SID** (v0.12.2): on DIR TO, the key beside a F-PLN waypoint (L3 to L6, L3 to L5 while ERASE/INSERT shows) selects that waypoint. DEPARTURES offers `<NO SID` first in the SID list: runway threshold only, then a discontinuity; the takeoff stays in RWY TRK until HDG or DIR TO.
 - **App version** (v0.12.1): the version in the top right corner comes from this README's status line, written into `index.html` by `tools/build_single.py`.

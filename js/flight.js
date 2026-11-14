@@ -57,7 +57,8 @@ function locGeo(pos){const d=destRwy(),c=d.r.crs+(d.a.var||0),q=enu(d.r.pos,pos)
 function faf(){const p=S.active,di=idxK(p,'dest');for(let i=di-1;i>0;i--){const l=p.legs[i];if(l.k==='wpt'&&l.alt&&l.seg==='arr')return l.alt.v}return destRwy().tdze+1500}
 function gsAlt(dtg){return destRwy().tdze+50+318*Math.max(0,dtg)}
 /* profileAlt() and tdDist() (constrained descent path, T/D) are in vnav.js */
-const hasLs=()=>{const p=S.active;return!!(p&&p.appr&&/^(ILS|LOC)/.test(p.appr))};
+const hasLs=()=>{const p=S.active;return!!(p&&p.appr&&(APPRS[destId()]||{})[p.appr])};   /* a published approach: ILS/LOC, or VOR/RNP flown as APP NAV and FINAL */
+const npaAppr=()=>{const p=S.active;return!!(hasLs()&&!/^(ILS|LOC)/.test(p.appr))};
 
 /* ---------- atmosphere and speeds ---------- */
 const tasOf=(ias,alt)=>ias*(1+alt/1000*0.02);
@@ -136,6 +137,9 @@ function setFma(){const st=FL.stage,a=S.perf,fx=a.flex!=null&&S.phase!=='GA'?'FL
     else{const crzAlt=FCU.alt===I().crz*100&&FL.alt>20000;
       f.c2=[[FL.ver==='ALT'&&crzAlt?'ALT CRZ':FL.ver==='ALT*'&&crzAlt?'ALT CRZ*':FL.ver,'g'],FL.verArm.length?[FL.verArm.join(' '),cstArmed()?'m':'b']:null];
       f.c3=[[FL.lat==='LOC*'?'LOC *':FL.lat,'g'],FL.latArm?[FL.latArm,'b']:null]}}
+  if(npaAppr()){const M={'LOC *':'APP NAV','LOC':'APP NAV','G/S*':'FINAL','G/S':'FINAL'},ren=c=>c&&c.map(x=>x&&[M[x[0]]||x[0].replace('G/S','FINAL').replace(/^LOC\b/,'APP NAV'),x[1]]);
+    f.c2=ren(f.c2);f.c3=ren(f.c3);
+    if(f.land||(f.c2[0]&&f.c2[0][0]==='FINAL'&&f.c3[0]&&f.c3[0][0]==='APP NAV')){f.land=null;f.c2=[['FINAL APP','g']];f.c3=[]}}
   if(FL.tdReached&&!DESCENDING.includes(FL.ver))f.msg='T/D REACHED';
   if((FCU.appr||FCU.loc)&&!['ROLLOUT','STOP','IDLE'].includes(st)&&FCU.appr){const q=S.p2,aps=(FCU.ap1?1:0)+(FCU.ap2?1:0),mn=q.radio!=null?(q.radio==='NO'?'NO DH':'DH '+q.radio):q.baro!=null?'BARO '+q.baro:'';
     f.c4=aps?[['CAT 3','w'],[aps===2?'DUAL':'SINGLE','w'],[mn,'b']]:[['CAT 1','w'],null,[mn,'b']]}
