@@ -112,7 +112,7 @@ function fcuEvent(ev){if(!FL.active)return;const A=FCU.alt;
   FL.opSmall=Math.abs(A-FL.alt)<1200;   /* level change under 1200 ft: V/S 1000 ft/min with A/THR on speed (Airbus OPEN mode logic) */
   if(ev==='alt-pull'){if(FL.ground)return;if(Math.abs(A-FL.alt)<250)return;FL.ver=A>FL.alt?(FCU.exped?'EXP CLB':'OP CLB'):(FCU.exped?'EXP DES':'OP DES');FL.verArm=['ALT']}
   if(ev==='alt-push'){if(FL.ground){FL.verArm=['CLB'];return}if(Math.abs(A-FL.alt)<250)return;
-    if(A>FL.alt){FL.ver='CLB';FL.verArm=['ALT']}else if(FL.s>=FL.td-1||S.phase==='DES'||S.phase==='APPR'){FL.ver='DES';FL.verArm=['ALT']}else{FL.verArm=['DES']}}
+    if(A>FL.alt){FL.ver='CLB';FL.verArm=['ALT']}else{FL.ver='DES';FL.verArm=['ALT']}}   /* before T/D: early descent at 1000 ft/min until the path */
   if(ev==='vs-pull'){if(FL.ground)return;FL.ver=FCU.trkFpa?'FPA':'V/S';FL.verArm=['ALT']}
   if(ev==='vs-push'){if(FL.ground)return;FL.ver=FCU.trkFpa?'FPA':'V/S';FCU.vsVal=0;FCU.fpa=0;FL.verArm=[]}
   if(ev==='hdg-pull'){if(FL.ground){FL.latArm=null;return}FL.lat=FCU.trkFpa?'TRK':'HDG';FL.latArm=null}
@@ -164,7 +164,7 @@ function step(dt){const ias0=FL.ias;if(FL.sig!==planSig()&&!FL.ground)flightRepl
   const fi=FL.fromIx;for(const pt of P.pts)if(pt.ix!=null&&pt.s<=FL.s+0.05&&pt.ix>FL.fromIx)FL.fromIx=pt.ix;
   if(FL.fromIx!==fi&&S.page==='FPLN'&&!S.secMode)S.fpOff=0;   /* waypoint sequenced: the F-PLN starts again at the FROM line */
 
-  if(FL.stage==='ROLL'){FL.ias+=(S.perf.flex!=null?4.6:5.2)*dt;if(FL.ias>=q.vr){FL.pitch=Math.min(15,FL.pitch+3*dt);if(FL.ias>=q.vr+4){FL.ground=false;FL.stage='AIR'}}}
+  if(FL.stage==='ROLL'){FL.ias+=(S.perf.flex!=null?4.37:4.94)*dt;if(FL.ias>=q.vr){FL.pitch=Math.min(15,FL.pitch+3*dt);if(FL.ias>=q.vr+4){FL.ground=false;FL.stage='AIR'}}}
   const ga=S.phase==='GA',thrRed=ga?(p2.gaThr??defGa()):(q.thr??defRed()),acc=ga?(p2.gaAcc??defGa()):(q.acc??defRed());
   if(FL.thr==='TO'&&!FL.ground&&FL.alt>=thrRed){FL.thr='LVR';FL.lvrT=FL.t}
   if(FL.thr==='LVR'&&FL.t-FL.lvrT>4)FL.thr='CL';
@@ -172,8 +172,9 @@ function step(dt){const ias0=FL.ias;if(FL.sig!==planSig()&&!FL.ground)flightRepl
   let vsT=0,spdT=FL.ias,trkT=FL.trkT;
   if(FL.stage==='AIR'){
     /* ---- lateral ---- */
-    if(FL.lat==='RWY'&&agl()>30){if(FL.latArm==='NAV'){FL.lat='NAV';FL.latArm=null}else FL.lat=FCU.hdgMgd?'RWY TRK':(FCU.trkFpa?'TRK':'HDG')}
-    if(FL.latArm==='NAV'&&pr&&Math.abs(pr.xtk)<0.6&&!(FL.lat==='GA TRK'&&agl()<100)){FL.lat='NAV';FL.latArm=null}
+    /* takeoff: RWY on the ground, RWY TRK once airborne (NAV stays armed), NAV from 400 ft AAL */
+    if(FL.lat==='RWY'&&agl()>30)FL.lat=FCU.hdgMgd||FL.latArm==='NAV'?'RWY TRK':(FCU.trkFpa?'TRK':'HDG');
+    if(FL.latArm==='NAV'&&pr&&Math.abs(pr.xtk)<0.6&&!(FL.lat==='GA TRK'&&agl()<100)&&FL.lat!=='RWY'&&!(FL.lat==='RWY TRK'&&agl()<400)){FL.lat='NAV';FL.latArm=null}
     const lg=hasLs()?locGeo(FL.pos):null,lsArmed=(FCU.loc||FCU.appr)&&lg;
     if(lsArmed&&!['LOC*','LOC','LAND'].includes(FL.lat)){if(FL.latArm!=='NAV')FL.latArm='LOC';
       const hdif=Math.abs(((lg.crs-FL.trkT+540)%360)-180);if(lg.along>0.5&&lg.along<30&&Math.abs(lg.xtk)<1.2&&hdif<100){FL.lat='LOC*';FL.latArm=null;FL.loc=true}}
@@ -195,7 +196,8 @@ function step(dt){const ias0=FL.ias;if(FL.sig!==planSig()&&!FL.ground)flightRepl
       if(lc!=null&&lc-FL.alt<capBand){FL.ver='ALT CST*';FL.capAlt=lc;FL.verArm=['CLB']}else if(lc==null&&A-FL.alt<capBand)FL.ver='ALT*'}
     if(DESCENDING.includes(FL.ver)){const fl=FL.ver==='DES'&&CK.des!=null&&CK.des<=FL.alt+200?CK.des:null,pa=Math.max(profileAlt(dtg),A,fl??-1e9);
       const slope=profileAlt(dtg)-profileAlt(Math.max(0,dtg-1));   /* ft per NM: 318 on a 3° segment, 0 where the path is level at a constraint */
-      if(FL.ver==='DES')vsT=Math.max(-3500,Math.min(slope>50?-300:0,(pa-FL.alt)*3-Math.max(0,slope)*FL.gs/60));
+      if(FL.ver==='DES')vsT=slope>50&&pa-FL.alt>300?-1000   /* below the path (early descent): 1000 ft/min until the path is met */
+        :Math.max(-3500,Math.min(slope>50?-300:0,(pa-FL.alt)*3-Math.max(0,slope)*FL.gs/60));
       else if(FL.opSmall&&FL.ver==='OP DES')vsT=-1000;else FL.soe=true;   /* THR IDLE, speed on elevator */
       if(fl!=null&&FL.alt-fl<capBand){FL.ver='ALT CST*';FL.capAlt=fl;FL.verArm=['DES']}else if(fl==null&&FL.alt-A<capBand)FL.ver='ALT*'}
     if(FL.ver==='V/S'||FL.ver==='FPA'){vsT=FL.ver==='FPA'?Math.tan((FCU.fpa||0)*D2R)*FL.gs*101.27:(FCU.vsVal||0);
@@ -210,7 +212,7 @@ function step(dt){const ias0=FL.ias;if(FL.sig!==planSig()&&!FL.ground)flightRepl
       else if(CK.des==null||CK.des<h-50){if(A<FL.alt-capBand){FL.ver='DES';FL.verArm=['ALT']}else{FL.ver='ALT';FL.verArm=[]}}}
     /* ALT holds the altitude it captured; a new FCU altitude needs a pull or push */
     if(FL.ver==='ALT'){vsT=((FL.altHold??FL.alt)-FL.alt)*4}
-    if(FL.verArm.includes('DES')&&!FL.ver.startsWith('ALT CST')&&FL.s>=FL.td&&A<FL.alt-250){FL.ver='DES';FL.verArm=['ALT']}
+    if(FL.verArm.includes('DES')&&!FL.ver.startsWith('ALT CST')&&profileAlt(dtg)<=FL.alt+30&&A<FL.alt-250){FL.ver='DES';FL.verArm=['ALT']}
     if(S.phase==='CRZ'&&FL.s>=FL.td&&!DESCENDING.includes(FL.ver)&&!FL.verArm.includes('DES')&&!FL.tdReached){FL.tdReached=true;msg2('T/D REACHED',false,()=>!flying()||!FL.tdReached)}
     if(DESCENDING.includes(FL.ver))FL.tdReached=false;
     /* STEP ALTS: at the step waypoint (and after it) the step starts once the FCU altitude is set to the step altitude;
@@ -267,7 +269,7 @@ function step(dt){const ias0=FL.ias;if(FL.sig!==planSig()&&!FL.ground)flightRepl
     else{if(S.phase==='GA'&&FL.ver!=='SRS'&&['FULL','3','2'].includes(FL.conf)&&FL.ias>=sp.F-10)FL.conf='1+F';
       if(FL.conf==='1+F'&&FL.ias>sp.F)FL.conf='1';if(FL.conf==='1'&&FL.ias>sp.S)FL.conf='0';if(FL.gear&&agl()>200)FL.gear=false}
     if(FL.ver==='FLARE'&&agl()<=1&&FL.vs<=0){FL.ground=true;FL.stage='ROLLOUT';FL.ver='ROLL OUT';FL.lat='ROLL OUT';FL.alt=gnd;FL.vs=0;FCU.ap1=FCU.ap2=false;FCU.athr=false}}
-  if(FL.stage==='ROLLOUT'){FL.ias=Math.max(0,FL.ias-(FL.ias>40?6:4)*dt);FL.pitch=Math.max(0,FL.pitch-2*dt);
+  if(FL.stage==='ROLLOUT'){FL.ias=Math.max(0,FL.ias-(FL.ias>40?5:3.5)*dt);FL.pitch=Math.max(0,FL.pitch-2*dt);
     const lg=locGeo(FL.pos),d=destRwy();trkT=brg(FL.pos,dst(d.r.pos,lg.crs+180,lg.along-1));if(FL.ias<=0){FL.stage='STOP';S.phase='DONE';FL.running=false}}
   if(FL.stage==='ROLL'){const o=DB.apt[orig()],r=o.rwy[S.active.rwy];trkT=r.crs+(o.var||0)}
 
