@@ -29,16 +29,18 @@ function caLeg(p,aal){const ap=DB.apt[p.legs[0].id],r=ap.rwy[p.rwy],a=Math.round
 function setNoSid(p){dropSeg(p,'dep');p.legs=p.legs.filter((l,i)=>!(i>0&&l.k==='ca'));p.sid=null;p.trans=null;p.noSid=true;if(p.legs[1]&&p.legs[1].k!=='disc')p.legs.splice(1,0,{k:'disc'});normalize(p)}
 function setRunway(p,r){p.rwy=r;p.legs[0].rwy=r;dropSeg(p,'dep');p.sid=null;p.trans=null;p.noSid=false;
   p.legs.splice(1,0,caLeg(p,1500));if(p.legs[2].k!=='disc')p.legs.splice(2,0,{k:'disc'});normalize(p)}
-function setSid(p,sid){dropSeg(p,'dep');p.sid=sid;p.noSid=false;const legs=[caLeg(p,400),...clone(SIDS[p.legs[0].id][p.rwy][sid]).map(l=>Object.assign(l,{seg:'dep',via:sid}))];
+function setSid(p,sid){dropSeg(p,'dep');p.sid=sid;p.noSid=false;const legs=[caLeg(p,400),...clone(SIDS[p.legs[0].id][p.rwy][sid]).map(l=>l.k==='ca'?caLeg(p,l.aal):l).map(l=>Object.assign(l,{seg:'dep',via:sid}))];   /* radar SIDs: a climb leg to their altitude */
   p.legs.splice(1,0,...legs);const nx=p.legs[1+legs.length],last=legs[legs.length-1];
   if(nx&&nx.k!=='disc'&&!(nx.k==='wpt'&&nx.id===last.id))p.legs.splice(1+legs.length,0,{k:'disc'});
   p.sid=sid;p.trans=null;normalize(p)}
-/* arrival: STAR, then the approach via, then the final approach and the missed approach. A fix ending one part and
-   starting the next is kept once (the later constraints win). Without an approach (or a runway only) the STAR alone. */
+/* arrival: STAR, then the approach via, then the final approach and the missed approach. A fix shared by two parts
+   is kept once, where the later part starts (its constraints win). Without an approach (or a runway only) the STAR alone. */
 function buildArr(p){dropSeg(p,'arr','map');const di=idxK(p,'dest'),d=p.legs[di];const ap=(APPRS[d.id]||{})[p.appr];
   const st=p.star&&p.star!=='NO STAR'&&(STARS[d.id]||{})[p.star],tag=(L,v)=>clone(L).map(l=>Object.assign(l,{seg:'arr',via:v}));
-  let legs=[...(st?tag(st.legs,p.star):[]),...(ap&&p.via&&ap.vias[p.via]?tag(ap.vias[p.via],p.via):[]),...(ap?tag(ap.final,p.appr):[])];
-  legs=legs.filter((l,i)=>!(l.k==='wpt'&&legs[i+1]&&legs[i+1].k==='wpt'&&legs[i+1].id===l.id));
+  let legs=st?tag(st.legs,p.star):[];
+  /* each next part takes over from its first fix when the legs so far already fly through it */
+  for(const part of[ap&&p.via&&ap.vias[p.via]?tag(ap.vias[p.via],p.via):[],ap?tag(ap.final,p.appr):[]]){if(!part.length)continue;
+    const j=legs.findIndex(l=>l.k==='wpt'&&l.id===part[0].id);legs=j>=0?[...legs.slice(0,j),...part]:[...legs,...part]}
   if(ap){d.rwy=ap.rwy;d.lbl=ap.dest.lbl;d.alt=ap.dest.alt;d.via=p.appr}
   if(!legs.length){normalize(p);return}
   p.legs.splice(di,0,...legs);const pv=p.legs[di-1];

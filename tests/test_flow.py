@@ -285,6 +285,16 @@ async def run(url,b):
     assert '<NO SID' in await pg.evaluate("[...document.querySelectorAll('#scr .ln')].map(l=>l.textContent).join(' ')"),'NO SID in the SID list'
     await P('L2');await P('R6');ns=await pg.evaluate("(()=>{const L=window.__S().active.legs;return[L[0].rwy,L[1].k,L.some(l=>l.k==='ca'||l.seg==='dep'),window.__S().active.noSid]})()")
     assert ns==['16C','disc',False,True],f'NO SID: runway then discontinuity: {ns}'
+    # ---- Madinah from the charts: STAR + approach via + RNP final, FMA FINAL APP; Tabuk VOR approach; SIDs on every runway ----
+    r=await pg.evaluate("""(()=>{const p=newPlan('OEJN','OEMA');setRunway(p,'16C');p.appr='RNP36';p.via='MA428';p.star='BOVE1F';buildArr(p);
+      const ids=p.legs.filter(l=>l.seg==='arr'||l.k==='dest').map(l=>l.id).join(' ');
+      const S0=S.active;S.active=p;const fl={lat:FL.lat,ver:FL.ver,arm:FL.verArm,la:FL.latArm,st:FL.stage};FL.stage='AIR';FL.lat='LOC';FL.ver='G/S';FL.verArm=[];FL.latArm=null;
+      const ap=FCU.ap1;FCU.ap1=true;setFma();const fma=FL.fma.c2&&FL.fma.c2[0]&&FL.fma.c2[0][0];
+      Object.assign(FL,{lat:fl.lat,ver:fl.ver,verArm:fl.arm,latArm:fl.la,stage:fl.st});FCU.ap1=ap;S.active=S0;
+      return[ids,fma,Object.keys(STARS.OEMA).length,Object.keys(SIDS.OEMA).sort().join(),Object.keys(APPRS.OETB).join()]})()""")
+    assert r[0]=='BOVET MA409 MA425 MA401 MA426 MA427 MA428 MUVDA MA510 OEMA',f'STAR BOVE1F + via MA428 + RNP36: {r[0]}'
+    assert r[1]=='FINAL APP',f'RNP approach FMA: {r[1]}'
+    assert r[2]==32 and r[3]=='17,18,35,36' and r[4]=='ILS24,VOR24,VOR06,VOR13,VOR31',f'chart data: {r[2:]}'
     await P('PERF');await P('MENU');assert 'MCDU MENU' in await pg.evaluate("[...document.querySelectorAll('#scr .ln')].map(l=>l.textContent).join(' ')")
     await P('L1');assert await pg.evaluate("window.__S().page")=='PERFTO','MCDU MENU: FMGC returns to the last FMGC page'
     await pg.evaluate("localStorage.removeItem('airmanship.stored.v1')")
