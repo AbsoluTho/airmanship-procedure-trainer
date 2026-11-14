@@ -4,7 +4,7 @@ An unofficial A320 **procedure** trainer that runs in the browser (iPad first). 
 
 Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator manuals. The navigation data was typed from charts for training only and must never be used for navigation.
 
-## Status: Phase 2 prototype (v0.13.0)
+## Status: Phase 2 prototype (v0.13.1)
 
 - **MCDU** (Thales FMS2 layout, per FCOM DSC-22): keyboard and scratchpad, INIT A, F-PLN with TMPY (ERASE/INSERT), LAT REV, DEPARTURE, AIRWAYS (with airway-to-airway intersection), ARRIVAL, waypoint insertion, CLR of waypoints and discontinuities.
 - **Exercise** OEJN to OETB: RWY 16C MIGD2E, L677 WEJ, V54 TBK, ILS 31 via D179O, ALTN OEMA, FL340, CI 20, with automatic progress checks.
@@ -12,6 +12,7 @@ Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator
 - **ND** (ROSE LS, ROSE VOR, ROSE NAV, ARC, PLAN; range 10 to 320 NM; CSTR, WPT, ARPT options; ROSE LS and ROSE VOR show the compass only for now): active F-PLN in green, TMPY in yellow dashed, missed approach in blue, alternate route in blue dashed, DME arcs and holds drawn. PLAN centres on the waypoint on the second line of the MCDU F-PLN page. Also live on both NDs in the 3D cockpit (EXT PWR on).
 - **INIT B**: TAXI, ZFW/ZFWCG, BLOCK, TRIP/TIME, RTE RSV, ALTN, FINAL, EXTRA, TOW/LW, TRIP WIND, MIN DEST FOB. **F-PLN** now shows TIME predictions and EFOB at destination once ZFW and BLOCK are entered.
 - **PERF TAKE OFF**: V1/VR/V2 (with V1/VR/V2 DISAGREE), F/S/O speeds, RWY, TO SHIFT, FLAPS/THS, FLEX, TRANS ALT, THR RED/ACC, ENG OUT ACC. Changing the takeoff runway clears the V speeds (CHECK TAKE OFF DATA).
+- **DIR TO turn** (v0.13.1): the direct leg starts with a turn from the track flown when INSERT is pressed, at the radius the aircraft flies at that ground speed (2.5°/s), then a straight line tangent to it (FlyByWire DF leg geometry). Drawn on the ND and flown by NAV: no overshoot, no reverse turn.
 - **Navigation database from the charts** (v0.13.0): `tools/navdb/procgen.py` turns the airport files in `tools/navdb/charts/` into `js/data/procgen.js`. Fix positions are worked out from chart geometry (VOR radial/DME, distance on the extended centreline, track and distance from another fix), anchored on OurAirports thresholds and VORs; where two charts place the same fix, the generator prints the difference (most under 1 NM). Training data only, never for navigation.
   - **Tabuk (OETB)**: ILS 24 (ITBK 109.5, vias D043O, D179O, D061T), VOR 24, VOR 06, VOR 13, VOR 31. No SIDs or STARs published (NO SID). The old ILS 31 was removed: it is not on the charts.
   - **Madinah (OEMA)**: 52 SIDs (RNAV 1C/1J/1K/1L, conventional VOR/DME 1D/1M/1N/1P with DME arcs, radar MADINAH 1T/1Z), 32 STARs for runways 17, 18, 35, 36, and 10 approaches (ILS 17, ILS 35, RNP 17/18/35/36, VOR 17/18/35/36).

@@ -136,6 +136,9 @@ async def run(url,b):
         if(S.phase==='CLB'&&FL.spdIsMach&&FL.alt>25000){seen.add('MACH IN CLB');did.mclb=1}
         if(did.mclb&&S.phase==='DES'&&!FL.spdIsMach&&FL.alt<30000)seen.add('SPEED IN DES');
         if(!did.ap&&FL.alt-groundElev()>1200){fcuButton('ap1');did.ap=1}
+        /* DIR TO 80 deg left of the track: one left turn onto the waypoint, within 0.5 NM of the path, no right turn back */
+        if(did.dt&&!did.dtok){const d=((FL.trkT-did.dt.trk+540)%360)-180;if(d>1)did.dt.right=1;did.dt.trk=FL.trkT;did.dt.xtk=Math.max(did.dt.xtk,Math.abs(FL.xtk||0));
+          if(FL.t-did.dt.t>240){if(!did.dt.right&&did.dt.xtk<0.5)seen.add('DIR TO NO OVERSHOOT');else seen.add('DIRTO right='+did.dt.right+' xtk='+did.dt.xtk.toFixed(2));did.dtok=1}}
         if(FL.stage==='AIR'&&!did.navTo){const h=FL.alt-groundElev();if(h>50&&h<380&&FL.lat==='RWY TRK'&&FL.latArm==='NAV')seen.add('RWY TRK AIRBORNE');if(FL.lat==='NAV'){if(h>=395)seen.add('NAV FROM 400');did.navTo=1}}
         if(did.des&&!did.early&&S.phase==='CRZ'&&FL.ver==='DES'&&FL.s<FL.td-5&&Math.abs(FL.vs+1000)<60){seen.add('EARLY DES 1000');did.early=1}
         if(did.early&&!did.joined&&FL.ver==='DES'&&FL.vs<-1500&&Math.abs(FL.alt-profileAlt(dtg))<300){seen.add('PATH JOINED');did.joined=1}
@@ -144,7 +147,7 @@ async def run(url,b):
         if(!did.hdg&&FL.alt>20000){FCU.hdgPre=null;fcuPush('hdg',true);FCU.hdg=((Math.round(FL.trkT-3)+30)%360)||360;did.hdg=FL.t}
         if(did.hdg&&!did.nav&&FL.t-did.hdg>90){FCU.hdg=((Math.round(FL.trkT-3)-60+360)%360)||360;fcuPush('hdg',false);did.nav=FL.t}
         if(did.nav&&!did.navok&&FL.lat==='NAV'){seen.add('NAV REJOINED');did.navok=1}
-        if(did.navok&&!did.dir&&S.phase==='CRZ'&&FL.fromIx>3){const L=dirList();const tgt=L.find(x=>x.l.id==='WEJ');if(tgt){directTo('WEJ');P.DIR.lsk('R',6);did.dir=1;
+        if(did.navok&&!did.dir&&S.phase==='CRZ'&&FL.fromIx>3){const L=dirList();const tgt=L.find(x=>x.l.id==='WEJ');if(tgt){FL.trkT=(brg(FL.pos,DB.wpt.WEJ)+80)%360;directTo('WEJ');P.DIR.lsk('R',6);did.dir=1;did.dt={t:FL.t,trk:FL.trkT,right:0,xtk:0};
           if(S.active.legs.some(l=>l.k==='tp')&&FL.lat==='NAV')seen.add('DIR TO INSERTED')}}
         if(did.dir&&!did.dirok){step(0.5);if(FL.path.pts[0].ix!=null&&S.active.legs[FL.path.pts[0].ix].k==='tp')seen.add('PATH FROM T-P');did.dirok=1}
         if(did.dirok&&!did.seq&&FL.fromIx>0){const r=fplnRows(S.active);if(r[0].ix===FL.fromIx)seen.add('FROM LINE SEQUENCED');did.seq=1}
@@ -171,7 +174,7 @@ async def run(url,b):
         if(!did.lvl6&&FL.ver==='DES'&&Math.abs(FL.vs)<60&&Math.abs(FL.alt-7000)<40)seen.add('DES LEVEL AT CSTR'),did.lvl6=1;
         if(!did.pr&&S.phase==='CLB'&&FL.alt>8000){const v=vPredict(),q=v&&v.wp[ixOf('RIBIL')];if(q&&q.met)seen.add('RIBIL PREDICTED MET');did.pr=1}}
       seen.add('END:'+FL.stage);return[...seen]})()""")
-    for m in ['RWY TRK AIRBORNE','NAV FROM 400','EARLY DES 1000','PATH JOINED','APPR AT DECEL','GEAR AT 6NM','CONF3 5S AFTER GEAR','FULL 3S AFTER CONF3','SD PAGES IN CRZ','TREND TAKEOFF','TREND LANDING','MACH IN CLB','SPEED IN DES','SD:eng','SD:crz','SD:wheel','SPD CST 210','ALT CST','ALT CST 7000','CLB AFTER ORPAR','ALT ARMED MAGENTA','RIBIL PREDICTED MET','BELOW 7000 AFTER D179O','SPD CST 220 DES','DES LEVEL AT CSTR','DIR TO INSERTED','PATH FROM T-P','FROM LINE SEQUENCED','QNH ABOVE TA','STD SET','PERF CRZ T/D','CONF1 AT 12NM','CONF2 AT 8NM','MAN','SRS','RWY','NAV','THR CLB','CLB','LEVEL7000','ALT','ALT CRZ','HDG','NAV REJOINED','DES','THR IDLE','LOC *','LOC','G/S*','G/S','CAT 3','DUAL','LAND','FLARE','RETARD','ROLL OUT','PH:CLB','PH:CRZ','PH:DES','PH:APPR','PH:DONE','END:STOP']:
+    for m in ['DIR TO NO OVERSHOOT','RWY TRK AIRBORNE','NAV FROM 400','EARLY DES 1000','PATH JOINED','APPR AT DECEL','GEAR AT 6NM','CONF3 5S AFTER GEAR','FULL 3S AFTER CONF3','SD PAGES IN CRZ','TREND TAKEOFF','TREND LANDING','MACH IN CLB','SPEED IN DES','SD:eng','SD:crz','SD:wheel','SPD CST 210','ALT CST','ALT CST 7000','CLB AFTER ORPAR','ALT ARMED MAGENTA','RIBIL PREDICTED MET','BELOW 7000 AFTER D179O','SPD CST 220 DES','DES LEVEL AT CSTR','DIR TO INSERTED','PATH FROM T-P','FROM LINE SEQUENCED','QNH ABOVE TA','STD SET','PERF CRZ T/D','CONF1 AT 12NM','CONF2 AT 8NM','MAN','SRS','RWY','NAV','THR CLB','CLB','LEVEL7000','ALT','ALT CRZ','HDG','NAV REJOINED','DES','THR IDLE','LOC *','LOC','G/S*','G/S','CAT 3','DUAL','LAND','FLARE','RETARD','ROLL OUT','PH:CLB','PH:CRZ','PH:DES','PH:APPR','PH:DONE','END:STOP']:
         assert m in seen,f'never seen in the flight: {m}  (seen: {sorted(seen)})'
     await pg.evaluate("window.__flight('reset');window.__ecam.show(false)")
     # ---- LOAD SETUP after a flight: back to the saved set-up, ready for START ----
