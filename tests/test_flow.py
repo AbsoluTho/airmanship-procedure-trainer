@@ -220,6 +220,8 @@ async def run(url,b):
     th=await pg.evaluate("""(()=>{const q=S.perf,f0=q.flaps,t0=q.ths,out=[];S.page='PERFTO';for(const v of['1/.4UP','2/UP.4','/1.2DN','3/0.4UP']){S.sp=v;P.PERFTO.lsk('R',3);out.push(q.flaps+'/'+q.ths)}
       q.flaps=f0;q.ths=t0;const v0=[q.v1,q.vr,q.v2];q.v1=q.vr=q.v2=null;const rd=flightReady().some(m=>/V1/.test(m));vFill();const v1=[q.v1,q.vr,q.v2];[q.v1,q.vr,q.v2]=v0;S.sp='';return[out,rd,v1.every(x=>x>100)]})()""")
     assert th==[['1/UP0.4','2/UP0.4','2/DN1.2','3/UP0.4'],False,True],f'THS formats; V speeds not required for START (computed when blank): {th}'
+    pf=await pg.evaluate("(()=>{const fd=EFIS.fd;EFIS.fd=true;drawPFD2D();const ok=!flying()&&S.fuel.zfw!=null;EFIS.fd=fd;return ok})()")
+    assert pf,'pre-flight FMA conditions (INIT B, FD)'
     fk=await pg.evaluate("(()=>{S.page='FPLN';S.fpOff=6;press('FPLN');return S.fpOff})()")
     assert fk==0,f'F-PLN key shows the F-PLN from the top: {fk}'
     h2=await pg.evaluate("(()=>{const L=window.__S().active.legs,i=L.findIndex(l=>l.k==='hold');return[L[i+1].k+':'+L[i+1].id,L[i+2].k]})()")
