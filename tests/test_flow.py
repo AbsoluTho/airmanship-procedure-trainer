@@ -334,6 +334,8 @@ async def run(url,b):
     await P('L1');await P('L2')   # runway list, 16C: the SID list opens
     assert '<NO SID' in await pg.evaluate("[...document.querySelectorAll('#scr .ln')].map(l=>l.textContent).join(' ')"),'NO SID in the SID list'
     await P('L2');await P('R6');ns=await pg.evaluate("(()=>{const L=window.__S().active.legs;const r=DB.apt.OEJN.rwy['16C'];return[L[0].rwy,L[1].id==='('+Math.round((r.tdze??DB.apt.OEJN.elev)+1500)+')',L[1].aal,L[2].k,L.some(l=>l.seg==='dep'&&l.k==='wpt'),window.__S().active.noSid]})()")
+    cd=await pg.evaluate("(()=>{const p=window.__S().active,r=DB.apt.OEJN.rwy['16C'],P=buildPath(p),q=P.pts.find(x=>x.ix===1);return Math.round(gc(r.pos,q.p)-r.len/1852)})()")
+    assert cd==3,f'(1500) climb leg drawn 3 NM past the runway end: {cd}'
     assert ns==['16C',True,1500,'disc',False,True],f'NO SID: runway, (elevation+1500) on runway track, then discontinuity: {ns}'
     # ---- Madinah from the charts: STAR + approach via + RNP final, FMA FINAL APP; Tabuk VOR approach; SIDs on every runway ----
     r=await pg.evaluate("""(()=>{const p=newPlan('OEJN','OEMA');setRunway(p,'16C');p.appr='RNP36';p.via='MA428';p.star='BOVE1F';buildArr(p);
