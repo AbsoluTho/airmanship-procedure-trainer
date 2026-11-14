@@ -180,13 +180,13 @@ P.FPLN={render(){const p=cur(),rows=fplnRows(p),ds=p?dists(p):[];
   /* ALTN route: a waypoint typed on the discontinuity or on a waypoint is inserted there; CLR on the discontinuity joins DCT */
   if(r.k==='altdisc'||r.k==='altwpt'){const R=altRte(),v=S.sp;if(!v)return err('NOT ALLOWED');
     if(v==='CLR'){if(r.k==='altdisc')R.dct=true;else R.wpts.splice(r.i,1);return ok()}
-    if(!DB.wpt[v]&&!(DB.nav&&DB.nav[v]))return err('NOT IN DATA BASE');if(!DB.wpt[v])DB.wpt[v]=DB.nav[v].pos;
+    if(!fixReg(v))return err('NOT IN DATA BASE');
     R.wpts.splice(r.k==='altdisc'?R.wpts.length:r.i,0,v);return ok()}
   const v=S.sp;
   if(v==='CLR'){if(r.k==='orig'||r.k==='dest')return err('NOT ALLOWED');const q=edit();
     if(r.k==='disc')q.legs.splice(r.ix,1);else q.legs.splice(r.ix,1,{k:'disc'});normalize(q);return ok()}
   if(v){if(r.k==='orig')return err('NOT ALLOWED');if(!/^[A-Z0-9]{2,5}$/.test(v))return err('FORMAT ERROR');
-    if(!DB.wpt[v])return err('NOT IN DATA BASE');insertWpt(edit(),r.ix,v,false);return ok()}
+    if(!fixReg(v))return err('NOT IN DATA BASE');insertWpt(edit(),r.ix,v,false);return ok()}
   if(r.k!=='orig'&&r.k!=='wpt'&&r.k!=='dest')return err('NOT ALLOWED');
   S.lr=r.ix;go('LATREV')},
  slew(d){const p=cur();const n=fplnRows(p).length;S.fpOff=Math.max(0,Math.min(n-1,S.fpOff+d))}};
@@ -211,7 +211,7 @@ P.LATREV={render(){const p=cur(),l=S.lr===-1?{k:'altn',id:I().altn,rwy:I().altnR
   if(k==='L4'&&l.k==='dest'){const v=S.sp;if(!v)return;if(v==='CLR'){I().altn=null;I().altnRwy=null;return ok()}if(!/^[A-Z]{4}$/.test(v))return err('FORMAT ERROR');if(!DB.apt[v])return err('NOT IN DATA BASE');I().altn=v;I().altnRwy=null;return ok()}
   if(k==='L4'&&l.k==='wpt'&&I().altn&&!S.secMode){enableAltn(S.lr);return go('FPLN')}
   if(k==='R3'&&l.k!=='dest'){const v=S.sp;if(!v)return;if(!/^[A-Z0-9]{2,5}$/.test(v))return err('FORMAT ERROR');
-    if(!DB.wpt[v])return err('NOT IN DATA BASE');insertWpt(edit(),S.lr,v,true);ok();return go('FPLN')}
+    if(!fixReg(v))return err('NOT IN DATA BASE');insertWpt(edit(),S.lr,v,true);ok();return go('FPLN')}
   if(k==='R5'&&l.k==='wpt'){S.awy={idx:S.lr,rows:[]};return go('AWY')}
   return err('NOT IN PROTOTYPE')}};
 
@@ -295,7 +295,7 @@ P.AWY={render(){const p=cur(),a=S.awy;
       const X=cand[0];const q=edit();a.idx=insertAwy(q,a.idx,last.via,X);last.to=X;R.push({via:v,to:null,fromId:X});return ok()}
     if(!AWY[v].includes(fromId))return err('AWY/WPT MISMATCH');
     R.push({via:v,to:null,fromId});return ok()}
-  if(!DB.wpt[v])return err('NOT IN DATA BASE');
+  if(!fixReg(v))return err('NOT IN DATA BASE');
   if(pend&&n-1===R.length-1){if(!AWY[last.via].includes(v)||v===last.fromId)return err('AWY/WPT MISMATCH');
     const q=edit();a.idx=insertAwy(q,a.idx,last.via,v);last.to=v;return ok()}
   if(!pend&&n-1===R.length){if(v===fromId)return err('NOT ALLOWED');const q=edit();a.idx=insertAwy(q,a.idx,null,v);R.push({via:'DCT',to:v,fromId});return ok()}

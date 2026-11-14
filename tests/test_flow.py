@@ -212,6 +212,11 @@ async def run(url,b):
     nd=await pg.evaluate("""(()=>{const S0=clone(S.active);S.sec=clone(S.active);S.secMode=true;const i=S.sec.legs.findIndex(l=>l.id==='LABUN');S.lr=i;S.page='LATREV';S.sp='OEJN';P.LATREV.lsk('R',4);
       const d=S.sec.legs[idxK(S.sec,'dest')].id,b=S.sec.legs[idxK(S.sec,'dest')-1].k;S.secMode=false;S.sec=null;S.active=S0;return[d,b,S.msg]})()""")
     assert nd[:2]==['OEJN','disc'],f'NEW DEST to the origin (return plan) from SEC LAT REV: {nd}'
+    aw=await pg.evaluate("""(()=>{const S0=clone(S.active);S.sec=clone(S.active);S.secMode=true;S.page='FPLN';const R=fplnRows(S.sec);S.fpOff=R.findIndex(r=>r.id==='NETOL');S.sp='OEJN';P.FPLN.lsk('L',1);
+      const ix=S.sec.legs.findIndex(l=>l.k==='wpt'&&l.id==='OEJN'),pos=DB.wpt.OEJN,r0=Object.values(DB.apt.OEJN.rwy)[0].pos;S.lr=ix;S.page='LATREV';render();
+      const arr=[...document.querySelectorAll('#scr .ln')].map(l=>l.textContent).join(' ').includes('ARRIVAL>');P.LATREV.lsk('R',1);
+      const d=S.sec.legs[idxK(S.sec,'dest')].id,pg=S.page,last=S.sec.legs[S.sec.legs.length-1].k;S.secMode=false;S.sec=null;S.active=S0;S.page='FPLN';return[ix>0,pos[0]===r0[0],arr,d,pg,last]})()""")
+    assert aw==[True,True,True,'OEJN','ARR','dest'],f'airport as a waypoint (first runway threshold), ARRIVAL> makes it the destination: {aw}'
     h2=await pg.evaluate("(()=>{const L=window.__S().active.legs,i=L.findIndex(l=>l.k==='hold');return[L[i+1].k+':'+L[i+1].id,L[i+2].k]})()")
     assert h2==['wpt:LABUN','disc'],f'after the hold: the fix repeated, then a discontinuity: {h2}'
     r=await pg.evaluate("""(()=>{window.__flight('start');let n=0,ap=0,o={loops:0};while(FL.stage!=='STOP'&&n<40000){step(0.5);n++;if(n%10===0)setFma();
