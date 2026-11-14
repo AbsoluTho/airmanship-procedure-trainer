@@ -57,6 +57,18 @@ class Apt:
             q = dst(o, b, i*0.01)
             if abs(gc(q, self.P(vor)) - dme) < 0.006 and gc(q, o) > 0.4: return q
         raise ValueError('no D%s on rwy %s' % (dme, rwy))
+    def grid(self, y1, lat1, y2, lat2, x1, lon1, x2, lon2):
+        """chart lat/long grid read on a screenshot: two latitude lines (y, deg) and two longitude lines (x, deg)"""
+        self._g = (y1, lat1, y2, lat2, x1, lon1, x2, lon2)
+    def px(self, x, y):
+        y1, lat1, y2, lat2, x1, lon1, x2, lon2 = self._g
+        return [round(lat1 + (y-y1)*(lat2-lat1)/(y2-y1), 5), round(lon1 + (x-x1)*(lon2-lon1)/(x2-x1), 5)]
+    def cfix(self, name, x, y):
+        """a fix read on the chart grid; a fix already known (OFP, VOR) keeps its position and the difference is printed"""
+        p = self.px(x, y)
+        known = OA_NAV.get(name, {}).get('pos') or DBJ['wpt'].get(name) or self.fx.get(name)
+        if known: self.notes.append('%-6s %.2f NM chart vs known' % (name, gc(known, p))); self.fx.setdefault(name, known) if name not in OA_NAV else None
+        else: self.fx[name] = p
     def fix(self, name, pos):
         """a fix worked out from the chart (replaces any older hand-typed position)"""
         self.fx[name] = pos
@@ -118,7 +130,7 @@ def main():
           "   Fix positions worked out from chart geometry (radial/DME, track and distance): training only, never for navigation. */\n"
           "const PROCGEN=" + json.dumps(out, separators=(',', ':')) + ";\n"
           "(function(){const G=PROCGEN;Object.assign(DB.wpt,G.wpt);\n"
-          "  for(const[a,o]of Object.entries(G.sids))SIDS[a]=o;for(const[a,o]of Object.entries(G.apprs))APPRS[a]=o;\n"
+          "  for(const[a,o]of Object.entries(G.sids)){SIDS[a]=SIDS[a]||{};for(const[r,x]of Object.entries(o))SIDS[a][r]=Object.assign(SIDS[a][r]||{},x)}for(const[a,o]of Object.entries(G.apprs))APPRS[a]=o;\n"
           "  for(const[a,o]of Object.entries(G.stars))STARS[a]=o;\n"
           "  for(const[a,o]of Object.entries(G.rcrs))for(const[r,c]of Object.entries(o))if(DB.apt[a]&&DB.apt[a].rwy[r])DB.apt[a].rwy[r].crs=c})();\n")
     open(os.path.join(ROOT, 'js/data/procgen.js'), 'w').write(js)
