@@ -73,7 +73,7 @@ const offsetOk=l=>isFromLeg()&&(l.k==='wpt'||l.k==='tp'||l.k==='ca'||l.k==='orig
 P.LATREV={render(){const p=cur(),l=lrLeg(),isW=l.k==='wpt',isO=l.k==='orig',isD=l.k==='dest',isA=l.k==='altn',ppos=l.k==='tp'||l.k==='ca';
   csegs(1,[[S.secMode?'SEC LAT REV':'LAT REV','w'],[' FROM ','w','S'],[isD&&l.rwy?l.id+l.rwy:(ppos&&l.k==='tp'?'PPOS':l.id),'g']]);
   const pos=legPos(l);if(pos)cput(2,fmtLL(pos),'g','S');
-  if(isO&&!flying())put(3,0,'<DEPARTURE');
+  if(isO)put(3,0,'<DEPARTURE');   /* FBW: DEPARTURE on the origin in any phase */
   if(isD||isA||isAptWpt(l))rput(3,'ARRIVAL>');else if(fixInfoOk(l))rput(3,'FIX INFO>');
   if(!isD&&!isA){rput(4,'LL XING/INCR/NO','w','S',23);rput(5,'[  ]°/[ ]°/[]','b')}
   if(offsetOk(l)){const o=p.ofst;put(4,1,'OFFSET','w','S');put(5,0,o?o.side+o.nm:'[  ]',o&&S.tmpy?'y':'b')}
@@ -87,9 +87,9 @@ P.LATREV={render(){const p=cur(),l=lrLeg(),isW=l.k==='wpt',isO=l.k==='orig',isD=
  lsk(s,n){const p=cur(),l=lrLeg(),k=s+n,v=S.sp;
   if(k==='L6'){if(S.tmpy)S.tmpy=null;S.page='FPLN';return ok()}
   if(k==='R6'){if(S.tmpy){S.active=S.tmpy;S.tmpy=null;S.page='FPLN';return ok()}return}
-  if(k==='L1'&&l.k==='orig'&&!flying()){S.dep={list:p.rwy?'SID':'RWY',off:0};return go('DEP')}
+  if(k==='L1'&&l.k==='orig'){S.dep={list:p.rwy?'SID':'RWY',off:0};return go('DEP')}
   if(k==='R1'&&l.k==='altn'){S.arrAlt=true;S.arr={list:'APPR',off:0};return go('ARR')}
-  if(k==='R1'&&l.k==='dest'){S.arrAlt=false;const hasA=(APPRS[l.id]||{})[p.appr];S.arr={list:p.appr&&hasA?'VIA':'APPR',off:0};return go('ARR')}
+  if(k==='R1'&&l.k==='dest'){S.arrAlt=false;const hasA=(APPRS[l.id]||{})[p.appr];S.arr={list:'APPR',off:0};return go('ARR')}   /* FBW: ARRIVAL opens on the approaches (a new one can be chosen at any time) */
   if(k==='R1'&&isAptWpt(l)){const q=edit();q.legs=q.legs.slice(0,S.lr);q.legs.push({k:'dest',id:l.id,rwy:null});q.appr=null;q.via=null;q.star=null;
     if(q.ofst)delete q.ofst;normalize(q);S.lr=idxK(q,'dest');S.arrAlt=false;S.arr={list:'APPR',off:0};S.fpOff=0;return go('ARR')}   /* the airport becomes the destination */
   if(k==='R1'&&fixInfoOk(l)){S.fixPg=1;return go('FIXINFO')}

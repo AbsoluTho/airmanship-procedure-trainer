@@ -207,7 +207,7 @@ P.LATREV={render(){const p=cur(),l=S.lr===-1?{k:'altn',id:I().altn,rwy:I().altnR
   if(k==='R6'){if(S.tmpy){S.active=S.tmpy;S.tmpy=null;S.page='FPLN';return ok()}return}
   if(k==='L1'&&l.k==='orig'){S.dep={list:p.rwy?'SID':'RWY',off:0};return go('DEP')}
   if(k==='R1'&&l.k==='altn'){S.arrAlt=true;S.arr={list:'APPR',off:0};return go('ARR')}
-  if(k==='R1'&&l.k==='dest'){S.arrAlt=false;const hasA=(APPRS[l.id]||{})[p.appr];S.arr={list:p.appr&&hasA?'VIA':'APPR',off:0};return go('ARR')}
+  if(k==='R1'&&l.k==='dest'){S.arrAlt=false;const hasA=(APPRS[l.id]||{})[p.appr];S.arr={list:'APPR',off:0};return go('ARR')}   /* FBW: ARRIVAL opens on the approaches (a new one can be chosen at any time) */
   if(k==='L4'&&l.k==='dest'){const v=S.sp;if(!v)return;if(v==='CLR'){I().altn=null;I().altnRwy=null;return ok()}if(!/^[A-Z]{4}$/.test(v))return err('FORMAT ERROR');if(!DB.apt[v])return err('NOT IN DATA BASE');I().altn=v;I().altnRwy=null;return ok()}
   if(k==='L4'&&l.k==='wpt'&&I().altn&&!S.secMode){enableAltn(S.lr);return go('FPLN')}
   if(k==='R3'&&l.k!=='dest'){const v=S.sp;if(!v)return;if(!/^[A-Z0-9]{2,5}$/.test(v))return err('FORMAT ERROR');
@@ -230,7 +230,7 @@ P.DEP={items(){const p=cur(),o=p.legs[0],ap=DB.apt[o.id];
   if(k==='L6'){if(S.tmpy)S.tmpy=null;S.page='FPLN';return ok()}
   if(k==='R6'){if(S.tmpy){S.active=S.tmpy;S.tmpy=null;S.page='FPLN';return ok()}return}
   if(k==='L1'){S.dep={list:'RWY',off:0};return}
-  if(k==='R1'){if(!p.rwy)return err('NOT ALLOWED');S.dep={list:p.sid?'TRANS':'SID',off:0};return}
+  if(k==='R1'){if(!p.rwy)return err('NOT ALLOWED');S.dep={list:'SID',off:0};return}   /* the SID list (a new SID can be chosen) */
   if(s==='L'&&n>=2&&n<=5){const x=this.items()[S.dep.off+n-2];if(!x)return;if(!x.id)return err('NOT ALLOWED');
     if(S.dep.list==='RWY'){setRunway(edit(),x.id);S.dep={list:'SID',off:0}}
     else if(S.dep.list==='SID'){if(x.id==='NOSID'){setNoSid(edit());return}setSid(edit(),x.id);S.dep={list:'TRANS',off:0}}
