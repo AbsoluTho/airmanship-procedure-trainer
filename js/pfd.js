@@ -94,7 +94,7 @@ function drawPFD(g,W,H,powered){g.save();g.setTransform(1,0,0,1,0,0);g.fillStyle
     else if(c.conf==='2'||c.conf==='3'){const y=sy(c.F);if(inT(y)){L(120,y,131,y,'g',2.5);g.fillStyle=PC.bg;g.fillRect(134,y-11,16,22);T('F',142,y,'g',22,'center')}}}
   /* target speed: magenta triangle, or the value above or below the tape */
   const sel=!FCU.spdMgd&&FCU.spd!=null&&!(on&&(FL.stage==='ROLL'||FL.ver==='SRS')),tc=sel?'b':'m';
-  const tgt=sel?Math.round(FCU.mach?iasOf(FCU.spd*sos(alt),alt):FCU.spd):on?Math.round(['LINEUP','ROLL'].includes(FL.stage)?S.perf.v2:(FL.ver==='SRS'?S.perf.v2+10:(FL.spdT??FL.ias))):(S.perf.v2||null);
+  const tgt=sel?Math.round(FCU.mach?iasOf(FCU.spd*sos(alt),alt):FCU.spd):on?Math.round(['LINEUP','ROLL'].includes(FL.stage)?S.perf.v2:(FL.ver==='SRS'&&S.phase!=='GA'?S.perf.v2:FL.ver==='SRS'?FL.gaSpd||S.perf.v2+10:(FL.spdT??FL.ias))):(S.perf.v2||null);
   /* above the tape: SPEED or MACH and the target in that unit (magenta managed, cyan selected) */
   const isM=on&&!FL.ground&&FL.ver!=='SRS'&&!!FL.spdIsMach,mTgt=isM?(sel?FCU.spd:FL.ver==='EXP DES'?0.80:mgd.crzM()):null;
   if(on&&!FL.ground&&tgt){T(isM?'MACH':'SPEED',87,140,'w',19,'center');T(isM?'.'+String(Math.round(mTgt*100)).padStart(2,'0'):String(tgt),87,166,tc,23,'center')}
