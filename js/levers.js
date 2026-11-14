@@ -4,7 +4,7 @@
    (gear lever, thrust lever blocks, flaps knob) are cut-out images moved over the panels; the lights (LDG GEAR green triangles,
    red UNLK in transit, AUTO BRK blue ON and green DECEL, BRK FAN ON) are drawn over the pushbuttons. Commands go to lever(). */
 const LVP={on:false};
-const IMG_LVG='img/lv-gear.webp',IMG_LVGL='img/lv-gear-lever.webp',IMG_LVT='img/lv-thr.webp',IMG_LVTL='img/lv-thr-l.webp',IMG_LVTR='img/lv-thr-r.webp',
+const IMG_LVG='img/lv-gear.webp',IMG_LVT='img/lv-thr.webp',IMG_LVTL='img/lv-thr-l.webp',IMG_LVTR='img/lv-thr-r.webp',
   IMG_LVF='img/lv-flaps.webp',IMG_LVFK='img/lv-flaps-knob.webp',IMG_LVE='img/lv-eng.webp',IMG_LVM1='img/lv-eng-ma.webp',IMG_LVM2='img/lv-eng-mb.webp';
 /* thrust lever positions on the quadrant image (y of the scale marks: TOGA, FLX/MCT, CL, the white 0 line, the REV zone to FULL);
    the centre of the handles is put on the mark */
@@ -23,12 +23,9 @@ function leversSvg(){const G='#3cff3c',B='#3ad7ff',R='#ff3b30',ln='#e8eef5';
     s+=`<image href="${IMG_LVTL}" x="34" y="${y}" width="128" height="117"/><image href="${IMG_LVTR}" x="170" y="${y}" width="128" height="117"/></g>`}
   THR_POS.forEach(([k,l],i)=>{s+=btn(217,2+i*54.3,59,48,'thr',k,l.replace('FLX/MCT','FLX MCT').replace('50% N1','50%N1'),LV.thr===k,k.startsWith('REV')?'#ff9a55':null,12)});
   /* ENG MASTER panel (image 563 x 392): master levers OFF (down) or ON (up); always ON while the engines run (flight) */
-  {const k=201/563;s+=`<g transform="translate(0,388) scale(${k})"><image href="${IMG_LVE}" x="0" y="0" width="563" height="392"/>`;
+  {const k=201/563;s+=`<g transform="translate(37,388) scale(${k})"><image href="${IMG_LVE}" x="0" y="0" width="563" height="392"/>`;
     [[1,108,80,IMG_LVM1],[2,384,84,IMG_LVM2]].forEach(([n,x,w,im])=>{const on=LV['m'+n];s+=`<image href="${im}" x="${x}" y="${on?74:162}" width="${w}" height="89"/>`+hit(x-20,60,w+40,200,'master',n)});
     s+=`</g>`}
-  {const gp=flying()?(FL.gearPos??1):1,dn=gp>=1,up=LV.gear==='UP';
-    s+=t(241,400,'GEAR',12)+btn(205,407,71,42,'gear','UP','UP',up)+btn(205,455,71,42,'gear','DOWN','DOWN',!up);
-    s+=t(241,516,dn?'DN LOCKED':gp<=0?'UP LOCKED':'TRANSIT',11,dn?G:gp<=0?ln:R)}
   /* ---- right top: landing gear panel (image 676 x 333, frame trimmed: x 10..660), larger ---- */
   {const x0=280,k=320/650;s+=`<svg x="${x0}" y="0" width="320" height="${333*k}" viewBox="10 0 650 333"><image href="${IMG_LVG}" x="0" y="0" width="676" height="333"/>`;
     const gp=flying()?(FL.gearPos??1):1,dn=gp>=1,tr=gp>0&&gp<1;
@@ -39,7 +36,13 @@ function leversSvg(){const G='#3cff3c',B='#3ad7ff',R='#ff3b30',ln='#e8eef5';
     s+=hit(356,80,80,76,'fan','x');
     if(!LV.askid)s+=`<circle cx="395" cy="258" r="24" fill="#1a1d22"/><rect x="389" y="258" width="12" height="38" rx="5" fill="#2c3036" stroke="#555"/>`;
     s+=hit(350,216,70,92,'askid','x');
-    const up=LV.gear==='UP';s+=`<image href="${IMG_LVGL}" x="524" y="${up?40:226}" width="42" height="107"/>`+hit(490,0,186,333,'gear',up?'DOWN':'UP');
+    /* gear lever: fixed slot, the handle at the top (UP) or bottom (DOWN); UP / DOWN tapped on the arrows */
+    {const up=LV.gear==='UP',hy=up?52:226;
+      s+=`<rect x="538" y="62" width="16" height="238" rx="7" fill="#0b0d10" stroke="#3a414a"/>`;
+      s+=`<g class="lvk" data-lv="gear" data-v="${up?'DOWN':'UP'}" style="cursor:pointer"><rect x="524" y="${hy}" width="44" height="84" rx="10" fill="#1d2025" stroke="#5d6772" stroke-width="2"/>`+
+        [0,1,2,3,4,5,6].map(i=>`<line x1="530" x2="562" y1="${hy+14+i*9}" y2="${hy+14+i*9}" stroke="#3b424b" stroke-width="3"/>`).join('')+`</g>`;
+      [['UP',592,44,64,86],['DOWN',592,150,64,148]].forEach(([v,x,y,w,h])=>{const on=LV.gear===v;
+        if(on)s+=`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="8" fill="none" stroke="${G}" stroke-width="4"/>`;s+=hit(x,y-30,w,h+(v==='UP'?30:40),'gear',v)})}
     s+=`</svg>`}
   /* ---- right bottom: flaps lever, knob and gate only (image 240 x 302), buttons level with the gate marks ---- */
   {const k=240/302,x0=292,y0=176;s+=`<g transform="translate(${x0},${y0}) scale(${k})"><image href="${IMG_LVF}" x="0" y="0" width="240" height="302"/>`;
