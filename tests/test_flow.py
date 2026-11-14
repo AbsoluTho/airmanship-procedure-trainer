@@ -288,6 +288,14 @@ async def run(url,b):
       S.sec=clone(S.active);S.secMode=true;S.lr=FL.fromIx;S.page='LATREV';S.sp='OEJN';P.LATREV.lsk('R',4);S.secMode=false;S.page='SECIDX';P.SECIDX.lsk('L',4);
       const ret=[S.active.legs[idxK(S.active,'dest')].id,I().to];directTo('OEJN');P.DIR.lsk('R',6);step(0.5);
       const dt=S.active.legs.filter(l=>l.k==='tp'||l.k==='dest').map(l=>l.k).join();window.__flight('reset');window.__flight('pm:on');S.active=clone(window.__plan0);FCU.alt=34000;return{a,b,ret,dt}})()""")
+    # ---- engine start on the ground: MODE IGN START, MASTER 2 then 1; MASTER ON in NORM does not start; MASTER OFF shuts down ----
+    e=await pg.evaluate("""(()=>{window.__flight('reset');const E=window.__eng;E.init(0,false);E.init(1,false);LV.m1=LV.m2=false;E.mode('NORM');
+      lever('master',2);for(let i=0;i<20;i++)E.tick(0.5);const norm=E.ENG.e[1].st;lever('master',2);E.tick(0.5);
+      E.mode('IGN');lever('master',2);let lit=null,peak=0;for(let i=0;i<200&&E.ENG.e[1].st!=='run';i++){E.tick(0.5);const x=E.ENG.e[1];if(lit==null&&x.ff>0)lit=Math.round(x.n2);peak=Math.max(peak,x.egt)}
+      const t2=E.ENG.e[1].st,v=engStep()[1];lever('master',1);for(let i=0;i<200&&E.ENG.e[0].st!=='run';i++)E.tick(0.5);const t1=E.ENG.e[0].st;E.mode('NORM');
+      lever('master',1);for(let i=0;i<120;i++)E.tick(0.5);const off=E.ENG.e[0].st;lever('master',1);E.mode('IGN');for(let i=0;i<200;i++)E.tick(0.5);E.mode('NORM');
+      return[norm,lit,Math.round(peak),t2,Math.round(v.n2),t1,off,E.ENG.e[0].st]})()""")
+    assert e[0]=='off' and 16<=e[1]<=17 and e[2]>=500 and e[3]=='run' and e[4]==59 and e[5]=='run' and e[6]=='off' and e[7]=='run',f'engine start/shutdown: {e}'
     m=await pg.evaluate("(()=>{LV.m1=LV.m2=false;lever('master',1);const off=LV.m1;lever('master',1);window.__flight('start');const a=[LV.m1,LV.m2];lever('master',1);const b=LV.m1;window.__flight('reset');return[off,a,b]})()")
     assert m==[True,[True,True],True],f'ENG MASTER ON while the engines run, not switchable in flight: {m}'
     assert r['a']['lineup']==['LINEUP',0] and r['a']['n1']==50,f'lined up, still until the thrust levers move; 50% N1: {r["a"]}'
