@@ -62,7 +62,7 @@ function drawPFD(g,W,H,powered){g.save();g.setTransform(1,0,0,1,0,0);g.fillStyle
   if(on&&agl<2500&&!FL.ground){const ra=agl>50?Math.round(agl/10)*10:Math.max(0,Math.round(agl/5)*5);T(String(ra),CX,475,agl<(S.p2.radio>0?S.p2.radio:0)?'a':'g',28,'center')}
 
   /* ---- ILS deviation (on approach) ---- */
-  if((FCU.appr||FCU.loc)&&!EFIS.ls&&Math.floor(Date.now()/500)%2===0)T('LS',215,525,'a',22,'center',700);
+  if((FCU.appr||FCU.loc)&&!EFIS.ls&&hasLsSel()&&Math.floor(Date.now()/500)%2===0)T('LS',215,525,'a',22,'center',700);   /* ILS / LOC approaches only */
   if(EFIS.ls&&hasLsSel()){const d=destRwy(),thr=d.r.pos,crsT=d.r.crs+(d.a.var||0),pos0=on?FL.pos:acState().pos,alt0=alt,dist=gc(pos0,thr);
     const ang=((brg(pos0,thr)-crsT+540)%360)-180,locDots=Math.max(-2.2,Math.min(2.2,-ang/0.8));
     const gsAng=Math.atan2(alt0-(d.tdze+50),Math.max(0.1,dist)*6076)/D2R,gsDots=Math.max(-2.2,Math.min(2.2,(gsAng-3)/0.4)),rx=dist<25&&Math.abs(ang)<35;
@@ -114,6 +114,12 @@ function drawPFD(g,W,H,powered){g.save();g.setTransform(1,0,0,1,0,0);g.fillStyle
   g.save();g.beginPath();g.rect(460,182,70,315);g.clip();g.fillStyle=PC.tape;g.fillRect(477,182,49,315);
   for(let v=Math.floor((alt-650)/100)*100;v<=alt+650;v+=100){const y=ay(v);L(515,y,526,y,'w',2);
     if(v%500===0&&v>=0){T(String(Math.round(v/100)).padStart(3,'0'),488,y,'w',21);g.strokeStyle=PC.w;g.lineWidth=2;g.beginPath();g.moveTo(471,y-5);g.lineTo(477,y);g.lineTo(471,y+5);g.stroke()}}
+  /* FlyByWire A32NX AltitudeIndicator: landing elevation (earth fill, runway elevation and below) in the final approach and
+     landing (below 800 ft in approach, until the end of the landing roll), within 570 ft; MDA: amber bar on the right edge of the
+     tape in the approach, within 570 ft of the BARO minimum entered on PERF APPR */
+  {const ld=on&&(FL.stage==='ROLLOUT'||FL.stage==='STOP'&&S.phase==='DONE'||!FL.ground&&['APPR','DES','GA'].includes(S.phase)&&FL.alt-groundElev()<800);
+    if(ld){const ge=groundElev()+(alt-FL.alt),yg=ay(ge);if(alt-ge<=570&&yg<497){g.fillStyle='#6b5638';g.fillRect(477,Math.max(182,yg),49,497-Math.max(182,yg));L(477,yg,526,yg,'#d9c39a',2)}}}
+  if(on&&!FL.ground&&S.p2&&S.p2.baro!=null&&['APPR','DES','GA'].includes(S.phase)&&Math.abs(S.p2.baro-alt)<=570){const ym=ay(S.p2.baro);g.fillStyle=PC.a;g.fillRect(506,ym-3,20,6)}
   g.restore();
   L(477,182,543,182,'w',2);L(477,497,543,497,'w',2);L(526,182,526,497,'w',2);
   /* target altitude (cyan) on the tape, drawn before the readout window so it never crosses the present altitude */

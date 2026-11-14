@@ -70,7 +70,7 @@ function fcuPush(knob,pull){const now=Date.now();
   if(knob==='hdg'){if(pull){const pre=FCU.hdgPre!=null&&now<FCU.hdgPreT?FCU.hdgPre:null;FCU.hdg=pre??hdgNow();FCU.hdgMgd=false;FCU.hdgPre=null;fcuEvent('hdg-pull')}
     else{if(!S.active)return;FCU.hdgMgd=true;FCU.hdgPre=null;fcuEvent('hdg-push')}}
   if(knob==='alt'){FCU.lvlch=!pull;fcuEvent(pull?'alt-pull':'alt-push')}
-  if(knob==='vs'){if(pull){const pre=FCU.vsPre!=null&&now<FCU.vsPreT?FCU.vsPre:null;if(FCU.trkFpa)FCU.fpa=pre??0;else FCU.vsVal=pre??Math.round((flying()?FL.vs:0)/100)*100;FCU.vsPre=null;FCU.lvlch=false;fcuEvent('vs-pull')}
+  if(knob==='vs'){if(pull){const pre=FCU.vsPre!=null&&now<FCU.vsPreT?FCU.vsPre:null;if(FCU.trkFpa)FCU.fpa=pre??0.0;else FCU.vsVal=pre??Math.round((flying()?FL.vs:0)/100)*100;FCU.vsPre=null;FCU.lvlch=false;fcuEvent('vs-pull')}
     else{FCU.lvlch=false;fcuEvent('vs-push')}}
   fcuRefresh()}
 function fcuButton(b){const air=inAir();
@@ -80,7 +80,7 @@ function fcuButton(b){const air=inAir();
   if(b==='appr'){if(!(typeof hasLs==='function'&&hasLs()))return fcuRefresh();if(FCU.appr){FCU.appr=false;if(FCU.ap1&&FCU.ap2)FCU.ap2=false}else{FCU.appr=true;FCU.loc=false}}
   if(b==='exped'){FCU.exped=!FCU.exped;fcuEvent('exped')}
   if(b==='spdmach'){FCU.mach=!FCU.mach;FCU.spdPre=null;if(!FCU.spdMgd)FCU.spd=curSpd()}
-  if(b==='trkfpa'){FCU.trkFpa=!FCU.trkFpa;if(flying()){if(FL.lat==='HDG')FL.lat='TRK';else if(FL.lat==='TRK')FL.lat='HDG';if(FL.ver==='V/S')FL.ver='FPA';else if(FL.ver==='FPA')FL.ver='V/S'}}
+  if(b==='trkfpa'){FCU.trkFpa=!FCU.trkFpa;if(flying()){if(FL.lat==='HDG')FL.lat='TRK';else if(FL.lat==='TRK')FL.lat='HDG';if(FL.ver==='V/S'){FL.ver='FPA';FCU.fpa=0}else if(FL.ver==='FPA'){FL.ver='V/S';FCU.vsVal=0}}}   /* FPA / V/S start at 0.0 / 0 */
   if(b==='metric')FCU.metric=!FCU.metric;
   if(b==='inc100')FCU.altInc=100;if(b==='inc1000')FCU.altInc=1000;
   if(flying())setFma();fcuRefresh()}

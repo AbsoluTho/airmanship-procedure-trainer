@@ -159,6 +159,11 @@ function drawND(g,W,H,powered){g.save();g.setTransform(1,0,0,1,0,0);g.fillStyle=
   g.textBaseline='alphabetic';g.textAlign='left';
   g.font=NF(22);g.fillStyle=NC.w;g.fillText('GS',12,40);g.font=NF(31);g.fillStyle=NC.g;g.fillText(flying()?String(Math.round(FL.gs)):'0',56,40);
   g.font=NF(22);g.fillStyle=NC.w;g.fillText('TAS',124,40);g.font=NF(31);g.fillStyle=NC.g;g.fillText(flying()&&FL.tas>=60?String(Math.round(FL.tas)):'---',176,40);
+  /* approach of the active F-PLN: its name at the top centre (ILS34R-Z, RNP16C, VOR31-2) */
+  /* FlyByWire GuidanceController: shown after the cruise phase, or in cruise within 250 NM of the destination; nothing for a runway alone */
+  {const ap=S.active&&S.active.appr,dd=flying()&&FL.path?FL.path.sThr-FL.s:1e9,shw=flying()&&(['DES','APPR','GA'].includes(S.phase)||S.phase==='CRZ'&&dd<250);
+   if(shw&&ap&&!/^RWY/.test(ap)&&(APPRS[destId()]||{})[ap]){const m=ap.match(/^(ILS|LOC|RNP|VOR)(\d\d[LCR]?)([YZ])$/),nm=m?m[1]+m[2]+'-'+m[3]:ap;
+    g.textAlign='center';g.font=NF(29);g.fillStyle=NC.g;g.fillText(nm,384,40);g.textAlign='left'}}
   g.font=NF(31);g.fillStyle=NC.g;g.fillText('---',6,74);g.fillStyle=NC.w;g.fillText('/',56,74);g.fillStyle=NC.g;g.fillText('---',70,74);
   if(to&&to.pos&&V.map){const b=Math.round((brg(ac.pos,to.pos)-ac.vr+360)%360)||360,d=gc(ac.pos,to.pos);
     g.textAlign='left';g.font=NF(31);g.fillStyle=NC.w;g.fillText(to.id,520,40);
