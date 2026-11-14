@@ -42,7 +42,9 @@ function buildArr(p){dropSeg(p,'arr','map');const di=idxK(p,'dest'),d=p.legs[di]
   let legs=st?tag(st.legs,p.star):[];
   /* each next part takes over from its first fix when the legs so far already fly through it */
   for(const part of[ap&&p.via&&ap.vias[p.via]?tag(ap.vias[p.via],p.via):[],ap?tag(ap.final,p.appr):[]]){if(!part.length)continue;
-    const j=legs.findIndex(l=>l.k==='wpt'&&l.id===part[0].id);legs=j>=0?[...legs.slice(0,j),...part]:[...legs,...part]}
+    const j=legs.findIndex(l=>l.k==='wpt'&&l.id===part[0].id);
+    if(j>=0&&legs[j].lbl==='ARC'){part[0].lbl='ARC';part[0].ctr=legs[j].ctr}   /* the shared fix keeps the DME arc that reaches it */
+    legs=j>=0?[...legs.slice(0,j),...part]:[...legs,...part]}
   if(ap){d.rwy=ap.rwy;d.lbl=ap.dest.lbl;d.alt=ap.dest.alt;d.via=p.appr}
   if(!legs.length){normalize(p);return}
   p.legs.splice(di,0,...legs);const pv=p.legs[di-1];
