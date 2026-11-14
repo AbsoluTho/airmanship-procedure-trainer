@@ -40,7 +40,7 @@ function buildPath(plan){const p=plan||S.active,pts=[],holds=[];let vr=DB.apt[p.
    radius the aircraft can fly at that ground speed (2.5 deg/s), until the aircraft points at the waypoint; then a straight
    line, tangent to the turn. No overshoot and no reverse turn. Empty when the turn is not needed or cannot reach it. */
 function dirArc(p,ix){const l=p.legs[ix];if(l.trk==null)return[];
-  const nx=p.legs.slice(ix+1).find(q=>q.k==='wpt'||q.k==='dest');if(!nx)return[];
+  const nx=p.legs.slice(ix+1).find(q=>(q.k==='wpt'&&!q.ab)||q.k==='dest');if(!nx)return[];
   const tgt=nx.k==='wpt'?DB.wpt[nx.id]:(()=>{const a=DB.apt[nx.id],r=nx.rwy&&a.rwy[nx.rwy];return r?r.pos:a.pos})();if(!tgt)return[];
   const rel=((brg(l.pos,tgt)-l.trk+540)%360)-180;if(Math.abs(rel)<3)return[];
   const side=rel>0?1:-1,R=Math.max(0.5,(l.gs||250)/3600/(2.5*D2R)),C=dst(l.pos,l.trk+90*side,R);
@@ -57,6 +57,7 @@ function posAt(P,s){const a=P.pts;let i=1;while(i<a.length-1&&a[i].s<s)i++;const
 /* local flat projection around a point (NM) */
 function enu(o,p){return[(p[1]-o[1])*60*Math.cos(o[0]*D2R),(p[0]-o[0])*60]}
 /* closest point on the path: along-track distance and cross-track (+ right of track) */
+/* nearest point of the path: d = distance to the segment itself (NAV capture), xtk = signed distance to its line (guidance) */
 function project(P,pos,from,to){let best=null;const a=P.pts;
   for(let i=Math.max(1,from);i<=Math.min(a.length-1,to);i++){const A=a[i-1],B=a[i],b=enu(A.p,B.p),q=enu(A.p,pos),L2=b[0]*b[0]+b[1]*b[1]||1e-9;
     let f=(q[0]*b[0]+q[1]*b[1])/L2;f=Math.max(0,Math.min(1,f));const dx=q[0]-b[0]*f,dy=q[1]-b[1]*f,d=Math.hypot(dx,dy);
@@ -173,7 +174,7 @@ function fcuEvent(ev){if(!FL.active)return;const A=FCU.alt;
   if(ev==='vs-push'){if(FL.ground)return;FL.ver=FCU.trkFpa?'FPA':'V/S';FCU.vsVal=0;FCU.fpa=0;FL.verArm=[]}
   if(ev==='hdg-pull'){if(FL.ground){FL.latArm=null;return}FL.lat=FCU.trkFpa?'TRK':'HDG';FL.latArm=null}
   if(ev==='hdg-push'){if(FL.ground){FL.latArm='NAV';return}const pr=project(FL.path,FL.pos,1,FL.path.pts.length-1);
-    if(pr&&Math.abs(pr.xtk)<0.3){FL.lat='NAV';FL.latArm=null;FL.seg=pr.i;FL.s=pr.s}else FL.latArm='NAV'}
+    if(pr&&pr.d<0.3){FL.lat='NAV';FL.latArm=null;FL.seg=pr.i;FL.s=pr.s}else FL.latArm='NAV'}
   if(ev==='exped'){if(CLIMBING.includes(FL.ver))FL.ver=FCU.exped?'EXP CLB':'OP CLB';if(DESCENDING.includes(FL.ver))FL.ver=FCU.exped?'EXP DES':'OP DES'}
   setFma();refreshAll()}
 
@@ -219,14 +220,23 @@ function step(dt){const ias0=FL.ias;if(FL.sig!==planSig()&&!FL.ground)flightRepl
   if(PM_AUTO)autoPM(P.sThr-FL.s,sp);lvStep(dt);
   /* LOC, LAND and ROLL OUT never search back along the path (after a go-around the path starts on the final approach) */
   const pr=['NAV','RWY','RWY TRK'].includes(FL.lat)?project(P,FL.pos,FL.seg-2,FL.seg+6):['LOC*','LOC','LAND','ROLL OUT'].includes(FL.lat)?project(P,FL.pos,FL.seg-1,P.pts.length-1):project(P,FL.pos,1,P.pts.length-1);
-  if(pr){FL.s=FL.lat==='NAV'?Math.max(FL.s,pr.s):pr.s;FL.seg=pr.i;FL.xtk=pr.xtk}
+  if(pr){FL.s=FL.lat==='NAV'?Math.max(FL.s,pr.s):pr.s;FL.seg=pr.i;FL.xtk=pr.xtk;
+    /* HDG/TRK: a leg is sequenced only inside the sequencing area, within 7 NM of it and tracking within 90 deg of it (FBW LnavDriver).
+       Outside it, e.g. on a downwind beside the final, nothing is sequenced: the distance runs direct to the TO waypoint, then along the path. */
+    if(!['NAV','RWY','RWY TRK','LOC*','LOC','LAND','ROLL OUT'].includes(FL.lat)&&!FL.ground&&FL.stage==='AIR'){const a=P.pts,A=a[pr.i-1],B=a[pr.i];
+      const tae=Math.abs(((brg(A.p,B.p)-FL.trkT+540)%360)-180);
+      if(Math.abs(pr.xtk)>=7||tae>=90){const ti=a.findIndex(q=>q.ix!=null&&q.ix>FL.fromIx);
+        if(ti>0){FL.s=Math.min(pr.s,a[ti].s-gc(FL.pos,a[ti].p));FL.seg=ti}}}}
   /* hold: at the end of each circuit, back to the fix for another one until IMM EXIT */
   if(P.holds)for(const h of P.holds){if(FL.holdExit===h.ix)continue;if(['NAV'].includes(FL.lat)&&FL.s>=h.s1-0.05&&FL.s<h.s1+2){FL.s=h.s0+Math.max(0,FL.s-h.s1);FL.seg=h.i0+1}}
   {const h=(P.holds||[]).find(h=>FL.s>=h.s0-0.05&&FL.s<h.s1-0.05&&FL.lat==='NAV');FL.inHold=h?h.ix:null;if(!h&&FL.holdExit!=null&&!(P.holds||[]).some(x=>x.ix===FL.holdExit))FL.holdExit=null}
   /* the offset ends once its rejoin point is passed */
   if(S.active.ofst&&P.ofstEnd!=null&&FL.s>P.ofstEnd+0.5)delete S.active.ofst;
   const dtg=P.sThr-FL.s;
-  const fi=FL.fromIx;for(const pt of P.pts)if(pt.ix!=null&&pt.s<=FL.s+0.05&&pt.ix>FL.fromIx)FL.fromIx=pt.ix;
+  const fi=FL.fromIx;
+  {const ti=P.pts.findIndex(q=>q.ix!=null&&q.ix>FL.fromIx),tl=ti>0&&S.active.legs[P.pts[ti].ix];   /* a climb leg (1548) is sequenced at its altitude */
+    if(tl&&tl.k==='ca'&&tl.ca!=null&&FL.alt>=tl.ca&&!FL.ground){FL.fromIx=P.pts[ti].ix}}
+  for(const pt of P.pts)if(pt.ix!=null&&pt.s<=FL.s+0.05&&pt.ix>FL.fromIx)FL.fromIx=pt.ix;
   if(FL.fromIx!==fi&&S.page==='FPLN'&&!S.secMode)S.fpOff=0;   /* waypoint sequenced: the F-PLN starts again at the FROM line */
 
   if(FL.stage==='ROLL'){FL.ias+=(LV.thr==='TOGA'?4.94:4.37)*dt;if(FL.ias>=q.vr){FL.pitch=Math.min(15,FL.pitch+3*dt);if(FL.ias>=q.vr+4){FL.ground=false;FL.stage='AIR'}}}
@@ -239,7 +249,7 @@ function step(dt){const ias0=FL.ias;if(FL.sig!==planSig()&&!FL.ground)flightRepl
     /* ---- lateral ---- */
     /* takeoff: RWY on the ground, RWY TRK once airborne (NAV stays armed), NAV from 400 ft AAL */
     if(FL.lat==='RWY'&&agl()>30)FL.lat=FCU.hdgMgd||FL.latArm==='NAV'?'RWY TRK':(FCU.trkFpa?'TRK':'HDG');
-    if(FL.latArm==='NAV'&&pr&&Math.abs(pr.xtk)<0.6&&!(FL.lat==='GA TRK'&&agl()<100)&&FL.lat!=='RWY'&&!(FL.lat==='RWY TRK'&&agl()<400)){FL.lat='NAV';FL.latArm=null}
+    if(FL.latArm==='NAV'&&pr&&pr.d<0.6&&!(FL.lat==='GA TRK'&&agl()<100)&&FL.lat!=='RWY'&&!(FL.lat==='RWY TRK'&&agl()<400)){FL.lat='NAV';FL.latArm=null}
     const lg=hasLs()?locGeo(FL.pos):null,lsArmed=(FCU.loc||FCU.appr)&&lg;
     if(lsArmed&&!['LOC*','LOC','LAND'].includes(FL.lat)){if(FL.latArm!=='NAV')FL.latArm='LOC';
       const hdif=Math.abs(((lg.crs-FL.trkT+540)%360)-180);if(lg.along>0.5&&lg.along<30&&Math.abs(lg.xtk)<1.2&&hdif<100){FL.lat='LOC*';FL.latArm=null;FL.loc=true}}
@@ -253,7 +263,7 @@ function step(dt){const ias0=FL.ias;if(FL.sig!==planSig()&&!FL.ground)flightRepl
     else if(['LOC*','LOC','LAND'].includes(FL.lat)&&lg){const d=destRwy(),tgt=dst(d.r.pos,lg.crs+180,Math.max(-2,lg.along-L));trkT=brg(FL.pos,tgt)}
     /* ---- vertical ---- */
     const capBand=Math.max(80,Math.abs(FL.vs)*0.12),CK=cstrNow();FL.cst=CK;
-    const gp=FL.gear&&!FL.ground&&(['TAKEOFF','CLB','GA'].includes(S.phase)||CLIMBING.includes(FL.ver)||FL.ver==='SRS')?0.5:1;FL.gp=gp;   /* gear left down in the climb: half the climb rate and acceleration */
+    const gp=!FL.ground&&(['TAKEOFF','CLB','GA'].includes(S.phase)||CLIMBING.includes(FL.ver)||FL.ver==='SRS')?1-0.5*(FL.gearPos??1):1;FL.gp=gp;   /* gear drag follows the gear position: half rate down, full rate up and locked, gradual in transit */   /* gear left down in the climb: half the climb rate and acceleration */
     if(FL.ver==='SRS'){spdT=ga?FL.gaSpd:q.v2+10;vsT=(ga?Math.min(2400,FL.vs+600):2400)*gp;
       if(FL.alt>=acc){FL.opSmall=false;if(A>FL.alt+capBand){FL.ver=FL.verArm.includes('OP CLB')?'OP CLB':'CLB';FL.verArm=['ALT']}else{FL.ver='ALT*';FL.verArm=[]}if(!ga)S.phase='CLB'}}
     FL.soe=false;
@@ -297,7 +307,7 @@ function step(dt){const ias0=FL.ias;if(FL.sig!==planSig()&&!FL.ground)flightRepl
       if(FL.ver==='G/S*'&&Math.abs(ga-FL.alt)<30&&FL.t-FL.gssT>8)FL.ver='G/S';
       if(FL.ver==='G/S'&&agl()<400&&FL.lat==='LOC'){FL.ver='LAND';FL.lat='LAND'}
       if(FL.ver==='LAND'&&agl()<40)FL.ver='FLARE';
-      if(FL.ver==='FLARE')vsT=-Math.max(120,agl()*6)}
+      if(FL.ver==='FLARE')vsT=-Math.max(240,agl()*12)}   /* flare: about 7 s from 40 ft to touchdown */
     /* ---- speed ---- */
     if(FL.ver!=='SRS'){
       /* selected speed: SPD to MACH in the climb when the selected speed reaches the programmed Mach, MACH to SPD in the descent at the programmed descent speed */
@@ -321,7 +331,7 @@ function step(dt){const ias0=FL.ias;if(FL.sig!==planSig()&&!FL.ground)flightRepl
       FL.spdIsMach=!FCU.spdMgd&&FCU.spd!=null?FCU.mach:mm;if(FCU.spdMgd)FCU.mach=mm;
       /* speed constraint (managed speed only) */
       if((FCU.spdMgd||FCU.spd==null)&&CK.spd!=null&&!['EXP CLB','EXP DES'].includes(FL.ver))spdT=Math.max(sp.VLS,Math.min(spdT,CK.spd));
-      if(FL.ver==='FLARE')spdT=Math.min(spdT,FL.ias-1)}
+      if(FL.ver==='FLARE')spdT=Math.min(spdT,FL.ias-dt)}   /* about 1 kt/s lost in the flare */
     /* ---- phases ---- */
     if(S.phase==='CLB'&&FL.ver==='ALT'&&Math.abs(FL.alt-crz)<50)S.phase='CRZ';
     if((S.phase==='CRZ'||S.phase==='CLB')&&FL.s>FL.path.len*0.4&&(vsT<0||FL.vs<-300)&&(DESCENDING.includes(FL.ver)||FL.ver==='V/S'||FL.ver==='FPA')&&FL.alt<crz-200)S.phase='DES';
@@ -335,8 +345,8 @@ function step(dt){const ias0=FL.ias;if(FL.sig!==planSig()&&!FL.ground)flightRepl
     if(FL.ver==='FLARE'&&agl()<=1&&FL.vs<=0&&FL.gearPos<1){FL.ground=true;FL.alt=gnd;FL.vs=0;FL.ias=0;FL.stage='STOP';S.phase='GEAR UP LANDING';FL.running=false;S.msg='GEAR NOT DOWN AT TOUCHDOWN'}
     if(FL.ver==='FLARE'&&agl()<=1&&FL.vs<=0&&FL.gearPos>=1){FL.ground=true;FL.stage='ROLLOUT';FL.ver='ROLL OUT';FL.lat='ROLL OUT';FL.alt=gnd;FL.vs=0;FCU.ap1=FCU.ap2=false;FCU.athr=false}}
   if(FL.stage==='ROLLOUT'){const idle=['IDLE','REVIDLE','REVMAX'].includes(LV.thr),ab=idle&&LV.askid&&LV.abrk;
-    let dec=!idle?0.8:ab?{LO:3.3,MED:5,MAX:6}[LV.abrk]:LV.askid?(FL.ias>40?4:3):2.5;if(ab&&FL.ias<40)dec=Math.min(dec,3.5);
-    if(LV.thr==='REVMAX'&&FL.ias>70)dec+=1.5;else if(LV.thr==='REVIDLE'&&FL.ias>70)dec+=0.4;LV.decel=!!ab&&FL.ias>2;
+    let dec=!idle?0.6:ab?{LO:2.5,MED:3.7,MAX:4.6}[LV.abrk]:LV.askid?(FL.ias>40?3:2.3):1.9;if(ab&&FL.ias<40)dec=Math.min(dec,2.7);   /* gentler roll-out (v0.15.7) */
+    if(LV.thr==='REVMAX'&&FL.ias>70)dec+=1.1;else if(LV.thr==='REVIDLE'&&FL.ias>70)dec+=0.3;LV.decel=!!ab&&FL.ias>2;
     FL.ias=Math.max(0,FL.ias-dec*dt);FL.pitch=Math.max(0,FL.pitch-2*dt);
     const lg=locGeo(FL.pos),d=destRwy();trkT=brg(FL.pos,dst(d.r.pos,lg.crs+180,lg.along-1));if(FL.ias<=0){FL.stage='STOP';S.phase='DONE';FL.running=false}}
   if(FL.stage==='ROLL'){const o=DB.apt[orig()],r=o.rwy[S.active.rwy];trkT=r.crs+(o.var||0)}
