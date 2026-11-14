@@ -4,7 +4,7 @@ An unofficial A320 **procedure** trainer that runs in the browser (iPad first). 
 
 Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator manuals. The navigation data was typed from charts for training only and must never be used for navigation.
 
-## Status: Phase 2 prototype (v0.12.1)
+## Status: Phase 2 prototype (v0.12.2)
 
 - **MCDU** (Thales FMS2 layout, per FCOM DSC-22): keyboard and scratchpad, INIT A, F-PLN with TMPY (ERASE/INSERT), LAT REV, DEPARTURE, AIRWAYS (with airway-to-airway intersection), ARRIVAL, waypoint insertion, CLR of waypoints and discontinuities.
 - **Exercise** OEJN to OETB: RWY 16C MIGD2E, L677 WEJ, V54 TBK, ILS 31 via D179O, ALTN OEMA, FL340, CI 20, with automatic progress checks.
@@ -12,6 +12,7 @@ Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator
 - **ND** (ROSE LS, ROSE VOR, ROSE NAV, ARC, PLAN; range 10 to 320 NM; CSTR, WPT, ARPT options; ROSE LS and ROSE VOR show the compass only for now): active F-PLN in green, TMPY in yellow dashed, missed approach in blue, alternate route in blue dashed, DME arcs and holds drawn. PLAN centres on the waypoint on the second line of the MCDU F-PLN page. Also live on both NDs in the 3D cockpit (EXT PWR on).
 - **INIT B**: TAXI, ZFW/ZFWCG, BLOCK, TRIP/TIME, RTE RSV, ALTN, FINAL, EXTRA, TOW/LW, TRIP WIND, MIN DEST FOB. **F-PLN** now shows TIME predictions and EFOB at destination once ZFW and BLOCK are entered.
 - **PERF TAKE OFF**: V1/VR/V2 (with V1/VR/V2 DISAGREE), F/S/O speeds, RWY, TO SHIFT, FLAPS/THS, FLEX, TRANS ALT, THR RED/ACC, ENG OUT ACC. Changing the takeoff runway clears the V speeds (CHECK TAKE OFF DATA).
+- **DIR TO and NO SID** (v0.12.2): on DIR TO, the key beside a F-PLN waypoint (L3 to L6, L3 to L5 while ERASE/INSERT shows) selects that waypoint. DEPARTURES offers `<NO SID` first in the SID list: runway threshold only, then a discontinuity; the takeoff stays in RWY TRK until HDG or DIR TO.
 - **App version** (v0.12.1): the version in the top right corner comes from this README's status line, written into `index.html` by `tools/build_single.py`.
 - **FMGC batch 4** (v0.12.0), page layouts from the FlyByWire A32NX MCDU:
   - **CO RTE** (INIT A L1): a company route (training database: OEJNOETB1 via D179O, OEJNOETB2 via TBK) or a stored route loads FROM/TO, ALTN and the whole F-PLN (runway, SID, airways, approach), strung without discontinuity. After a FROM/TO entry the **ROUTE** page lists the company routes of the city pair (arrows to browse, INSERT*, RETURN).
