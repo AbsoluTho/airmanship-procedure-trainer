@@ -220,14 +220,23 @@ function step(dt){const ias0=FL.ias;if(FL.sig!==planSig()&&!FL.ground)flightRepl
   if(PM_AUTO)autoPM(P.sThr-FL.s,sp);lvStep(dt);
   /* LOC, LAND and ROLL OUT never search back along the path (after a go-around the path starts on the final approach) */
   const pr=['NAV','RWY','RWY TRK'].includes(FL.lat)?project(P,FL.pos,FL.seg-2,FL.seg+6):['LOC*','LOC','LAND','ROLL OUT'].includes(FL.lat)?project(P,FL.pos,FL.seg-1,P.pts.length-1):project(P,FL.pos,1,P.pts.length-1);
-  if(pr){FL.s=FL.lat==='NAV'?Math.max(FL.s,pr.s):pr.s;FL.seg=pr.i;FL.xtk=pr.xtk}
+  if(pr){FL.s=FL.lat==='NAV'?Math.max(FL.s,pr.s):pr.s;FL.seg=pr.i;FL.xtk=pr.xtk;
+    /* HDG/TRK: a leg is sequenced only inside the sequencing area, within 7 NM of it and tracking within 90 deg of it (FBW LnavDriver).
+       Outside it, e.g. on a downwind beside the final, nothing is sequenced: the distance runs direct to the TO waypoint, then along the path. */
+    if(!['NAV','RWY','RWY TRK','LOC*','LOC','LAND','ROLL OUT'].includes(FL.lat)&&!FL.ground&&FL.stage==='AIR'){const a=P.pts,A=a[pr.i-1],B=a[pr.i];
+      const tae=Math.abs(((brg(A.p,B.p)-FL.trkT+540)%360)-180);
+      if(Math.abs(pr.xtk)>=7||tae>=90){const ti=a.findIndex(q=>q.ix!=null&&q.ix>FL.fromIx);
+        if(ti>0){FL.s=Math.min(pr.s,a[ti].s-gc(FL.pos,a[ti].p));FL.seg=ti}}}}
   /* hold: at the end of each circuit, back to the fix for another one until IMM EXIT */
   if(P.holds)for(const h of P.holds){if(FL.holdExit===h.ix)continue;if(['NAV'].includes(FL.lat)&&FL.s>=h.s1-0.05&&FL.s<h.s1+2){FL.s=h.s0+Math.max(0,FL.s-h.s1);FL.seg=h.i0+1}}
   {const h=(P.holds||[]).find(h=>FL.s>=h.s0-0.05&&FL.s<h.s1-0.05&&FL.lat==='NAV');FL.inHold=h?h.ix:null;if(!h&&FL.holdExit!=null&&!(P.holds||[]).some(x=>x.ix===FL.holdExit))FL.holdExit=null}
   /* the offset ends once its rejoin point is passed */
   if(S.active.ofst&&P.ofstEnd!=null&&FL.s>P.ofstEnd+0.5)delete S.active.ofst;
   const dtg=P.sThr-FL.s;
-  const fi=FL.fromIx;for(const pt of P.pts)if(pt.ix!=null&&pt.s<=FL.s+0.05&&pt.ix>FL.fromIx)FL.fromIx=pt.ix;
+  const fi=FL.fromIx;
+  {const ti=P.pts.findIndex(q=>q.ix!=null&&q.ix>FL.fromIx),tl=ti>0&&S.active.legs[P.pts[ti].ix];   /* a climb leg (1548) is sequenced at its altitude */
+    if(tl&&tl.k==='ca'&&tl.ca!=null&&FL.alt>=tl.ca&&!FL.ground){FL.fromIx=P.pts[ti].ix}}
+  for(const pt of P.pts)if(pt.ix!=null&&pt.s<=FL.s+0.05&&pt.ix>FL.fromIx)FL.fromIx=pt.ix;
   if(FL.fromIx!==fi&&S.page==='FPLN'&&!S.secMode)S.fpOff=0;   /* waypoint sequenced: the F-PLN starts again at the FROM line */
 
   if(FL.stage==='ROLL'){FL.ias+=(LV.thr==='TOGA'?4.94:4.37)*dt;if(FL.ias>=q.vr){FL.pitch=Math.min(15,FL.pitch+3*dt);if(FL.ias>=q.vr+4){FL.ground=false;FL.stage='AIR'}}}

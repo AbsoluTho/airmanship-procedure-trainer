@@ -246,6 +246,15 @@ async def run(url,b):
     assert gt==0.75,'gear in transit: half the penalty'
     rs=await pg.evaluate("[dirRadSuggest('SOBOX'),dirRadSuggest('CI24'),dirRadSuggest('WEJ')]")
     assert rs==[62,62,None],f'RADIAL IN proposed for the final approach fixes (ILS 24: radial 062): {rs}'
+    sq=await pg.evaluate("""(()=>{const A0=clone(S.active),pm=PM_AUTO;const p=newPlan('OEJN','OETB');setRunway(p,'34R');p.noSid=true;normalize(p);S.active=p;FCU.alt=4000;window.__flight('pm:on');window.__flight('start');
+      let n=0,st=0,o={};const id=()=>S.active.legs[FL.fromIx].id;
+      while(n<3000&&st<4){step(0.5);n++;if(FL.alt-groundElev()>1500&&!FCU.ap1)fcuButton('ap1');
+        if(st===0&&FL.alt>2500){st=1;o.ca=id();newDest(S.active,0,'OEJN');const q=S.active;q.legs[idxK(q,'dest')].rwy='34R';q.appr='ILS34RZ';q.via='SOLOG';buildArr(q);normalize(q);FCU.hdgMgd=false;FCU.hdg=66;FL.lat='HDG'}
+        if(st===1&&gc(FL.pos,DB.apt.OEJN.rwy['34R'].pos)>6){st=2;FCU.hdg=156}
+        if(st===2&&FL.pos[0]<DB.wpt.PAXOS[0]-0.03){st=3;o.abeam=id();FCU.hdg=246}
+        if(st===3&&brg(FL.pos,DB.wpt.PAXOS)>275){st=4;directTo('PAXOS');S.sp='';P.DIR.lsk('R',1);P.DIR.lsk('R',6);o.fp=S.active.legs.slice(FL.fromIx+1).map(l=>l.id||l.k).slice(0,4).join(' ')}}
+      window.__flight('reset');PM_AUTO=pm;S.active=A0;S.tmpy=null;FCU.hdgMgd=true;return o})()""")
+    assert sq=={'ca':'(1548)','abeam':'(1548)','fp':'IN156 PAXOS NALPI OEJN'},f'downwind beside the final: nothing sequenced (FBW sequencing area); DIR TO PAXOS keeps NALPI and the runway: {sq}'
     fk=await pg.evaluate("(()=>{S.page='FPLN';S.fpOff=6;press('FPLN');return S.fpOff})()")
     assert fk==0,f'F-PLN key shows the F-PLN from the top: {fk}'
     h2=await pg.evaluate("(()=>{const L=window.__S().active.legs,i=L.findIndex(l=>l.k==='hold');return[L[i+1].k+':'+L[i+1].id,L[i+2].k]})()")
