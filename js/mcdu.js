@@ -25,8 +25,10 @@ function dropSeg(p,...segs){p.legs=p.legs.filter(l=>!segs.includes(l.seg))}
 /* first departure leg: climb on runway track to 400 ft AAL (SID) or 1500 ft AAL (runway only, visual departure) */
 function caLeg(p,aal){const ap=DB.apt[p.legs[0].id],r=ap.rwy[p.rwy],a=Math.round((r.tdze??ap.elev)+aal);
   return{k:'ca',id:'('+a+')',lbl:'C'+String(r.crs).padStart(3,'0')+'°',ca:a,aal,seg:'dep',via:p.sid||''}}
-/* NO SID: the runway threshold only, followed by a discontinuity (no climb leg, no SID) */
-function setNoSid(p){dropSeg(p,'dep');p.legs=p.legs.filter((l,i)=>!(i>0&&l.k==='ca'));p.sid=null;p.trans=null;p.noSid=true;if(p.legs[1]&&p.legs[1].k!=='disc')p.legs.splice(1,0,{k:'disc'});normalize(p)}
+/* NO SID: the runway, a climb on runway track to 1500 ft AAL (named runway elevation + 1500), then a discontinuity */
+function setNoSid(p){dropSeg(p,'dep');p.legs=p.legs.filter((l,i)=>!(i>0&&l.k==='ca'));p.sid=null;p.trans=null;p.noSid=true;
+  p.legs.splice(1,0,Object.assign(caLeg(p,1500),{via:''}));   /* runway track until 1500 ft AAL, named runway elevation + 1500, e.g. (4520) */
+  if(p.legs[2]&&p.legs[2].k!=='disc')p.legs.splice(2,0,{k:'disc'});normalize(p)}
 function setRunway(p,r){p.rwy=r;p.legs[0].rwy=r;dropSeg(p,'dep');p.sid=null;p.trans=null;p.noSid=false;
   p.legs.splice(1,0,caLeg(p,1500));if(p.legs[2].k!=='disc')p.legs.splice(2,0,{k:'disc'});normalize(p)}
 function setSid(p,sid){dropSeg(p,'dep');p.sid=sid;p.noSid=false;const legs=[caLeg(p,400),...clone(SIDS[p.legs[0].id][p.rwy][sid]).map(l=>l.k==='ca'?caLeg(p,l.aal):l).map(l=>Object.assign(l,{seg:'dep',via:sid}))];   /* radar SIDs: a climb leg to their altitude */
