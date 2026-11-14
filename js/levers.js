@@ -33,7 +33,7 @@ function leversSvg(){const G='#3cff3c',B='#3ad7ff',R='#ff3b30',ln='#e8eef5';
     s+=hit(356,80,80,76,'fan','x');
     if(!LV.askid)s+=`<circle cx="395" cy="258" r="24" fill="#1a1d22"/><rect x="389" y="258" width="12" height="38" rx="5" fill="#2c3036" stroke="#555"/>`;
     s+=hit(350,216,70,92,'askid','x');
-    const up=LV.gear==='UP';s+=`<image href="${IMG_LVGL}" x="524" y="${up?17:92}" width="48" height="230"/>`+hit(490,0,186,333,'gear',up?'DOWN':'UP');
+    const up=LV.gear==='UP';s+=`<image href="${IMG_LVGL}" x="524" y="${up?40:226}" width="42" height="107"/>`   /* only the knurled grip moves; the track stays */+hit(490,0,186,333,'gear',up?'DOWN':'UP');
     s+=`</g>`;
     s+=btn(282,162,156,34,'gear','UP','GEAR UP',up)+btn(444,162,156,34,'gear','DOWN','GEAR DOWN',!up);
     s+=t(441,216,dn?'DOWN LOCKED':gp<=0?'UP LOCKED':'IN TRANSIT',12,dn?G:gp<=0?ln:R)}
@@ -41,8 +41,9 @@ function leversSvg(){const G='#3cff3c',B='#3ad7ff',R='#ff3b30',ln='#e8eef5';
   {const k=246/302,x0=300;s+=`<g transform="translate(${x0},230) scale(${k})"><image href="${IMG_LVF}" x="0" y="0" width="240" height="302"/>`;
     const y=FLP_Y[LV.flaps]-20;s+=`<image href="${IMG_LVFK}" x="${128-70}" y="${y-53}" width="140" height="107"/>`;
     FLP_Y.forEach((yy,i)=>{s+=hit(0,yy-20-28,240,56,'flaps',i)});s+=`</g>`;
-    const cf=flying()?FL.conf:['0','1+F','2','3','FULL'][LV.flaps];s+=t(596,258,'FLAPS',14,ln,'end')+t(596,280,cf==='0'?'CLEAN':cf,14,'#ffd9a0','end')}
-  ['0','1','2','3','FULL'].forEach((l,i)=>{s+=btn(520,300+i*45,76,38,'flaps',i,l,LV.flaps===i,null,13)});
+    const cf=flying()?FL.conf:['0','1+F','2','3','FULL'][LV.flaps];s+=t(522,240,'FLAPS',13,ln,'start')+t(596,240,cf==='0'?'CLEAN':cf,13,'#ffd9a0','end')}
+  /* buttons level with the gate marks (image y = mark - 20, scale 246/302, from y 230) */
+  ['0','1','2','3','FULL'].forEach((l,i)=>{const cy=230+(FLP_Y[i]-20)*246/302;s+=btn(522,cy-16,74,32,'flaps',i,l,LV.flaps===i,null,13)});
   return s}
 function drawLevers(){const o=$('#lvPanel');if(!o)return;o.hidden=!LVP.on;const b=$('#lvBtn');if(b){b.setAttribute('aria-pressed',String(LVP.on));b.textContent=LVP.on?'SD':'LEVERS'}
   if(!LVP.on)return;const h=leversSvg();if(o._h!==h){o.innerHTML=`<svg viewBox="0 0 600 530" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" aria-label="Levers">${h}</svg>`;o._h=h}}
