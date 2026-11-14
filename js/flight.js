@@ -113,7 +113,8 @@ function lever(k,v){
   else if(k==='flaps'){const n=+v;if(n>=0&&n<=4)LV.flaps=n}
   else if(k==='gear'){if(v==='UP'&&FL.active&&FL.ground)return;LV.gear=v}   /* weight on wheels: no gear up on the ground */
   else if(k==='abrk')LV.abrk=LV.abrk===v?null:v;
-  else if(k==='master'){if(FL.active)return;LV['m'+v]=!LV['m'+v]}   /* engines running in flight: masters stay ON */
+  else if(k==='master'){if(FL.active)return;LV['m'+v]=!LV['m'+v]}
+  else if(k==='mode'){if(typeof engMode==='function')engMode(v);return}   /* engines running in flight: masters stay ON */
   else if(k==='fan')LV.fan=!LV.fan;
   else if(k==='askid')LV.askid=!LV.askid;
   if(typeof refreshAll==='function')refreshAll()}
