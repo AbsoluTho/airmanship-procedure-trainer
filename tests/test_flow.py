@@ -217,6 +217,8 @@ async def run(url,b):
       const arr=[...document.querySelectorAll('#scr .ln')].map(l=>l.textContent).join(' ').includes('ARRIVAL>');P.LATREV.lsk('R',1);
       const d=S.sec.legs[idxK(S.sec,'dest')].id,pg=S.page,last=S.sec.legs[S.sec.legs.length-1].k;S.secMode=false;S.sec=null;S.active=S0;S.page='FPLN';return[ix>0,pos[0]===r0[0],arr,d,pg,last]})()""")
     assert aw==[True,True,True,'OEJN','ARR','dest'],f'airport as a waypoint (first runway threshold), ARRIVAL> makes it the destination: {aw}'
+    fk=await pg.evaluate("(()=>{S.page='FPLN';S.fpOff=6;press('FPLN');return S.fpOff})()")
+    assert fk==0,f'F-PLN key shows the F-PLN from the top: {fk}'
     h2=await pg.evaluate("(()=>{const L=window.__S().active.legs,i=L.findIndex(l=>l.k==='hold');return[L[i+1].k+':'+L[i+1].id,L[i+2].k]})()")
     assert h2==['wpt:LABUN','disc'],f'after the hold: the fix repeated, then a discontinuity: {h2}'
     r=await pg.evaluate("""(()=>{window.__flight('start');let n=0,ap=0,o={loops:0};while(FL.stage!=='STOP'&&n<40000){step(0.5);n++;if(n%10===0)setFma();

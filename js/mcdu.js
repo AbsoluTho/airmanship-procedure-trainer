@@ -417,7 +417,7 @@ function press(k){
   else if(k==='CLR')clrKey();
   else if(k==='OVFY')err('NOT IN PROTOTYPE');
   else if(k==='INIT')go('INIT');
-  else if(k==='FPLN'){go('FPLN')}
+  else if(k==='FPLN'){if(S.secMode){S.secOff=S.fpOff;S.secMode=false}S.fpOff=0;go('FPLN')}   /* F-PLN key: the active F-PLN from the FROM line (SEC F-PLN key for the secondary) */
   else if(k==='MENU')go('MENU');
   else if(k==='AIRPORT'){go('FPLN');const p=cur();if(p){S.fpOff=Math.max(0,idxK(p,'dest')-1)}}
   else if(k==='UP'||k==='DOWN'){const pg=P[S.page];if(pg.slew)pg.slew(k==='UP'?1:-1)}
