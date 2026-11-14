@@ -226,3 +226,55 @@ imdap16('2S', '1D', '16L', [W('UMADU', '@3000', 210), W('JN801'), W('NIVGO'), W(
         [W('NABGI', '@6000', 210), W('ORMIX', '@6000'), W('LOXON', '+3000'), W('ORKOK', '@2000')])
 imdap16('2T', '1E', '16C', [W('RIGOG', '@3000', 210), W('JN903'), W('JN901'), W('TAVKU', '@3000'), W('DAVGA', '@3000'), W('EMOXO', '@2000')],
         [W('NABGI', '@6000', 210), W('TAVKU', '@6000'), W('DAVGA', '+3000'), W('EMOXO', '@2000')])
+
+# ================= approaches (charts 11-1 .. 11-10, 12-1 .. 12-5) =================
+# IF and FAF on the extended centreline from the ILS DME (DME read about 0.2 NM more than the distance to the threshold);
+# where a STAR chart already placed the IF, the difference is printed and the STAR position kept.
+def onc(name, rwy, dme):
+    p = a.ext(rwy, dme - 0.2)
+    if name in a.fx: a.notes.append('%-6s %.2f NM approach chart vs STAR chart' % (name, gc(a.fx[name], p)))
+    else: a.fx[name] = p
+for n, r, d in [('EMOXO', '16C', 12.5), ('TOTVA', '16C', 5.3), ('ORKOK', '16L', 11.5), ('RAPSO', '16L', 5.2), ('RESEN', '16R', 13.8),
+                ('KUPIV', '16R', 8.4), ('KASOP', '34C', 10.4), ('NABEB', '34C', 5.3), ('PAXOS', '34R', 10.4), ('NALPI', '34R', 5.2),
+                ('VEDIR', '34L', 13.5), ('SODIT', '34L', 8.3)]:
+    onc(n, r, d)
+# missed approach fixes (JDW radial / DME)
+for n, r, d in [('D125M', 125, 13), ('D053M', 53, 13), ('D126M', 126, 13), ('D156T', 156, 20), ('MITAV', 355, 18), ('D053R', 53, 18),
+                ('D336D', 336, 4), ('RADKI', 302, 18), ('JN446', 145, 4.5), ('JN877', 150, 6), ('JN747', 156, 15)]:
+    a.fix(n, a.rad('JDW', r, d))
+HIM = HOLD(233, 'R', 4000)
+MZ16 = lambda c, d: [HDG(c, 1000), W(d), ARC('D053M', 'JDW'), W('IMDAP', '@4000'), HIM]
+d_ = lambda c, t: {'lbl': 'C%03d°' % c, 'alt': A('@%d' % t)}
+def appr(id, typ, rwy, crs, vias, final, dest, missed, nav=None, freq=None):
+    x = dict(type=typ, rwy=rwy, crs=crs, vias=vias, final=final, dest=dest, missed=missed)
+    if nav: x.update(nav=nav, freq=freq)
+    a.apprs[id] = x
+V16C = {'DAVGA': [W('DAVGA', '@3000', 210)], 'RIGOG': [W('RIGOG', '@3000', 210)]}
+F16C = [W('EMOXO', '@2000'), W('TOTVA', '@1700')]
+appr('ILS16CZ', 'ILS', '16C', 156, V16C, F16C, d_(156, 71), MZ16(156, 'D125M'), 'IJDC', 109.7)
+appr('ILS16CY', 'ILS', '16C', 156, V16C, F16C, d_(156, 71), [W('JN446', '+900'), W('IMDAP', '@4000'), HIM], 'IJDC', 109.7)
+appr('RNP16C', 'RNP', '16C', 156, V16C, F16C, d_(156, 71), [W('JN446', '+900'), W('IMDAP', '@4000'), HIM])
+V16L = {'LOXON': [W('LOXON', '@3000', 210)], 'UMADU': [W('UMADU', '@3000', 210)]}
+F16L = [W('ORKOK', '@2000'), W('RAPSO', '@1700')]
+appr('ILS16LZ', 'ILS', '16L', 156, V16L, F16L, d_(156, 81), MZ16(156, 'D126M'), 'IDFJ', 108.5)
+appr('ILS16LY', 'ILS', '16L', 156, V16L, F16L, d_(156, 81), [W('JN877', '+1200'), W('IMDAP', '@4000'), HIM], 'IDFJ', 108.5)
+appr('RNP16L', 'RNP', '16L', 156, V16L, F16L, d_(156, 81), [W('JN877', '+1200'), W('IMDAP', '@4000'), HIM])
+V16R = {'SOGER': [W('SOGER', '@4000', 210)], 'ORSOD': [W('ORSOD', '@4000', 210)]}
+F16R = [W('RESEN', '@3000'), W('KUPIV', '@2700')]
+HUL = HOLD(28, 'R', 4000)
+appr('ILS16RZ', 'ILS', '16R', 156, V16R, F16R, d_(156, 65), [W('D156T'), ARC('ULULU', 'JDW', '@4000'), HUL], 'IJDD', 109.3)
+appr('ILS16RY', 'ILS', '16R', 156, V16R, F16R, d_(156, 65), [W('JN747', '+2000'), W('ULULU', '@4000'), HUL], 'IJDD', 109.3)
+appr('RNP16R', 'RNP', '16R', 156, V16R, F16R, d_(156, 65), [W('JN747', '+2000'), W('ULULU', '@4000'), HUL])
+V34C = {'ITOMA': [W('ITOMA', '@3000', 210)], 'LORUS': [W('LORUS', '@3000', 210)]}
+F34C = [W('KASOP', '@2100'), W('NABEB', '@1700')]
+appr('ILS34CZ', 'ILS', '34C', 336, V34C, F34C, d_(336, 79), [HDG(336, 1000), W('MITAV'), ARC('D053R', 'JDW'), W('IMDAP', '@4000'), HIM], 'IJDW', 109.5)
+appr('ILS34CY', 'ILS', '34C', 336, V34C, F34C, d_(336, 79), [HDG(336, 1000), W('IMDAP', '@4000'), HIM], 'IJDW', 109.5)
+appr('RNP34C', 'RNP', '34C', 336, V34C, F34C, d_(336, 79), [HDG(336, 1000), W('IMDAP', '@4000'), HIM])
+V34R = {'SOLOG': [W('SOLOG', '@3000', 210)], 'ITOMA': [W('ITOMA', '@3000', 210)]}
+F34R = [W('PAXOS', '@2100'), W('NALPI', '@1700')]
+M34R = [HDG(336, 1000), W('IMDAP', '@4000'), HIM]
+appr('ILS34RZ', 'ILS', '34R', 336, V34R, F34R, d_(336, 100), M34R, 'IEAL', 108.3)
+appr('ILS34RY', 'ILS', '34R', 336, V34R, F34R, d_(336, 100), M34R, 'IEAL', 108.3)
+appr('RNP34R', 'RNP', '34R', 336, V34R, F34R, d_(336, 100), M34R)
+appr('ILS34L', 'ILS', '34L', 336, {'ITUXI': [W('ITUXI', '+5000'), W('JN812')]}, [W('VEDIR', '@3100'), W('SODIT', '@2700')], d_(336, 66),
+     [W('D336D'), W('RADKI', '@4000'), HOLD(122, 'R', 4000)], 'IJDL', 109.1)

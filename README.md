@@ -4,7 +4,7 @@ An unofficial A320 **procedure** trainer that runs in the browser (iPad first). 
 
 Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator manuals. The navigation data was typed from charts for training only and must never be used for navigation.
 
-## Status: Phase 2 prototype (v0.14.2)
+## Status: Phase 2 prototype (v0.15.0)
 
 - **MCDU** (Thales FMS2 layout, per FCOM DSC-22): keyboard and scratchpad, INIT A, F-PLN with TMPY (ERASE/INSERT), LAT REV, DEPARTURE, AIRWAYS (with airway-to-airway intersection), ARRIVAL, waypoint insertion, CLR of waypoints and discontinuities.
 - **Exercise** OEJN to OETB: RWY 16C MIGD2E, L677 WEJ, V54 TBK, ILS 31 via D179O, ALTN OEMA, FL340, CI 20, with automatic progress checks.
@@ -12,6 +12,7 @@ Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator
 - **ND** (ROSE LS, ROSE VOR, ROSE NAV, ARC, PLAN; range 10 to 320 NM; CSTR, WPT, ARPT options; ROSE LS and ROSE VOR show the compass only for now): active F-PLN in green, TMPY in yellow dashed, missed approach in blue, alternate route in blue dashed, DME arcs and holds drawn. PLAN centres on the waypoint on the second line of the MCDU F-PLN page. Also live on both NDs in the 3D cockpit (EXT PWR on).
 - **INIT B**: TAXI, ZFW/ZFWCG, BLOCK, TRIP/TIME, RTE RSV, ALTN, FINAL, EXTRA, TOW/LW, TRIP WIND, MIN DEST FOB. **F-PLN** now shows TIME predictions and EFOB at destination once ZFW and BLOCK are entered.
 - **PERF TAKE OFF**: V1/VR/V2 (with V1/VR/V2 DISAGREE), F/S/O speeds, RWY, TO SHIFT, FLAPS/THS, FLEX, TRANS ALT, THR RED/ACC, ENG OUT ACC. Changing the takeoff runway clears the V speeds (CHECK TAKE OFF DATA).
+- **Jeddah from the charts** (v0.15.0): 48 SIDs (all six runways), 48 STARs (BOSUT/EGMEG/ULULU/MUVOL and IMDAP/MISAM/NOMDA/VEMEM, by runway) and 16 approaches (ILS Z and Y, RNP for 16C/16L/16R/34C/34R; ILS 34L), with vias from the IAFs and the published missed approaches. Fix positions read on each chart's lat/long grid; fixes on several charts agree within about 0.3 NM. Pre-flight FMA: CLB, NAV (cyan) and 1 FD 2 once INIT B is done with the FDs on.
 - **PERF TAKE OFF** (v0.14.2): V speeds are the pilot's choice (any order; V1/VR/V2 DISAGREE is only a message) and are not required for START (blank ones are computed from the take-off weight). The speed tape shows them from line-up: V1 '1', VR circle, V2 target. FLAPS/THS also accepts .4UP and UP.4 (1/.4UP shows 1/UP0.4).
 - **F-PLN key** (v0.14.2): shows the active F-PLN from the top (FROM line), also from the SEC F-PLN.
 - **Airports as waypoints** (v0.14.2): any airport ICAO can be entered where a waypoint is accepted (F-PLN, NEXT WPT, DIR TO, ALTN route); its position is the first runway threshold. LAT REV on an airport waypoint offers ARRIVAL>: the airport becomes the destination (route after it removed) and the ARRIVAL page opens.
