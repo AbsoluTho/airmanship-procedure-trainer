@@ -348,17 +348,32 @@ function directTo(id){if(!flying()||FL.ground)return err('NOT ALLOWED');
   if(!isDest&&!fixReg(id))return err('NOT IN DATA BASE');
   S.tmpy=clone(S.active);const q=S.tmpy,from=FL.fromIx;let ti=q.legs.findIndex((l,ix)=>ix>from&&(l.k==='wpt'||l.k==='dest')&&l.id===id);
   if(ti<0&&!isDest){q.legs.splice(from+1,0,W(id,{seg:'enr'}),{k:'disc'});ti=from+1}
-  q.legs.splice(from+1,ti-from-1,{k:'tp',id:'T-P',pos:FL.pos.slice(),trk:FL.trkT,gs:FL.gs,seg:'enr'});S.dirTo=id;normalize(q);ok()}
+  q.legs.splice(from+1,ti-from-1,{k:'tp',id:'T-P',pos:FL.pos.slice(),trk:FL.trkT,gs:FL.gs,seg:'enr'});S.dirTo=id;S.dirRad=null;normalize(q);ok()}
+/* DIR TO RADIAL IN (A320 FCOM): the radial inbound to the waypoint is drawn from an IN point on it; at INSERT the aircraft keeps its
+   heading with NAV armed and NAV engages on the radial. For a fix of the final approach (IF, FAF) the reciprocal of the final course
+   is proposed (small cyan), selected with the RADIAL IN key. */
+function dirRadSuggest(id){const p=S.active,ap=p&&p.appr&&(APPRS[destId()]||{})[p.appr];if(!ap)return null;
+  const onFinal=ap.final.some(l=>l.id===id)||Object.values(ap.vias||{}).some(v=>v.length&&v[v.length-1].id===id&&ap.final[0]&&ap.final[0].id===id);
+  return onFinal?((ap.crs+180)%360||360):null}
+function dirRadSet(rad){const q=S.tmpy;if(!q||!S.dirTo)return;const ti=q.legs.findIndex(l=>l.k==='tp');if(ti<0)return;const wp=DB.wpt[S.dirTo]||legPos(q.legs[ti+1]||{});if(!wp)return;
+  const vr=(DB.apt[destId()]||{}).var||0,d=Math.max(gc(FL.pos,wp)+40,50);   /* radial drawn well beyond the aircraft, so an intercept heading meets it */
+  q.legs[ti]=rad==null?{k:'tp',id:'T-P',pos:FL.pos.slice(),trk:FL.trkT,gs:FL.gs,seg:'enr'}:{k:'tp',id:'IN'+String(rad).padStart(3,'0'),pos:dst(wp,rad+vr,d),seg:'enr',radIn:rad};
+  S.dirRad=rad;normalize(q)}
 P.DIR={render(){cput(1,'DIR TO',S.tmpy&&S.dirTo?'y':'w');put(2,1,'DIR TO','w','S');
-  if(S.tmpy&&S.dirTo){put(3,0,'*'+S.dirTo,'y');rput(2,'RADIAL IN','w','S');rput(3,'[ ]°','b');put(4,1,'WITH','w','S');put(5,0,'*ABEAM PTS','b')}else put(3,0,'[     ]','b');
+  if(S.tmpy&&S.dirTo){put(3,0,'*'+S.dirTo,'y');rput(2,'RADIAL IN','w','S');const sg=dirRadSuggest(S.dirTo);
+    if(S.dirRad!=null)rput(3,String(S.dirRad).padStart(3,'0')+'°','y');else if(sg!=null)rput(3,String(sg).padStart(3,'0')+'°','b','S');else rput(3,'[ ]°','b');put(4,1,'WITH','w','S');put(5,0,'*ABEAM PTS','b')}else put(3,0,'[     ]','b');
   put(6,1,'F-PLN WPTS','w','S');const L=dirList();for(let j=0;j<dirRows();j++){const x=L[(S.dirOff||0)+j];if(x)put(7+2*j,0,'<'+x.l.id+(x.l.k==='dest'?(x.l.rwy||''):''),'g')}
   if(S.tmpy&&S.dirTo){put(12,1,'DIR TO','a','S');put(13,0,'←ERASE','a');rput(13,'INSERT*','a')}},
  lsk(s,n){const k=s+n;
   if(k==='L1'){const v=S.sp;if(!v)return;if(!/^[A-Z0-9]{2,5}$/.test(v))return err('FORMAT ERROR');return directTo(v)}
   if(s==='L'&&n>=3&&n<3+dirRows()){const x=dirList()[(S.dirOff||0)+n-3];if(!x)return;return directTo(x.l.id)}   /* the waypoint beside the key */
-  if(k==='L6'&&S.tmpy){S.tmpy=null;S.dirTo=null;return ok()}
-  if(k==='R6'&&S.tmpy&&S.dirTo){const tp=S.tmpy.legs.find(l=>l.k==='tp');if(tp&&flying())Object.assign(tp,{pos:FL.pos.slice(),trk:FL.trkT,gs:FL.gs});   /* the turn starts where INSERT is pressed */
-    S.active=S.tmpy;S.tmpy=null;S.dirTo=null;FCU.hdgMgd=true;if(flying()){FL.lat='NAV';FL.latArm=null}ok();return go('FPLN')}
+  if(k==='R1'&&S.tmpy&&S.dirTo){const v=S.sp;if(!v){const sg=dirRadSuggest(S.dirTo);if(sg==null)return;dirRadSet(sg);return}
+    if(v==='CLR'){dirRadSet(null);return ok()}if(!/^\d{1,3}$/.test(v)||+v>360)return err('FORMAT ERROR');dirRadSet(+v%360||360);return ok()}
+  if(k==='L6'&&S.tmpy){S.tmpy=null;S.dirTo=null;S.dirRad=null;return ok()}
+  if(k==='R6'&&S.tmpy&&S.dirTo){const tp=S.tmpy.legs.find(l=>l.k==='tp');if(tp&&tp.radIn==null&&flying())Object.assign(tp,{pos:FL.pos.slice(),trk:FL.trkT,gs:FL.gs});   /* the turn starts where INSERT is pressed */
+    const rin=S.dirRad!=null;S.active=S.tmpy;S.tmpy=null;S.dirTo=null;S.dirRad=null;
+    if(rin&&flying()){const vr=DB.apt[orig()].var||0;FCU.hdgMgd=false;FCU.hdg=Math.round((FL.trkT-vr+360)%360)||360;FL.lat=FCU.trkFpa?'TRK':'HDG';FL.latArm='NAV'}   /* RADIAL IN: present heading, NAV armed */
+    else{FCU.hdgMgd=true;if(flying()){FL.lat='NAV';FL.latArm=null}}ok();return go('FPLN')}
   return err('NOT ALLOWED')},
  slew(d){const n=dirList().length;S.dirOff=Math.max(0,Math.min(Math.max(0,n-dirRows()),(S.dirOff||0)-d))}};
 /* F-PLN waypoints shown on DIR TO: L3 to L6, or L3 to L5 while the temporary F-PLN shows ERASE/INSERT on L6 */

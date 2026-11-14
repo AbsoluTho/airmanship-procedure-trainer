@@ -57,6 +57,7 @@ function posAt(P,s){const a=P.pts;let i=1;while(i<a.length-1&&a[i].s<s)i++;const
 /* local flat projection around a point (NM) */
 function enu(o,p){return[(p[1]-o[1])*60*Math.cos(o[0]*D2R),(p[0]-o[0])*60]}
 /* closest point on the path: along-track distance and cross-track (+ right of track) */
+/* nearest point of the path: d = distance to the segment itself (NAV capture), xtk = signed distance to its line (guidance) */
 function project(P,pos,from,to){let best=null;const a=P.pts;
   for(let i=Math.max(1,from);i<=Math.min(a.length-1,to);i++){const A=a[i-1],B=a[i],b=enu(A.p,B.p),q=enu(A.p,pos),L2=b[0]*b[0]+b[1]*b[1]||1e-9;
     let f=(q[0]*b[0]+q[1]*b[1])/L2;f=Math.max(0,Math.min(1,f));const dx=q[0]-b[0]*f,dy=q[1]-b[1]*f,d=Math.hypot(dx,dy);
@@ -173,7 +174,7 @@ function fcuEvent(ev){if(!FL.active)return;const A=FCU.alt;
   if(ev==='vs-push'){if(FL.ground)return;FL.ver=FCU.trkFpa?'FPA':'V/S';FCU.vsVal=0;FCU.fpa=0;FL.verArm=[]}
   if(ev==='hdg-pull'){if(FL.ground){FL.latArm=null;return}FL.lat=FCU.trkFpa?'TRK':'HDG';FL.latArm=null}
   if(ev==='hdg-push'){if(FL.ground){FL.latArm='NAV';return}const pr=project(FL.path,FL.pos,1,FL.path.pts.length-1);
-    if(pr&&Math.abs(pr.xtk)<0.3){FL.lat='NAV';FL.latArm=null;FL.seg=pr.i;FL.s=pr.s}else FL.latArm='NAV'}
+    if(pr&&pr.d<0.3){FL.lat='NAV';FL.latArm=null;FL.seg=pr.i;FL.s=pr.s}else FL.latArm='NAV'}
   if(ev==='exped'){if(CLIMBING.includes(FL.ver))FL.ver=FCU.exped?'EXP CLB':'OP CLB';if(DESCENDING.includes(FL.ver))FL.ver=FCU.exped?'EXP DES':'OP DES'}
   setFma();refreshAll()}
 
@@ -239,7 +240,7 @@ function step(dt){const ias0=FL.ias;if(FL.sig!==planSig()&&!FL.ground)flightRepl
     /* ---- lateral ---- */
     /* takeoff: RWY on the ground, RWY TRK once airborne (NAV stays armed), NAV from 400 ft AAL */
     if(FL.lat==='RWY'&&agl()>30)FL.lat=FCU.hdgMgd||FL.latArm==='NAV'?'RWY TRK':(FCU.trkFpa?'TRK':'HDG');
-    if(FL.latArm==='NAV'&&pr&&Math.abs(pr.xtk)<0.6&&!(FL.lat==='GA TRK'&&agl()<100)&&FL.lat!=='RWY'&&!(FL.lat==='RWY TRK'&&agl()<400)){FL.lat='NAV';FL.latArm=null}
+    if(FL.latArm==='NAV'&&pr&&pr.d<0.6&&!(FL.lat==='GA TRK'&&agl()<100)&&FL.lat!=='RWY'&&!(FL.lat==='RWY TRK'&&agl()<400)){FL.lat='NAV';FL.latArm=null}
     const lg=hasLs()?locGeo(FL.pos):null,lsArmed=(FCU.loc||FCU.appr)&&lg;
     if(lsArmed&&!['LOC*','LOC','LAND'].includes(FL.lat)){if(FL.latArm!=='NAV')FL.latArm='LOC';
       const hdif=Math.abs(((lg.crs-FL.trkT+540)%360)-180);if(lg.along>0.5&&lg.along<30&&Math.abs(lg.xtk)<1.2&&hdif<100){FL.lat='LOC*';FL.latArm=null;FL.loc=true}}
@@ -253,7 +254,7 @@ function step(dt){const ias0=FL.ias;if(FL.sig!==planSig()&&!FL.ground)flightRepl
     else if(['LOC*','LOC','LAND'].includes(FL.lat)&&lg){const d=destRwy(),tgt=dst(d.r.pos,lg.crs+180,Math.max(-2,lg.along-L));trkT=brg(FL.pos,tgt)}
     /* ---- vertical ---- */
     const capBand=Math.max(80,Math.abs(FL.vs)*0.12),CK=cstrNow();FL.cst=CK;
-    const gp=FL.gear&&!FL.ground&&(['TAKEOFF','CLB','GA'].includes(S.phase)||CLIMBING.includes(FL.ver)||FL.ver==='SRS')?0.5:1;FL.gp=gp;   /* gear left down in the climb: half the climb rate and acceleration */
+    const gp=!FL.ground&&(['TAKEOFF','CLB','GA'].includes(S.phase)||CLIMBING.includes(FL.ver)||FL.ver==='SRS')?1-0.5*(FL.gearPos??1):1;FL.gp=gp;   /* gear drag follows the gear position: half rate down, full rate up and locked, gradual in transit */   /* gear left down in the climb: half the climb rate and acceleration */
     if(FL.ver==='SRS'){spdT=ga?FL.gaSpd:q.v2+10;vsT=(ga?Math.min(2400,FL.vs+600):2400)*gp;
       if(FL.alt>=acc){FL.opSmall=false;if(A>FL.alt+capBand){FL.ver=FL.verArm.includes('OP CLB')?'OP CLB':'CLB';FL.verArm=['ALT']}else{FL.ver='ALT*';FL.verArm=[]}if(!ga)S.phase='CLB'}}
     FL.soe=false;

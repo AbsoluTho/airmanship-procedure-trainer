@@ -242,6 +242,10 @@ async def run(url,b):
     assert fp==['FPA',0],f'FPA starts at 0.0 when selected: {fp}'
     arc=await pg.evaluate("(()=>{const p=newPlan('OEJN','OETB');setRunway(p,'16C');p.appr='VOR31-2';p.via='D179I';buildArr(p);const l=p.legs.find(l=>l.id==='D123I');return[l.lbl,l.ctr]})()")
     assert arc==['ARC','TBK'],f'VOR31-2 via D179I keeps the 9 DME arc to D123I: {arc}'
+    gt=await pg.evaluate("(()=>{const g0=FL.gearPos;FL.gearPos=0.5;const r=1-0.5*FL.gearPos;FL.gearPos=g0;return r})()")
+    assert gt==0.75,'gear in transit: half the penalty'
+    rs=await pg.evaluate("[dirRadSuggest('SOBOX'),dirRadSuggest('CI24'),dirRadSuggest('WEJ')]")
+    assert rs==[62,62,None],f'RADIAL IN proposed for the final approach fixes (ILS 24: radial 062): {rs}'
     fk=await pg.evaluate("(()=>{S.page='FPLN';S.fpOff=6;press('FPLN');return S.fpOff})()")
     assert fk==0,f'F-PLN key shows the F-PLN from the top: {fk}'
     h2=await pg.evaluate("(()=>{const L=window.__S().active.legs,i=L.findIndex(l=>l.k==='hold');return[L[i+1].k+':'+L[i+1].id,L[i+2].k]})()")
