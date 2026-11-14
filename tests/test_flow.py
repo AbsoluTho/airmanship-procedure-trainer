@@ -252,9 +252,9 @@ async def run(url,b):
         if(st===0&&FL.alt>2500){st=1;o.ca=id();newDest(S.active,0,'OEJN');const q=S.active;q.legs[idxK(q,'dest')].rwy='34R';q.appr='ILS34RZ';q.via='SOLOG';buildArr(q);normalize(q);FCU.hdgMgd=false;FCU.hdg=66;FL.lat='HDG'}
         if(st===1&&gc(FL.pos,DB.apt.OEJN.rwy['34R'].pos)>6){st=2;FCU.hdg=156}
         if(st===2&&FL.pos[0]<DB.wpt.PAXOS[0]-0.03){st=3;o.abeam=id();FCU.hdg=246}
-        if(st===3&&brg(FL.pos,DB.wpt.PAXOS)>275){st=4;directTo('PAXOS');S.sp='';P.DIR.lsk('R',1);P.DIR.lsk('R',6);o.fp=S.active.legs.slice(FL.fromIx+1).map(l=>l.id||l.k).slice(0,4).join(' ')}}
+        if(st===3&&brg(FL.pos,DB.wpt.PAXOS)>275){st=4;directTo('PAXOS');S.sp='';P.DIR.lsk('R',1);P.DIR.lsk('R',6);o.fp=S.active.legs.slice(FL.fromIx+1).map(l=>l.id||l.k).slice(0,4).join(' ');step(0.5);o.from=S.active.legs[FL.fromIx].id+' '+FL.lat+'/'+FL.latArm}}
       window.__flight('reset');PM_AUTO=pm;S.active=A0;S.tmpy=null;FCU.hdgMgd=true;return o})()""")
-    assert sq=={'ca':'(1548)','abeam':'(1548)','fp':'IN156 PAXOS NALPI OEJN'},f'downwind beside the final: nothing sequenced (FBW sequencing area); DIR TO PAXOS keeps NALPI and the runway: {sq}'
+    assert sq=={'ca':'(1548)','abeam':'(1548)','fp':'IN156 PAXOS NALPI OEJN','from':'IN156 HDG/NAV'},f'downwind beside the final: nothing sequenced (FBW sequencing area); DIR TO PAXOS keeps NALPI and the runway: {sq}'
     ab=await pg.evaluate("""(()=>{const A0=clone(S.active),f0=[FL.active,FL.ground,FL.pos,FL.trkT,FL.gs,FL.fromIx,FL.stage],r0=refreshAll,c0=fcuRefresh;refreshAll=()=>{};fcuRefresh=()=>{};
       const p=newPlan('OETB','OEJN');setRunway(p,'13');p.legs.splice(2,1);const di=idxK(p,'dest');p.legs.splice(di,0,W('PUSPO',{seg:'enr'}));p.appr='ILS34RZ';p.via='SOLOG';buildArr(p);normalize(p);p.legs=p.legs.filter(l=>l.k!=='disc');S.active=p;
       Object.assign(FL,{active:true,ground:false,stage:'AIR',pos:dst(DB.wpt.PUSPO,0,25),trkT:180,gs:300,fromIx:1});
@@ -263,6 +263,16 @@ async def run(url,b):
       const g=planGeo(S.active,'g',3),flown=g.lines.some(L=>L.ix!=null&&L.ix<=3)||g.wpts.some(w=>w.ix<3);
       Object.assign(FL,{active:f0[0],ground:f0[1],pos:f0[2],trkT:f0[3],gs:f0[4],fromIx:f0[5],stage:f0[6]});S.active=A0;S.tmpy=null;refreshAll=r0;fcuRefresh=c0;return[t,on,rad,a,flown]})()""")
     assert ab==['T-P ABPUS PAXOS',True,[False,False],'T-P ABPUS PAXOS',False],f'DIR TO WITH ABEAM PTS: ABPUS abeam PUSPO on the direct leg, cancelled by RADIAL IN; ND erases the flown route: {ab}'
+    pp=await pg.evaluate("""(()=>{const A0=clone(S.active),f0=[FL.active,FL.ground,FL.pos,FL.trkT,FL.fromIx,FL.alt,FL.stage,FL.path,FL.s],r0=refreshAll,c0=fcuRefresh;refreshAll=()=>{};fcuRefresh=()=>{};
+      const p=newPlan('OETB','OEJN');setRunway(p,'13');p.legs.splice(2,1);const di=idxK(p,'dest');p.legs.splice(di,0,W('PUSPO',{seg:'enr'}));normalize(p);p.legs=p.legs.filter(l=>l.k!=='disc');S.active=p;S.tmpy=null;
+      Object.assign(FL,{active:true,ground:false,stage:'AIR',pos:dst(DB.wpt.PUSPO,0,25),trkT:183,fromIx:1,alt:9000,path:buildPath(p),s:5});S.page='FPLN';S.fpOff=0;S.sp='';press('L1');render();
+      const t=[...document.querySelectorAll('#scr .ln')].map(l=>l.textContent).join('|'),lr=t.includes('LAT REV FROM PPOS')&&t.includes('<HOLD');press('L3');const h=S.tmpy.legs[S.hold];
+      const r=[lr,S.page,S.tmpy.legs.slice(2,5).map(l=>l.id||l.k).join(' '),h.crs,h.turn,h.time];press('R6');
+      const tk=[holdEntryType(177,336,true),holdEntryType(177,40,true),holdEntryType(177,90,true),holdEntryType(177,336,false)];
+      Object.assign(FL,{active:f0[0],ground:f0[1],pos:f0[2],trkT:f0[3],fromIx:f0[4],alt:f0[5],stage:f0[6],path:f0[7],s:f0[8]});S.active=A0;S.tmpy=null;S.page='FPLN';refreshAll=r0;fcuRefresh=c0;return[...r,tk]})()""")
+    assert pp==[True,'HOLD','PPOS HOLD R PUSPO',179,'R',1,['PARALLEL','TEARDROP','DIRECT','TEARDROP']],f'L1 in flight: LAT REV FROM PPOS, HOLD at the present position (track, right, 1 min); hold entries (FBW sectors): {pp}'
+    hg=await pg.evaluate("(()=>{const v=FL.active;FL.active=false;const r=[holdR(null),holdLen(null),holdLen({time:1.5}),holdLen({dist:6})];FL.active=v;return r.map(x=>Math.round(x*10)/10)})()")
+    assert 1.2<=hg[0]<=1.6 and 3.3<=hg[1]<=3.8 and abs(hg[2]-1.5*hg[1])<0.2 and hg[3]==6,f'hold: 25 deg bank radius, 1 min legs at the hold speed, distance entered: {hg}'
     fk=await pg.evaluate("(()=>{S.page='FPLN';S.fpOff=6;press('FPLN');return S.fpOff})()")
     assert fk==0,f'F-PLN key shows the F-PLN from the top: {fk}'
     h2=await pg.evaluate("(()=>{const L=window.__S().active.legs,i=L.findIndex(l=>l.k==='hold');return[L[i+1].k+':'+L[i+1].id,L[i+2].k]})()")
@@ -336,8 +346,8 @@ async def run(url,b):
     await pg.evaluate("window.__flight('reset');window.__S().active=clone(window.__plan0)")
     # ---- LEVERS (no pilot monitoring): take-off by the thrust levers, LVR CLB until CL, gear left down halves the climb, VFE limit ----
     r=await pg.evaluate("""(()=>{const fly=(gearUp)=>{window.__flight('reset');window.__flight('pm:off');S.active=clone(window.__plan0);S.tmpy=null;FCU.alt=7000;FCU.hdgMgd=true;FCU.spdMgd=true;
-        lever('flaps',1);window.__flight('start');const o={};for(let n=0;n<40;n++)step(0.5);o.lineup=[FL.stage,FL.ias];lever('thr','N50');for(let n=0;n<10;n++)step(0.5);
-        o.n1=Math.round(engStep()[0].n1);lever('thr','FLX');let n=0;while(FL.stage!=='AIR'&&n<400){step(0.5);n++}const t0=FL.t,a0=FL.alt;
+        lever('flaps',1);window.__flight('start');const o={};for(let n=0;n<40;n++)step(0.5);setFma();o.lineup=[FL.stage,FL.ias];o.fma0=[FL.fma.c2[0],FL.fma.c3[0],!!FL.fma.c2[1]];lever('thr','N50');for(let n=0;n<10;n++)step(0.5);
+        o.n1=Math.round(engStep()[0].n1);lever('thr','FLX');step(0.5);setFma();o.fma1=[FL.fma.c2[0][0],FL.fma.c3[0][0]];let n=0;while(FL.stage!=='AIR'&&n<400){step(0.5);n++}const t0=FL.t,a0=FL.alt;
         while(FL.t-t0<25){step(0.5);if(gearUp&&FL.alt-groundElev()>50&&LV.gear==='DOWN')lever('gear','UP')}o.climb=FL.alt-a0;
         while(FL.alt-groundElev()<2500)step(0.5);o.thr=FL.thr;lever('thr','CL');step(0.5);o.thr2=FL.thr;
         n=0;while(n<500){step(0.5);n++}o.ias=Math.round(FL.ias);o.conf=FL.conf;o.gear=FL.gear;return o};
@@ -356,6 +366,7 @@ async def run(url,b):
     assert e[0]=='off' and 16<=e[1]<=17 and e[2]>=500 and e[3]=='run' and e[4]==59 and e[5]=='run' and e[6]=='off' and e[7]=='run',f'engine start/shutdown: {e}'
     m=await pg.evaluate("(()=>{LV.m1=LV.m2=false;lever('master',1);const off=LV.m1;lever('master',1);window.__flight('start');const a=[LV.m1,LV.m2];lever('master',1);const b=LV.m1;window.__flight('reset');return[off,a,b]})()")
     assert m==[True,[True,True],True],f'ENG MASTER ON while the engines run, not switchable in flight: {m}'
+    assert r['a']['fma0'][:2]==[None,None] and r['a']['fma0'][2] and r['a']['fma1']==['SRS','RWY'],f'take-off FMA: armed modes only until FLX/TOGA, then SRS and RWY: {r["a"]}'
     assert r['a']['lineup']==['LINEUP',0] and r['a']['n1']==50,f'lined up, still until the thrust levers move; 50% N1: {r["a"]}'
     assert r['a']['thr']=='LVR' and r['a']['thr2']=='CL','LVR CLB until the thrust levers are set to CL'
     assert 0.35<r['a']['climb']/r['b']['climb']<0.7,f'gear left down: about half the climb: {r["a"]["climb"]} vs {r["b"]["climb"]}'

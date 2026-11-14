@@ -27,13 +27,16 @@ function buildPath(plan){const p=plan||S.active,pts=[],holds=[];let vr=DB.apt[p.
       if(l.lbl==='ARC'&&l.ctr&&DB.wpt[l.ctr]&&prev)arcPts(prev.p,pos,DB.wpt[l.ctr]).slice(1,-1).forEach(q=>push(q,null));
       push(pos,ix);continue}
     /* pilot-entered hold (HOLD page): one racetrack circuit after its fix, repeated in flight until the exit */
-    if(l.k==='hold'&&l.fix&&pts.length){const F=pts[pts.length-1];const loop=holdLoop(F.p,l.crs+(l.seg==='ga'?(DB.apt[p.legs[idxK(p,'dest')].id].var||0):vr),l.turn!=='L',holdLen(l),HOLD_R);
-      F.h0=ix;loop.slice(1).forEach((q,k)=>{pts.push({p:q,ix:k===loop.length-2?ix:null})});pts[pts.length-1].h1=ix;holds.push(ix);continue}
+    if(l.k==='hold'&&l.fix&&pts.length){const F=pts[pts.length-1],crsT=l.crs+(l.seg==='ga'?(DB.apt[p.legs[idxK(p,'dest')].id].var||0):vr),right=l.turn!=='L';
+      const R=holdR(l),L=holdLen(l),trkIn=pts.length>1?brg(pts[pts.length-2].p,F.p):null,en=holdEntry(F.p,trkIn,crsT,right,L,R);
+      Object.assign(l,{_R:R,_L:L,_entry:en.type});F.he=ix;let H0=F;   /* entry (teardrop, parallel) between the first and second passage of the fix */
+      if(en.pts.length){en.pts.forEach(q=>pts.push({p:q,ix:null}));H0={p:F.p.slice(),ix:null};pts.push(H0)}
+      const loop=holdLoop(H0.p,crsT,right,L,R);H0.h0=ix;loop.slice(1).forEach((q,k)=>{pts.push({p:q,ix:k===loop.length-2?ix:null})});pts[pts.length-1].h1=ix;holds.push(ix);continue}
     if(l.k==='dest'){const ap=DB.apt[l.id],r=ap.rwy[l.rwy];if(!r){push(ap.pos,ix);break}push(r.pos,ix);push(dst(r.pos,r.crs+(ap.var||0),r.len/1852*0.75),null);break}}
   if(p.ofst)offsetPts(pts,p);
   let s=0;pts.forEach((q,i)=>{if(i)s+=gc(pts[i-1].p,q.p);q.s=s});
   const thr=pts.find(q=>q.ix!=null&&p.legs[q.ix].k==='dest')||pts[pts.length-1];
-  const H=holds.map(ix=>{const i0=pts.findIndex(q=>q.h0===ix),i1=pts.findIndex(q=>q.h1===ix);return{ix,i0,s0:pts[i0].s,s1:pts[i1].s}}).filter(h=>h.i0>=0);
+  const H=holds.map(ix=>{const i0=pts.findIndex(q=>q.h0===ix),i1=pts.findIndex(q=>q.h1===ix),ie=pts.findIndex(q=>q.he===ix);return{ix,i0,s0:pts[i0].s,s1:pts[i1].s,sE:ie>=0?pts[ie].s:pts[i0].s}}).filter(h=>h.i0>=0);
   const oe=pts.find(q=>q.oe),os_=pts.find(q=>q.os);
   return{pts,len:s,sThr:thr.s,holds:H,ofstEnd:oe?oe.s:null,ofstStart:os_?os_.s:null}}
 /* DIR TO (FlyByWire DF leg geometry): from the turn point, a turn on the track flown when DIR TO was inserted, at the
@@ -51,9 +54,16 @@ function dirArc(p,ix){const l=p.legs[ix];if(l.trk==null)return[];
 const planSig=()=>{const p=S.active;return p?p.legs.map(l=>l.k+(l.id||'')+(l.rwy||'')+(l.k==='hold'?[l.crs,l.turn,l.time,l.dist].join(','):'')).join('|')+(p.appr||'')+(p.ofst?'|OFST'+p.ofst.side+p.ofst.nm:''):''};
 /* the active F-PLN changed in flight (DIR TO, ENABLE ALTN, new approach...): rebuild the path from the present position */
 function flightReplan(){const P=buildPath();FL.path=P;const pr=project(P,FL.pos,1,P.pts.length-1);FL.s=pr?pr.s:0;FL.seg=pr?pr.i:1;FL.fromIx=0;
+  {const ti=S.active.legs.reduce((a,l,i)=>l.k==='tp'?i:a,-1);if(ti>=0)FL.fromIx=ti}   /* after a DIR TO the T-P (or the RADIAL IN point) is the FROM */
+  /* sequencing area (FBW LnavDriver): the nearest part of the path counts only within 7 NM and 90 deg of it (RADIAL IN: the final course
+     near the aircraft is not sequenced); otherwise the distance runs direct to the TO waypoint */
+  if(pr&&!['NAV','RWY','RWY TRK','LOC*','LOC','LAND','ROLL OUT'].includes(FL.lat)&&!FL.ground){const a=P.pts,A=a[pr.i-1],B=a[pr.i],tae=Math.abs(((brg(A.p,B.p)-FL.trkT+540)%360)-180);
+    if(Math.abs(pr.xtk)>=7||tae>=90){const k=a.findIndex(q=>q.ix!=null&&q.ix>FL.fromIx);if(k>0){FL.s=Math.min(pr.s,a[k].s-gc(FL.pos,a[k].p));FL.seg=k}}}
   for(const pt of P.pts)if(pt.ix!=null&&pt.s<=FL.s+0.05&&pt.ix>FL.fromIx)FL.fromIx=pt.ix;FL.td=P.sThr-tdDist();FL.sig=planSig();FL.tdReached=false}
 function posAt(P,s){const a=P.pts;let i=1;while(i<a.length-1&&a[i].s<s)i++;const A=a[i-1],B=a[i],f=Math.max(0,Math.min(1,(s-A.s)/((B.s-A.s)||1)));
   return{pos:[A.p[0]+(B.p[0]-A.p[0])*f,A.p[1]+(B.p[1]-A.p[1])*f],trk:brg(A.p,B.p),i}}
+/* track angle error to the path segment of a projection (NAV engages only within 90 deg of the leg, not across it the wrong way) */
+const navTae=(P,pr)=>{const A=P.pts[pr.i-1],B=P.pts[pr.i];return A&&B?Math.abs(((brg(A.p,B.p)-FL.trkT+540)%360)-180):0};
 /* local flat projection around a point (NM) */
 function enu(o,p){return[(p[1]-o[1])*60*Math.cos(o[0]*D2R),(p[0]-o[0])*60]}
 /* closest point on the path: along-track distance and cross-track (+ right of track) */
@@ -193,6 +203,8 @@ function setFma(){const st=FL.stage,a=S.perf,fx=a.flex!=null&&S.phase!=='GA'?'FL
     else f.c1=[[FL.spdIsMach?'MACH':'SPEED','g']]}
   if(guide&&st!=='IDLE'){
     if(['LAND','FLARE','ROLL OUT'].includes(FL.ver))f.land=FL.ver;
+    /* lined up: SRS and RWY engage only when the thrust levers are set to FLX/MCT or TOGA; until then the armed modes only */
+    else if(st==='LINEUP'){f.c2=[null,FL.verArm.length?[FL.verArm.join(' '),'b']:null];f.c3=[null,FL.latArm?[FL.latArm,'b']:null]}
     else{const crzAlt=FCU.alt===I().crz*100&&FL.alt>20000;
       const sg=v=>v>0?'+'+v:v<0?'-'+Math.abs(v):'0';   /* V/S +1500, V/S -500, V/S 0; FPA +3.0° */
       const vtxt=FL.ver==='V/S'?'V/S '+sg(Math.round(FCU.vsVal||0)):FL.ver==='FPA'?'FPA '+(FCU.fpa>0?'+':FCU.fpa<0?'-':'')+Math.abs(FCU.fpa||0).toFixed(1)+'°':FL.ver;
@@ -249,7 +261,7 @@ function step(dt){const ias0=FL.ias;if(FL.sig!==planSig()&&!FL.ground)flightRepl
     /* ---- lateral ---- */
     /* takeoff: RWY on the ground, RWY TRK once airborne (NAV stays armed), NAV from 400 ft AAL */
     if(FL.lat==='RWY'&&agl()>30)FL.lat=FCU.hdgMgd||FL.latArm==='NAV'?'RWY TRK':(FCU.trkFpa?'TRK':'HDG');
-    if(FL.latArm==='NAV'&&pr&&pr.d<0.6&&!(FL.lat==='GA TRK'&&agl()<100)&&FL.lat!=='RWY'&&!(FL.lat==='RWY TRK'&&agl()<400)){FL.lat='NAV';FL.latArm=null}
+    if(FL.latArm==='NAV'&&pr&&pr.d<0.6&&navTae(P,pr)<90&&!(FL.lat==='GA TRK'&&agl()<100)&&FL.lat!=='RWY'&&!(FL.lat==='RWY TRK'&&agl()<400)){FL.lat='NAV';FL.latArm=null}
     const lg=hasLs()?locGeo(FL.pos):null,lsArmed=(FCU.loc||FCU.appr)&&lg;
     if(lsArmed&&!['LOC*','LOC','LAND'].includes(FL.lat)){if(FL.latArm!=='NAV')FL.latArm='LOC';
       const hdif=Math.abs(((lg.crs-FL.trkT+540)%360)-180);if(lg.along>0.5&&lg.along<30&&Math.abs(lg.xtk)<1.2&&hdif<100){FL.lat='LOC*';FL.latArm=null;FL.loc=true}}
@@ -325,7 +337,10 @@ function step(dt){const ias0=FL.ias;if(FL.sig!==planSig()&&!FL.ground)flightRepl
         else if(S.phase==='GA')spdT=sp.GD;
         else if(S.phase==='APPR'){const vapp=p2.vapp??sp.VLS+5;spdT={'0':sp.GD,'1':sp.S,'1+F':sp.S,'2':sp.F,'3':Math.max(vapp,sp.F-10),FULL:vapp}[FL.conf]??sp.GD}}   /* the speed of the configuration actually set */
       /* managed speed in a hold: the hold speed, from the deceleration point before its fix */
-      {const hs=holdSpd(),nh=(P.holds||[]).find(h=>FL.holdExit!==h.ix&&h.s1>FL.s);if(nh&&(FL.inHold===nh.ix||nh.s0-FL.s<=Math.max(0,FL.ias-hs)*0.07+2)){FL.hsActive=nh.ix;if(FCU.spdMgd||FCU.spd==null){spdT=Math.min(spdT,hs);mm=false}}else FL.hsActive=null}
+      /* clean: green dot (hold speed); flaps extended: the speed of the configuration. After the exit the speed of the phase comes back
+         (in the approach phase, green dot clean) */
+      {const vapp=p2.vapp??sp.VLS+5,hs=FL.conf==='0'?holdSpd():({'1':sp.S,'1+F':sp.S,'2':sp.F,'3':Math.max(vapp,sp.F-10),FULL:vapp}[FL.conf]??sp.GD);
+        const nh=(P.holds||[]).find(h=>FL.holdExit!==h.ix&&h.s1>FL.s);if(nh&&(FL.inHold===nh.ix||FL.s>=nh.sE-0.05||nh.sE-FL.s<=Math.max(0,FL.ias-hs)*0.07+2)){FL.hsActive=nh.ix;if(FCU.spdMgd||FCU.spd==null){spdT=Math.min(spdT,hs);mm=false}}else FL.hsActive=null}
       /* engine out (FMGC EO condition): managed speed green dot in climb and cruise */
       if(FL.eoEng&&S.eo&&(FCU.spdMgd||FCU.spd==null)&&['CLB','CRZ'].includes(S.phase)){spdT=sp.GD;mm=false}
       FL.spdIsMach=!FCU.spdMgd&&FCU.spd!=null?FCU.mach:mm;if(FCU.spdMgd)FCU.mach=mm;

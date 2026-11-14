@@ -4,7 +4,7 @@ An unofficial A320 **procedure** trainer that runs in the browser (iPad first). 
 
 Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator manuals. The navigation data was typed from charts for training only and must never be used for navigation.
 
-## Status: Phase 2 prototype (v0.15.7)
+## Status: Phase 2 prototype (v0.16.0)
 
 - **MCDU** (Thales FMS2 layout, per FCOM DSC-22): keyboard and scratchpad, INIT A, F-PLN with TMPY (ERASE/INSERT), LAT REV, DEPARTURE, AIRWAYS (with airway-to-airway intersection), ARRIVAL, waypoint insertion, CLR of waypoints and discontinuities.
 - **Exercise** OEJN to OETB: RWY 16C MIGD2E, L677 WEJ, V54 TBK, ILS 31 via D179O, ALTN OEMA, FL340, CI 20, with automatic progress checks.
@@ -12,6 +12,11 @@ Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator
 - **ND** (ROSE LS, ROSE VOR, ROSE NAV, ARC, PLAN; range 10 to 320 NM; CSTR, WPT, ARPT options; ROSE LS and ROSE VOR show the compass only for now): active F-PLN in green, TMPY in yellow dashed, missed approach in blue, alternate route in blue dashed, DME arcs and holds drawn. PLAN centres on the waypoint on the second line of the MCDU F-PLN page. Also live on both NDs in the 3D cockpit (EXT PWR on).
 - **INIT B**: TAXI, ZFW/ZFWCG, BLOCK, TRIP/TIME, RTE RSV, ALTN, FINAL, EXTRA, TOW/LW, TRIP WIND, MIN DEST FOB. **F-PLN** now shows TIME predictions and EFOB at destination once ZFW and BLOCK are entered.
 - **PERF TAKE OFF**: V1/VR/V2 (with V1/VR/V2 DISAGREE), F/S/O speeds, RWY, TO SHIFT, FLAPS/THS, FLEX, TRANS ALT, THR RED/ACC, ENG OUT ACC. Changing the takeoff runway clears the V speeds (CHECK TAKE OFF DATA).
+- **Holds** (v0.16.0, FlyByWire HX leg and HoldEntryTransition): turn radius from the hold ground speed at 25° of bank, legs of 1 min (1.5 min above FL140) at that speed or the distance entered; entries by the FBW sectors: teardrop (30° to the holding side, turn in the hold direction, intercept), parallel (outbound on the non-holding side, turn back through the holding side, 45° intercept) or direct. The entry is drawn on the ND until the racetrack is reached. Managed speed in the hold: green dot clean (the configuration speed with flaps); after the exit, the speed of the phase (green dot clean in the approach phase).
+- **HOLD at PPOS** (v0.16.0, FCOM): in flight the FROM line (L1) opens LAT REV FROM PPOS; HOLD makes the present position the hold fix (inbound course the present track, right turns, 1 min); after the hold the F-PLN continues to the next waypoint.
+- **RADIAL IN fix** (v0.16.0): after INSERT the IN point is the FROM and the radial is drawn from the waypoint (the final course extended); the rebuild uses the sequencing area, and NAV engages only within 90° of the leg (not across the final the wrong way).
+- **LOC deviation** (v0.16.0): the PFD localizer diamond was inverted; left of the course it now shows to the right.
+- **Take-off FMA** (v0.16.0): lined up, only the armed modes; SRS and RWY engage when the thrust levers reach FLX/MCT or TOGA.
 - **DIR TO WITH ABEAM PTS** (v0.15.7, A320 FCOM; not implemented in FlyByWire): each waypoint bypassed by the DIR TO is projected on the direct leg and inserted as an abeam point named AB plus the first letters of the bypassed waypoint (PUSPO: ABPUS), without constraints; only the points that fall on the direct leg are kept. Selecting it cancels a RADIAL IN, and the reverse.
 - **ND flown route erased** (v0.15.7): in flight the route behind the FROM waypoint is no longer drawn; the FROM waypoint and the active leg stay.
 - **Landing** (v0.15.7): the flare takes about half the time (about 7 s from 40 ft, 1 kt/s lost); the roll-out deceleration is gentler (autobrake LO/MED/MAX 2.5/3.7/4.6 kt/s, MAX REV +1.1).

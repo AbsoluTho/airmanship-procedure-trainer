@@ -64,7 +64,7 @@ function drawPFD(g,W,H,powered){g.save();g.setTransform(1,0,0,1,0,0);g.fillStyle
   /* ---- ILS deviation (on approach) ---- */
   if((FCU.appr||FCU.loc)&&!EFIS.ls&&hasLsSel()&&Math.floor(Date.now()/500)%2===0)T('LS',215,525,'a',22,'center',700);   /* ILS / LOC approaches only */
   if(EFIS.ls&&hasLsSel()){const d=destRwy(),thr=d.r.pos,crsT=d.r.crs+(d.a.var||0),pos0=on?FL.pos:acState().pos,alt0=alt,dist=gc(pos0,thr);
-    const ang=((brg(pos0,thr)-crsT+540)%360)-180,locDots=Math.max(-2.2,Math.min(2.2,-ang/0.8));
+    const ang=((brg(pos0,thr)-crsT+540)%360)-180,locDots=Math.max(-2.2,Math.min(2.2,ang/0.8))   /* aircraft left of the course: localizer (diamond) to the right */;
     const gsAng=Math.atan2(alt0-(d.tdze+50),Math.max(0.1,dist)*6076)/D2R,gsDots=Math.max(-2.2,Math.min(2.2,(gsAng-3)/0.4)),rx=dist<25&&Math.abs(ang)<35;
     for(let k=-2;k<=2;k++)if(k){g.strokeStyle=PC.w;g.lineWidth=2;g.beginPath();g.arc(CX+k*36,512,4,0,7);g.stroke();g.beginPath();g.arc(450,SY-k*36,4,0,7);g.stroke()}
     L(CX,502,CX,522,'y',3);L(440,SY,460,SY,'y',3);

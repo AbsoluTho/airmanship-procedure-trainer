@@ -195,7 +195,7 @@ P.FPLN={render(){const p=cur(),rows=fplnRows(p),ds=p?dists(p):[];
     if(r.k==='disc')q.legs.splice(r.ix,1);else q.legs.splice(r.ix,1,{k:'disc'});normalize(q);return ok()}
   if(v){if(r.k==='orig')return err('NOT ALLOWED');if(!/^[A-Z0-9]{2,5}$/.test(v))return err('FORMAT ERROR');
     if(!fixReg(v))return err('NOT IN DATA BASE');insertWpt(edit(),r.ix,v,false);return ok()}
-  if(r.k!=='orig'&&r.k!=='wpt'&&r.k!=='dest')return err('NOT ALLOWED');
+  if(r.k!=='orig'&&r.k!=='wpt'&&r.k!=='dest'&&!(flying()&&!FL.ground&&r.ix===FL.fromIx))return err('NOT ALLOWED');   /* in flight the FROM line (T-P, climb leg too) opens LAT REV FROM PPOS */
   S.lr=r.ix;go('LATREV')},
  slew(d){const p=cur();const n=fplnRows(p).length;S.fpOff=Math.max(0,Math.min(n-1,S.fpOff+d))}};
 
