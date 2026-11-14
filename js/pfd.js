@@ -82,7 +82,7 @@ function drawPFD(g,W,H,powered){g.save();g.setTransform(1,0,0,1,0,0);g.fillStyle
     for(let y=sy(ap_);y<sy(vsw);y+=10){g.fillStyle=PC.a;g.fillRect(120,y,8,5);g.fillStyle='#000';g.fillRect(120,y+5,8,5)}
     g.fillStyle=PC.r;g.fillRect(120,sy(vsw),8,520-sy(vsw));
     FL._cs={conf:FL.conf,GD:sp.GD,S:sp.S,F:sp.F}}
-  if(on&&FL.ground&&FL.stage==='ROLL'){T('1',124,sy(S.perf.v1),'b',22);
+  if(on&&FL.ground&&['LINEUP','ROLL'].includes(FL.stage)){if(S.perf.v1)T('1',124,sy(S.perf.v1),'b',22);   /* the pilot's V speeds: V1 '1', VR circle, V2 target */
     /* VR: cyan hollow circle, a little smaller than the green dot */
     if(S.perf.vr){g.strokeStyle=PC.b;g.lineWidth=2.5;g.beginPath();g.arc(129,sy(S.perf.vr),4,0,7);g.stroke()}}
   g.restore();
@@ -94,7 +94,7 @@ function drawPFD(g,W,H,powered){g.save();g.setTransform(1,0,0,1,0,0);g.fillStyle
     else if(c.conf==='2'||c.conf==='3'){const y=sy(c.F);if(inT(y)){L(120,y,131,y,'g',2.5);g.fillStyle=PC.bg;g.fillRect(134,y-11,16,22);T('F',142,y,'g',22,'center')}}}
   /* target speed: magenta triangle, or the value above or below the tape */
   const sel=!FCU.spdMgd&&FCU.spd!=null&&!(on&&(FL.stage==='ROLL'||FL.ver==='SRS')),tc=sel?'b':'m';
-  const tgt=sel?Math.round(FCU.mach?iasOf(FCU.spd*sos(alt),alt):FCU.spd):on?Math.round(FL.stage==='ROLL'?S.perf.v2:(FL.ver==='SRS'?S.perf.v2+10:(FL.spdT??FL.ias))):(S.perf.v2||null);
+  const tgt=sel?Math.round(FCU.mach?iasOf(FCU.spd*sos(alt),alt):FCU.spd):on?Math.round(['LINEUP','ROLL'].includes(FL.stage)?S.perf.v2:(FL.ver==='SRS'&&S.phase!=='GA'?S.perf.v2:FL.ver==='SRS'?FL.gaSpd||S.perf.v2+10:(FL.spdT??FL.ias))):(S.perf.v2||null);
   /* above the tape: SPEED or MACH and the target in that unit (magenta managed, cyan selected) */
   const isM=on&&!FL.ground&&FL.ver!=='SRS'&&!!FL.spdIsMach,mTgt=isM?(sel?FCU.spd:FL.ver==='EXP DES'?0.80:mgd.crzM()):null;
   if(on&&!FL.ground&&tgt){T(isM?'MACH':'SPEED',87,140,'w',19,'center');T(isM?'.'+String(Math.round(mTgt*100)).padStart(2,'0'):String(tgt),87,166,tc,23,'center')}

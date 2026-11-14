@@ -25,8 +25,10 @@ function dropSeg(p,...segs){p.legs=p.legs.filter(l=>!segs.includes(l.seg))}
 /* first departure leg: climb on runway track to 400 ft AAL (SID) or 1500 ft AAL (runway only, visual departure) */
 function caLeg(p,aal){const ap=DB.apt[p.legs[0].id],r=ap.rwy[p.rwy],a=Math.round((r.tdze??ap.elev)+aal);
   return{k:'ca',id:'('+a+')',lbl:'C'+String(r.crs).padStart(3,'0')+'°',ca:a,aal,seg:'dep',via:p.sid||''}}
-/* NO SID: the runway threshold only, followed by a discontinuity (no climb leg, no SID) */
-function setNoSid(p){dropSeg(p,'dep');p.legs=p.legs.filter((l,i)=>!(i>0&&l.k==='ca'));p.sid=null;p.trans=null;p.noSid=true;if(p.legs[1]&&p.legs[1].k!=='disc')p.legs.splice(1,0,{k:'disc'});normalize(p)}
+/* NO SID: the runway, a climb on runway track to 1500 ft AAL (named runway elevation + 1500), then a discontinuity */
+function setNoSid(p){dropSeg(p,'dep');p.legs=p.legs.filter((l,i)=>!(i>0&&l.k==='ca'));p.sid=null;p.trans=null;p.noSid=true;
+  p.legs.splice(1,0,Object.assign(caLeg(p,1500),{via:''}));   /* runway track until 1500 ft AAL, named runway elevation + 1500, e.g. (4520) */
+  if(p.legs[2]&&p.legs[2].k!=='disc')p.legs.splice(2,0,{k:'disc'});normalize(p)}
 function setRunway(p,r){p.rwy=r;p.legs[0].rwy=r;dropSeg(p,'dep');p.sid=null;p.trans=null;p.noSid=false;
   p.legs.splice(1,0,caLeg(p,1500));if(p.legs[2].k!=='disc')p.legs.splice(2,0,{k:'disc'});normalize(p)}
 function setSid(p,sid){dropSeg(p,'dep');p.sid=sid;p.noSid=false;const legs=[caLeg(p,400),...clone(SIDS[p.legs[0].id][p.rwy][sid]).map(l=>l.k==='ca'?caLeg(p,l.aal):l).map(l=>Object.assign(l,{seg:'dep',via:sid}))];   /* radar SIDs: a climb leg to their altitude */
@@ -178,13 +180,13 @@ P.FPLN={render(){const p=cur(),rows=fplnRows(p),ds=p?dists(p):[];
   /* ALTN route: a waypoint typed on the discontinuity or on a waypoint is inserted there; CLR on the discontinuity joins DCT */
   if(r.k==='altdisc'||r.k==='altwpt'){const R=altRte(),v=S.sp;if(!v)return err('NOT ALLOWED');
     if(v==='CLR'){if(r.k==='altdisc')R.dct=true;else R.wpts.splice(r.i,1);return ok()}
-    if(!DB.wpt[v]&&!(DB.nav&&DB.nav[v]))return err('NOT IN DATA BASE');if(!DB.wpt[v])DB.wpt[v]=DB.nav[v].pos;
+    if(!fixReg(v))return err('NOT IN DATA BASE');
     R.wpts.splice(r.k==='altdisc'?R.wpts.length:r.i,0,v);return ok()}
   const v=S.sp;
   if(v==='CLR'){if(r.k==='orig'||r.k==='dest')return err('NOT ALLOWED');const q=edit();
     if(r.k==='disc')q.legs.splice(r.ix,1);else q.legs.splice(r.ix,1,{k:'disc'});normalize(q);return ok()}
   if(v){if(r.k==='orig')return err('NOT ALLOWED');if(!/^[A-Z0-9]{2,5}$/.test(v))return err('FORMAT ERROR');
-    if(!DB.wpt[v])return err('NOT IN DATA BASE');insertWpt(edit(),r.ix,v,false);return ok()}
+    if(!fixReg(v))return err('NOT IN DATA BASE');insertWpt(edit(),r.ix,v,false);return ok()}
   if(r.k!=='orig'&&r.k!=='wpt'&&r.k!=='dest')return err('NOT ALLOWED');
   S.lr=r.ix;go('LATREV')},
  slew(d){const p=cur();const n=fplnRows(p).length;S.fpOff=Math.max(0,Math.min(n-1,S.fpOff+d))}};
@@ -209,7 +211,7 @@ P.LATREV={render(){const p=cur(),l=S.lr===-1?{k:'altn',id:I().altn,rwy:I().altnR
   if(k==='L4'&&l.k==='dest'){const v=S.sp;if(!v)return;if(v==='CLR'){I().altn=null;I().altnRwy=null;return ok()}if(!/^[A-Z]{4}$/.test(v))return err('FORMAT ERROR');if(!DB.apt[v])return err('NOT IN DATA BASE');I().altn=v;I().altnRwy=null;return ok()}
   if(k==='L4'&&l.k==='wpt'&&I().altn&&!S.secMode){enableAltn(S.lr);return go('FPLN')}
   if(k==='R3'&&l.k!=='dest'){const v=S.sp;if(!v)return;if(!/^[A-Z0-9]{2,5}$/.test(v))return err('FORMAT ERROR');
-    if(!DB.wpt[v])return err('NOT IN DATA BASE');insertWpt(edit(),S.lr,v,true);ok();return go('FPLN')}
+    if(!fixReg(v))return err('NOT IN DATA BASE');insertWpt(edit(),S.lr,v,true);ok();return go('FPLN')}
   if(k==='R5'&&l.k==='wpt'){S.awy={idx:S.lr,rows:[]};return go('AWY')}
   return err('NOT IN PROTOTYPE')}};
 
@@ -293,7 +295,7 @@ P.AWY={render(){const p=cur(),a=S.awy;
       const X=cand[0];const q=edit();a.idx=insertAwy(q,a.idx,last.via,X);last.to=X;R.push({via:v,to:null,fromId:X});return ok()}
     if(!AWY[v].includes(fromId))return err('AWY/WPT MISMATCH');
     R.push({via:v,to:null,fromId});return ok()}
-  if(!DB.wpt[v])return err('NOT IN DATA BASE');
+  if(!fixReg(v))return err('NOT IN DATA BASE');
   if(pend&&n-1===R.length-1){if(!AWY[last.via].includes(v)||v===last.fromId)return err('AWY/WPT MISMATCH');
     const q=edit();a.idx=insertAwy(q,a.idx,last.via,v);last.to=v;return ok()}
   if(!pend&&n-1===R.length){if(v===fromId)return err('NOT ALLOWED');const q=edit();a.idx=insertAwy(q,a.idx,null,v);R.push({via:'DCT',to:v,fromId});return ok()}
@@ -377,7 +379,7 @@ P.PERFTO={render(){const q=S.perf,f=S.fuel,B=BOX,rw=S.active&&S.active.rwy;
   case'R1':return err('NOT ALLOWED');
   case'R2':{if(C){q.shift=null;return ok()}if(!/^\d{1,4}$/.test(v))return err('FORMAT ERROR');const p=S.active,rw=p&&p.rwy&&DB.apt[p.legs[0].id].rwy[p.rwy];
     if(!rw)return err('NOT ALLOWED');if(+v>=rw.len)return err('ENTRY OUT OF RANGE');q.shift=+v||null;return ok()}
-  case'R3':{if(C){q.flaps=null;q.ths=null;return ok()}const m=v.match(/^([123])?(?:\/(?:(UP|DN)(\d(?:\.\d)?)|(\d(?:\.\d)?)(UP|DN)))?$/);
+  case'R3':{if(C){q.flaps=null;q.ths=null;return ok()}const m=v.match(/^([123])?(?:\/(?:(UP|DN)(\d?\.\d|\d(?:\.\d)?)|(\d?\.\d|\d(?:\.\d)?)(UP|DN)))?$/);   /* 1/UP0.4, 1/0.4UP, 1/.4UP, 1/UP.4, /.4UP */
     if(!m||(!m[1]&&!m[2]&&!m[5]))return err('FORMAT ERROR');const dir=m[2]||m[5],val=m[3]||m[4];
     if(val!=null&&+val>5)return err('ENTRY OUT OF RANGE');if(m[1])q.flaps=+m[1];if(dir)q.ths=dir+(+val).toFixed(1);
     if(!q.flaps)return err('FORMAT ERROR');return ok()}
@@ -415,7 +417,7 @@ function press(k){
   else if(k==='CLR')clrKey();
   else if(k==='OVFY')err('NOT IN PROTOTYPE');
   else if(k==='INIT')go('INIT');
-  else if(k==='FPLN'){go('FPLN')}
+  else if(k==='FPLN'){if(S.secMode){S.secOff=S.fpOff;S.secMode=false}S.fpOff=0;go('FPLN')}   /* F-PLN key: the active F-PLN from the FROM line (SEC F-PLN key for the secondary) */
   else if(k==='MENU')go('MENU');
   else if(k==='AIRPORT'){go('FPLN');const p=cur();if(p){S.fpOff=Math.max(0,idxK(p,'dest')-1)}}
   else if(k==='UP'||k==='DOWN'){const pg=P[S.page];if(pg.slew)pg.slew(k==='UP'?1:-1)}

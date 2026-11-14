@@ -21,7 +21,8 @@ function buildPath(plan){const p=plan||S.active,pts=[],holds=[];let vr=DB.apt[p.
     if(l.k==='hdg'&&pts.length){const c=+((String(l.lbl).match(/(\d{3})/)||[0,0])[1]),vd=DB.apt[p.legs[idxK(p,'dest')].id].var||0,from=flying()?FL.alt:0,L=l.alt?Math.max(2,(l.alt.v-from)/600):5;
       push(dst(pts[pts.length-1].p,c+vd,L),ix);continue}
     if(l.k==='orig'){const ap=DB.apt[l.id],r=ap.rwy[l.rwy];vr=ap.var||0;push(r.pos,ix);push(dst(r.pos,r.crs+vr,Math.min(1.6,r.len/1852*0.7)),null);continue}
-    if(l.k==='ca'){const o=p.legs[0],ap=DB.apt[o.id],r=ap.rwy[o.rwy];push(dst(r.pos,r.crs+vr,r.len/1852+l.aal/320),ix);continue}
+    /* climb leg (e.g. (1526) after NO SID): drawn on runway track, at most 3 NM past the runway end, clear of the waypoints that follow */
+    if(l.k==='ca'){const o=p.legs[0],ap=DB.apt[o.id],r=ap.rwy[o.rwy];push(dst(r.pos,r.crs+vr,r.len/1852+Math.min(3,l.aal/320)),ix);continue}
     if(l.k==='wpt'){const pos=DB.wpt[l.id];if(!pos)continue;const prev=pts[pts.length-1];
       if(l.lbl==='ARC'&&l.ctr&&DB.wpt[l.ctr]&&prev)arcPts(prev.p,pos,DB.wpt[l.ctr]).slice(1,-1).forEach(q=>push(q,null));
       push(pos,ix);continue}
@@ -87,15 +88,18 @@ function flightReady(){const a=S.active,i=I(),q=S.perf,f=S.fuel,miss=[];
   if(!a)miss.push('INIT A: FROM/TO');else if(!a.rwy)miss.push('F-PLN: departure runway');
   if(!i.flt)miss.push('INIT A: FLT NBR');if(i.ci==null)miss.push('INIT A: COST INDEX');
   if(!i.crz)miss.push('INIT A: CRZ FL');if(f.zfw==null||f.block==null)miss.push('INIT B: ZFW/ZFWCG and BLOCK');
-  if(!q.v1||!q.vr||!q.v2)miss.push('PERF TAKE OFF: V1, VR, V2');if(!q.flaps)miss.push('PERF TAKE OFF: FLAPS/THS');
+  if(!q.flaps)miss.push('PERF TAKE OFF: FLAPS/THS');
   if(FCU.alt<=elevO()+400)miss.push('FCU: altitude above the airfield (initial clearance)');
   return miss}
 
 /* ---------- start, reset ---------- */
-function flightStart(){const miss=flightReady();if(miss.length)return miss;
+/* V speeds: the pilot's entries are used as entered (any order); a blank one is computed from the take-off weight */
+function vFill(){const q=S.perf,f=S.fuel,tow=(f.zfw||58)+(f.block||8)-(f.taxi??0.2),v2=q.v2||Math.round(150*Math.sqrt(tow/66.8));
+  if(!q.v2)q.v2=v2;if(!q.vr)q.vr=Math.min(q.v2,v2-4);if(!q.v1)q.v1=Math.min(q.vr,v2-9)}
+function flightStart(){const miss=flightReady();if(miss.length)return miss;vFill();
   const P=buildPath(),o=DB.apt[orig()],r=o.rwy[S.active.rwy],tr=r.crs+(o.var||0);
   Object.assign(FL,{active:true,running:true,t:0,utc0:Date.now(),path:P,s:0,seg:1,xtk:0,pos:r.pos,hdgT:tr,trkT:tr,roll:0,pitch:0,alt:r.tdze??o.elev,vs:0,ias:0,tas:0,gs:0,mach:0,
-    ground:true,lat:'RWY',latArm:FCU.hdgMgd&&!(S.active.legs[1]&&S.active.legs[1].k==='disc')?'NAV':null,ver:'SRS',verArm:[FCU.lvlch?'CLB':'OP CLB'],thr:'IDLE',conf:['0','1+F','2','3','FULL'][LV.flaps],gear:true,gearPos:1,gaFlap:false,pmGearT:null,pmF3T:null,revDone:false,
+    ground:true,lat:'RWY',latArm:FCU.hdgMgd&&!S.active.noSid&&!(S.active.legs[1]&&S.active.legs[1].k==='disc')?'NAV':null,ver:'SRS',verArm:[FCU.lvlch?'CLB':'OP CLB'],thr:'IDLE',conf:['0','1+F','2','3','FULL'][LV.flaps],gear:true,gearPos:1,gaFlap:false,pmGearT:null,pmF3T:null,revDone:false,
     fob:S.fuel.block-(S.fuel.taxi??0.2),fromIx:0,eoEng:null,crzDes:false,ldgSeq:0,gearT:null,f3T:null,inHold:null,holdExit:null,hsActive:null,cst:null,acc:0,accT:0,soe:false,opSmall:false,spdIsMach:false,capAlt:null,altHold:null,fmaT:{},loc:false,gsCap:false,tdReached:false,stage:'LINEUP',lvrT:null});LV.thr='IDLE';LV.gear='DOWN';LV.decel=false;LV.m1=LV.m2=true;
   FCU.athr=true;FL.td=P.sThr-tdDist();FL.sig=planSig();S.phase='TAKEOFF';setFma();flightTick(0);return[]}
 function q2conf(){const f=S.perf.flaps;return f===1?'1+F':String(f||1)}

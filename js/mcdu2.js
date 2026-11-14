@@ -22,6 +22,10 @@ const fmtWAlt=a=>a>=10000?'FL'+String(Math.round(a/100)).padStart(3,'0'):String(
 const phaseIs=p=>S.phase===p;
 const ttl=(t,active)=>cput(1,t,active?'g':'w');
 function navLookup(id){return DB.nav&&DB.nav[id]||null}
+/* a typed fix: waypoint, navaid, or airport (its first runway threshold), registered as a waypoint for the F-PLN */
+function fixReg(id){if(!id)return false;if(DB.wpt[id])return true;if(DB.nav&&DB.nav[id]){DB.wpt[id]=DB.nav[id].pos;return true}
+  const a=DB.apt[id];if(a){const r=Object.values(a.rwy||{})[0];DB.wpt[id]=(r?r.pos:a.pos).slice();return true}return false}
+const isAptWpt=l=>!!(l&&l.k==='wpt'&&DB.apt[l.id]);
 function anyPos(id){if(DB.wpt[id])return DB.wpt[id];if(DB.nav&&DB.nav[id])return DB.nav[id].pos;if(DB.apt[id])return DB.apt[id].pos;return null}
 function destId(){const p=S.active;return p?p.legs[idxK(p,'dest')].id:null}
 function destElev(){const d=destId();if(!d)return 0;const p=S.active,dl=p.legs[idxK(p,'dest')],a=DB.apt[d];return dl.rwy&&a.rwy[dl.rwy]&&a.rwy[dl.rwy].tdze!=null?a.rwy[dl.rwy].tdze:a.elev}
@@ -341,9 +345,9 @@ function dirList(){const p=S.active;if(!p)return[];const from=flying()?FL.fromIx
   return p.legs.map((l,ix)=>({l,ix})).filter(x=>x.ix>from&&(x.l.k==='wpt'||x.l.k==='dest')&&x.l.seg!=='map')}
 function directTo(id){if(!flying()||FL.ground)return err('NOT ALLOWED');
   const isDest=S.active.legs.some(l=>l.k==='dest'&&l.id===id);   /* DIR TO the destination airport (after NEW DEST) */
-  if(!isDest&&!DB.wpt[id]&&!(DB.nav&&DB.nav[id]))return err('NOT IN DATA BASE');
+  if(!isDest&&!fixReg(id))return err('NOT IN DATA BASE');
   S.tmpy=clone(S.active);const q=S.tmpy,from=FL.fromIx;let ti=q.legs.findIndex((l,ix)=>ix>from&&(l.k==='wpt'||l.k==='dest')&&l.id===id);
-  if(ti<0&&!isDest){if(!DB.wpt[id]&&DB.nav[id])DB.wpt[id]=DB.nav[id].pos;q.legs.splice(from+1,0,W(id,{seg:'enr'}),{k:'disc'});ti=from+1}
+  if(ti<0&&!isDest){q.legs.splice(from+1,0,W(id,{seg:'enr'}),{k:'disc'});ti=from+1}
   q.legs.splice(from+1,ti-from-1,{k:'tp',id:'T-P',pos:FL.pos.slice(),trk:FL.trkT,gs:FL.gs,seg:'enr'});S.dirTo=id;normalize(q);ok()}
 P.DIR={render(){cput(1,'DIR TO',S.tmpy&&S.dirTo?'y':'w');put(2,1,'DIR TO','w','S');
   if(S.tmpy&&S.dirTo){put(3,0,'*'+S.dirTo,'y');rput(2,'RADIAL IN','w','S');rput(3,'[ ]°','b');put(4,1,'WITH','w','S');put(5,0,'*ABEAM PTS','b')}else put(3,0,'[     ]','b');

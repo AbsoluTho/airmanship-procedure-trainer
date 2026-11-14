@@ -209,15 +209,30 @@ async def run(url,b):
     await P('L1');await P('L3');assert await pg.evaluate("window.__S().page==='HOLD'&&!!window.__S().tmpy"),'HOLD page with a temporary F-PLN'
     await P('R6');h=await pg.evaluate("(()=>{const L=window.__S().active.legs,i=L.findIndex(l=>l.id==='LABUN');return[L[i+1].k,L[i+1].fix,L[i+1].type]})()")
     assert h==['hold','LABUN','COMPUTED'],f'computed hold inserted after LABUN: {h}'
+    nd=await pg.evaluate("""(()=>{const S0=clone(S.active);S.sec=clone(S.active);S.secMode=true;const i=S.sec.legs.findIndex(l=>l.id==='LABUN');S.lr=i;S.page='LATREV';S.sp='OEJN';P.LATREV.lsk('R',4);
+      const d=S.sec.legs[idxK(S.sec,'dest')].id,b=S.sec.legs[idxK(S.sec,'dest')-1].k;S.secMode=false;S.sec=null;S.active=S0;return[d,b,S.msg]})()""")
+    assert nd[:2]==['OEJN','disc'],f'NEW DEST to the origin (return plan) from SEC LAT REV: {nd}'
+    aw=await pg.evaluate("""(()=>{const S0=clone(S.active);S.sec=clone(S.active);S.secMode=true;S.page='FPLN';const R=fplnRows(S.sec);S.fpOff=R.findIndex(r=>r.id==='NETOL');S.sp='OEJN';P.FPLN.lsk('L',1);
+      const ix=S.sec.legs.findIndex(l=>l.k==='wpt'&&l.id==='OEJN'),pos=DB.wpt.OEJN,r0=Object.values(DB.apt.OEJN.rwy)[0].pos;S.lr=ix;S.page='LATREV';render();
+      const arr=[...document.querySelectorAll('#scr .ln')].map(l=>l.textContent).join(' ').includes('ARRIVAL>');P.LATREV.lsk('R',1);
+      const d=S.sec.legs[idxK(S.sec,'dest')].id,pg=S.page,last=S.sec.legs[S.sec.legs.length-1].k;S.secMode=false;S.sec=null;S.active=S0;S.page='FPLN';return[ix>0,pos[0]===r0[0],arr,d,pg,last]})()""")
+    assert aw==[True,True,True,'OEJN','ARR','dest'],f'airport as a waypoint (first runway threshold), ARRIVAL> makes it the destination: {aw}'
+    th=await pg.evaluate("""(()=>{const q=S.perf,f0=q.flaps,t0=q.ths,out=[];S.page='PERFTO';for(const v of['1/.4UP','2/UP.4','/1.2DN','3/0.4UP']){S.sp=v;P.PERFTO.lsk('R',3);out.push(q.flaps+'/'+q.ths)}
+      q.flaps=f0;q.ths=t0;const v0=[q.v1,q.vr,q.v2];q.v1=q.vr=q.v2=null;const rd=flightReady().some(m=>/V1/.test(m));vFill();const v1=[q.v1,q.vr,q.v2];[q.v1,q.vr,q.v2]=v0;S.sp='';return[out,rd,v1.every(x=>x>100)]})()""")
+    assert th==[['1/UP0.4','2/UP0.4','2/DN1.2','3/UP0.4'],False,True],f'THS formats; V speeds not required for START (computed when blank): {th}'
+    fk=await pg.evaluate("(()=>{S.page='FPLN';S.fpOff=6;press('FPLN');return S.fpOff})()")
+    assert fk==0,f'F-PLN key shows the F-PLN from the top: {fk}'
+    h2=await pg.evaluate("(()=>{const L=window.__S().active.legs,i=L.findIndex(l=>l.k==='hold');return[L[i+1].k+':'+L[i+1].id,L[i+2].k]})()")
+    assert h2==['wpt:LABUN','disc'],f'after the hold: the fix repeated, then a discontinuity: {h2}'
     r=await pg.evaluate("""(()=>{window.__flight('start');let n=0,ap=0,o={loops:0};while(FL.stage!=='STOP'&&n<40000){step(0.5);n++;if(n%10===0)setFma();
         if(!ap&&FL.alt-groundElev()>1200){fcuButton('ap1');ap=1}if(FL.ver==='ALT'&&FL.alt<8000){FCU.alt=34000;fcuPush('alt',false)}
         if(FL.inHold!=null&&o.t0==null){o.t0=FL.t;o.s=FL.s}
         if(o.t0!=null&&!o.exit){if(FL.s<o.s-1)o.loops++;o.s=FL.s;if(FL.t-o.t0>150&&o.ias==null){o.ias=Math.round(FL.ias);o.hs=holdSpd()}
           if(o.loops>=2){S.page='FPLN';const rows=fplnRows(S.active);S.fpOff=rows.findIndex(r=>r.k==='hold');window.__press('R1');o.exit=FL.holdExit!=null}}
-        if(o.exit&&FL.inHold==null&&o.out==null){o.out=S.active.legs[FL.fromIx].k}
+        if(o.exit&&FL.inHold==null&&o.out==null){const l=S.active.legs[FL.fromIx];o.out=l.k+':'+(l.id||l.fix)}
         if(o.out&&S.phase==='CRZ'&&S.active.legs[FL.fromIx].k==='wpt')break}
       return o})()""")
-    assert r.get('loops',0)>=2 and r.get('exit') and r.get('out')=='hold',f'hold flown twice, IMM EXIT, hold sequenced: {r}'
+    assert r.get('loops',0)>=2 and r.get('exit') and r.get('out')in('hold:LABUN','wpt:LABUN'),f'hold flown twice, IMM EXIT, hold sequenced: {r}'
     assert r.get('ias') and abs(r['ias']-r['hs'])<=8,f'managed speed in the hold is the hold speed: {r}'
     await pg.evaluate("window.__S().sp='';window.__S().fpOff=0");await P('FPLN');await pg.evaluate("window.__S().fpOff=0");await P('L1')
     for ch in 'R10': await P(ch)
@@ -321,8 +336,10 @@ async def run(url,b):
     await pg.evaluate("window.__S().sp='';window.__S().fpOff=0");await P('FPLN');await pg.evaluate("window.__S().fpOff=0");await P('L1');await P('L1');await P('R1')
     await P('L1');await P('L2')   # runway list, 16C: the SID list opens
     assert '<NO SID' in await pg.evaluate("[...document.querySelectorAll('#scr .ln')].map(l=>l.textContent).join(' ')"),'NO SID in the SID list'
-    await P('L2');await P('R6');ns=await pg.evaluate("(()=>{const L=window.__S().active.legs;return[L[0].rwy,L[1].k,L.some(l=>l.k==='ca'||l.seg==='dep'),window.__S().active.noSid]})()")
-    assert ns==['16C','disc',False,True],f'NO SID: runway then discontinuity: {ns}'
+    await P('L2');await P('R6');ns=await pg.evaluate("(()=>{const L=window.__S().active.legs;const r=DB.apt.OEJN.rwy['16C'];return[L[0].rwy,L[1].id==='('+Math.round((r.tdze??DB.apt.OEJN.elev)+1500)+')',L[1].aal,L[2].k,L.some(l=>l.seg==='dep'&&l.k==='wpt'),window.__S().active.noSid]})()")
+    cd=await pg.evaluate("(()=>{const p=window.__S().active,r=DB.apt.OEJN.rwy['16C'],P=buildPath(p),q=P.pts.find(x=>x.ix===1);return Math.round(gc(r.pos,q.p)-r.len/1852)})()")
+    assert cd==3,f'(1500) climb leg drawn 3 NM past the runway end: {cd}'
+    assert ns==['16C',True,1500,'disc',False,True],f'NO SID: runway, (elevation+1500) on runway track, then discontinuity: {ns}'
     # ---- Madinah from the charts: STAR + approach via + RNP final, FMA FINAL APP; Tabuk VOR approach; SIDs on every runway ----
     r=await pg.evaluate("""(()=>{const p=newPlan('OEJN','OEMA');setRunway(p,'16C');p.appr='RNP36';p.via='MA428';p.star='BOVE1F';buildArr(p);
       const ids=p.legs.filter(l=>l.seg==='arr'||l.k==='dest').map(l=>l.id).join(' ');
