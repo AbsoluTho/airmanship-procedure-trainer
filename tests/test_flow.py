@@ -240,6 +240,8 @@ async def run(url,b):
     assert vc[1]==6000 and vc[0]>6000 and vc[2] and vc[3] and vc[4] and vc[5] and vc[6],f'altitude constraint at TBK: path and T/D recalculated (AT), not for +; F-PLN B: {vc}'
     fp=await pg.evaluate("(()=>{const r0=refreshAll,f0=fcuRefresh;refreshAll=()=>{};fcuRefresh=()=>{};const v0=[FL.ver,FCU.trkFpa,FCU.fpa,FL.active];FL.active=true;FL.ver='V/S';FCU.trkFpa=false;FCU.fpa=-3.2;fcuButton('trkfpa');const r=[FL.ver,FCU.fpa];fcuButton('trkfpa');[FL.ver,FCU.trkFpa,FCU.fpa,FL.active]=v0;refreshAll=r0;fcuRefresh=f0;return r})()")
     assert fp==['FPA',0],f'FPA starts at 0.0 when selected: {fp}'
+    arc=await pg.evaluate("(()=>{const p=newPlan('OEJN','OETB');setRunway(p,'16C');p.appr='VOR31-2';p.via='D179I';buildArr(p);const l=p.legs.find(l=>l.id==='D123I');return[l.lbl,l.ctr]})()")
+    assert arc==['ARC','TBK'],f'VOR31-2 via D179I keeps the 9 DME arc to D123I: {arc}'
     fk=await pg.evaluate("(()=>{S.page='FPLN';S.fpOff=6;press('FPLN');return S.fpOff})()")
     assert fk==0,f'F-PLN key shows the F-PLN from the top: {fk}'
     h2=await pg.evaluate("(()=>{const L=window.__S().active.legs,i=L.findIndex(l=>l.k==='hold');return[L[i+1].k+':'+L[i+1].id,L[i+2].k]})()")
