@@ -33,7 +33,7 @@ a.apprs['VOR13'] = dict(type='VOR', rwy='13', crs=133, vor='TBK',
                         final=[W('D313M', '@5000'), W('D313J', '+3500'), W('RAGMI', '@4200'), W('MA13', '@3160')],
                         dest={'lbl': 'C133°', 'alt': A('@2580')},
                         missed=[HDG(133, 3500), W('MUPVA', '@6000'), HOLD(241, 'R', 6000)])
-a.apprs['VOR31'] = dict(type='VOR', rwy='31', crs=303, vor='TBK',
+a.apprs['VOR31-1'] = dict(type='VOR', rwy='31', crs=303, vor='TBK',
                         vias={'D179O': [W('D179O', '+5500'), ARC('D123O', 'TBK', '+5000')],
                               'D043O': [W('D043O', '+5000'), ARC('D123O', 'TBK', '+5000')]},
                         final=[W('KUMDI', '@4200'), W('MA31', '@2900')], dest={'lbl': 'C303°', 'alt': A('@2598')},
@@ -45,3 +45,13 @@ a.apprs['ILS31'] = dict(type='ILS', rwy='31', crs=309, nav='IPKS', freq=111.9,
                               'TBK': [W('TBK', '+5000'), W('ITNOG', '@5000', lbl='C127°')]},
                         final=[W('ITNOG', '+4200', lbl='C309°')], dest={'lbl': 'C309°', 'alt': A('@2598')},
                         missed=[HDG(309, 3500), W('MUPVA', '+6000'), HOLD(241, 'R', 6000)])
+
+# ---- VOR DME or TACAN 2 Rwy 31 (13-5): TBK 9 DME arc, MEMTO D3.6 FAF, MAP D1.3 ----
+for r, d, n in [(43, 9, 'D043I'), (179, 9, 'D179I'), (123, 9, 'D123I'), (123, 3.6, 'MEMTO'), (123, 1.3, 'MA312'), (61, 9, 'D061I')]:
+    a.fix(n, a.rad('TBK', r, d))
+a.apprs['VOR31-2'] = dict(type='VOR', rwy='31', crs=303, vor='TBK',
+                          vias={'D043I': [W('D043I', '+5000'), ARC('D123I', 'TBK', '@5000')],
+                                'D179I': [W('D179I', '+5000'), ARC('D123I', 'TBK', '@5000')],
+                                'TBK': [W('TBK', '+8000'), W('D061I', '@5000'), ARC('D123I', 'TBK', '@5000')]},
+                          final=[W('D123I', '@5000'), W('MEMTO', '@3600'), W('MA312', '@2900')], dest={'lbl': 'C303°', 'alt': A('@2598')},
+                          missed=[HDG(303, 3500), W('MUPVA', '@6000'), HOLD(241, 'R', 6000)])
