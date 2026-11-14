@@ -221,3 +221,14 @@ button{font:inherit;color:inherit}
 .lv-panel .lvk:active rect{filter:brightness(1.4)}
 .lv-btn{position:absolute;z-index:3;top:0;left:50%;transform:translate(-50%,-55%);border:1px solid rgba(255,255,255,.35);border-radius:999px;background:rgba(18,24,32,.9);color:#9fe3ff;font:600 11px/1 "IBM Plex Mono",ui-monospace,monospace;letter-spacing:.08em;padding:6px 12px;cursor:pointer}
 .lv-btn[aria-pressed="true"]{color:#3cff3c}
+
+/* FULL SCREEN: only the instruments and the flight bar */
+body.fs .top,body.fs .tabs,body.fs .side,body.fs .foot,body.fs #flReady{display:none!important}
+body.fs .app{max-width:none;padding:4px 6px}
+body.fs #v-mcdu.on{gap:6px;flex-wrap:wrap}
+body.fs .flight{max-width:none}
+.fs-exit{display:none;position:fixed;z-index:50;top:6px;right:8px;border:1px solid rgba(255,255,255,.35);border-radius:999px;background:rgba(18,24,32,.85);color:#9fe3ff;font:600 11px/1 "IBM Plex Mono",ui-monospace,monospace;letter-spacing:.08em;padding:7px 12px;cursor:pointer;opacity:.55}
+.fs-exit:hover{opacity:1}
+body.fs .fs-exit{display:block}
+body.fs #fsBtn{display:none}
+body.fs .app{min-height:100vh;display:flex;flex-direction:column;justify-content:center;box-sizing:border-box}

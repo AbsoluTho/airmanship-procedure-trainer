@@ -36,3 +36,20 @@ $('#modal').addEventListener('click',e=>{if(e.target.id==='modal')closeMcdu()});
 
 window.__S=()=>S;window.__press=press;window.__efis=efisSet;window.__EFIS=EFIS;
 render();
+
+/* ================= FULL SCREEN =================
+   Instruments, MCDU/ECAM and the flight bar fill the window (browser full screen where allowed). EXIT FULL SCREEN, Esc,
+   or an iPad / phone turned to portrait leaves it. */
+document.body.insertAdjacentHTML('beforeend','<button type="button" class="fs-exit" id="fsExit">EXIT FULL SCREEN</button>');
+const FS={req:false};
+function fsSet(on){if(on){const t=document.querySelector('.tab[data-v="mcdu"]');if(t&&view!=='mcdu')t.click();document.body.classList.add('fs');
+    const el=document.documentElement,rq=el.requestFullscreen||el.webkitRequestFullscreen;if(rq&&!document.fullscreenElement){try{const p=rq.call(el);FS.req=true;if(p&&p.catch)p.catch(()=>{FS.req=false})}catch(e){FS.req=false}}}
+  else{document.body.classList.remove('fs');const ex=document.exitFullscreen||document.webkitExitFullscreen;if(FS.req&&(document.fullscreenElement||document.webkitFullscreenElement)&&ex){try{ex.call(document)}catch(e){}}FS.req=false}
+  setTimeout(()=>{dispatchEvent(new Event('resize'))},60);setTimeout(()=>{dispatchEvent(new Event('resize'))},400)}
+$('#fsBtn').addEventListener('click',()=>fsSet(true));$('#fsExit').addEventListener('click',()=>fsSet(false));
+['fullscreenchange','webkitfullscreenchange'].forEach(ev=>document.addEventListener(ev,()=>{if(FS.req&&!(document.fullscreenElement||document.webkitFullscreenElement))fsSet(false)}));
+addEventListener('keydown',e=>{if(e.key==='Escape'&&document.body.classList.contains('fs'))fsSet(false)});
+/* touch device turned to portrait: leave full screen */
+function fsOrient(){if(document.body.classList.contains('fs')&&navigator.maxTouchPoints>0&&innerHeight>innerWidth)fsSet(false)}
+addEventListener('resize',fsOrient);addEventListener('orientationchange',()=>setTimeout(fsOrient,200));
+window.__fs=fsSet;

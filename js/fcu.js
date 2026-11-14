@@ -141,6 +141,9 @@ window.__FCU=FCU;window.__fcuTurn=fcuTurn;window.__fcuPush=fcuPush;window.__fcuB
 function layoutDeck(){const sec=$('#v-mcdu');if(!sec||!sec.classList.contains('on'))return;const cs=getComputedStyle(sec);
   const Wc=sec.clientWidth-parseFloat(cs.paddingLeft)-parseFloat(cs.paddingRight),top=sec.getBoundingClientRect().top+scrollY,availH=Math.max(440,innerHeight-top-58);
   let W2,mw;if(Wc<900){W2=Wc;mw=Math.min(Wc,563)}
-  else{const Hm=Math.min(availH,(Wc-9)/1.8324,880);mw=Hm/1.5631;W2=(Hm-6)/0.83848+6}
+  else{const fs=document.body.classList.contains('fs'),fl=$('#flight');
+    /* FULL SCREEN: the instruments take the whole window above the flight bar, no size cap */
+    const H=fs?innerHeight-(fl?fl.offsetHeight:50)-sec.getBoundingClientRect().top-14:availH;
+    const Hm=Math.min(H,(Wc-9)/1.8324,fs?9999:880);mw=Hm/1.5631;W2=(Hm-6)/0.83848+6}
   const r=document.documentElement.style;r.setProperty('--deckw',Math.floor(W2)+'px');r.setProperty('--mw',Math.floor(mw)+'px')}
 addEventListener('resize',layoutDeck);new ResizeObserver(layoutDeck).observe(document.body);layoutDeck();
