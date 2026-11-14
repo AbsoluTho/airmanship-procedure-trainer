@@ -9,13 +9,20 @@ const IMG_LVG='img/lv-gear.webp',IMG_LVGL='img/lv-gear-lever.webp',IMG_LVT='img/
 /* thrust lever detents on the quadrant image (y of the CL notch = 262) and the side buttons */
 const THR_POS=[['TOGA','TOGA',197],['FLX','FLX/MCT',226],['CL','CL',262],['N50','50% N1',336],['IDLE','IDLE',410],['REVIDLE','IDLE REV',470],['REVMAX','MAX REV',540]];
 const FLP_Y=[60,120,180,240,290];
+/* layout: thrust quadrant on the left over the full height, its buttons beside it; landing gear panel (smaller) top right,
+   flaps lever (knob and gate only) below it */
 function leversSvg(){const G='#3cff3c',B='#3ad7ff',R='#ff3b30',ln='#e8eef5';
   const t=(x,y,s,sz,c,a,w)=>`<text x="${x}" y="${y}" fill="${c||ln}" font-size="${sz||14}" text-anchor="${a||'middle'}" font-family="'IBM Plex Sans',Arial,sans-serif" font-weight="${w||700}">${s}</text>`;
-  const btn=(x,y,w,h,k,v,lbl,on,c)=>`<g class="lvk" data-lv="${k}" data-v="${v}" style="cursor:pointer"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="6" fill="#15191e" stroke="${on?G:'#7d8a99'}" stroke-width="${on?2.5:1.5}"/>${t(x+w/2,y+h/2+5,lbl,13,on?G:(c||ln))}</g>`;
+  const btn=(x,y,w,h,k,v,lbl,on,c,sz)=>`<g class="lvk" data-lv="${k}" data-v="${v}" style="cursor:pointer"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="6" fill="#15191e" stroke="${on?G:'#7d8a99'}" stroke-width="${on?2.5:1.5}"/>${t(x+w/2,y+h/2+5,lbl,sz||13,on?G:(c||ln))}</g>`;
   const hit=(x,y,w,h,k,v)=>`<rect class="lvk" data-lv="${k}" data-v="${v}" x="${x}" y="${y}" width="${w}" height="${h}" fill="transparent" style="cursor:pointer"/>`;
   let s=`<rect x="0" y="0" width="600" height="530" fill="#2a313c"/>`;
-  /* ---- landing gear panel (image 676 x 333) ---- */
-  {const k=470/676;s+=`<g transform="scale(${k})"><image href="${IMG_LVG}" x="0" y="0" width="676" height="333"/>`;
+  /* ---- thrust levers: quadrant image 316 x 688 (gate and scales), the two handles slide from TOGA down to MAX REV ---- */
+  {const k=530/688;s+=`<g transform="scale(${k})"><image href="${IMG_LVT}" x="0" y="0" width="316" height="688"/>`;
+    const dy=THR_POS.find(p=>p[0]===LV.thr)[2]-197;
+    s+=`<image href="${IMG_LVTL}" x="34" y="${4+dy}" width="128" height="117"/><image href="${IMG_LVTR}" x="170" y="${4+dy}" width="128" height="117"/></g>`}
+  THR_POS.forEach(([k,l],i)=>{s+=btn(250,8+i*74.5,86,62,'thr',k,l.replace('/',' /'),LV.thr===k,k.startsWith('REV')?'#ff9a55':null,12)});
+  /* ---- landing gear panel (image 676 x 333), smaller, top right ---- */
+  {const x0=342,k=252/676;s+=`<g transform="translate(${x0},8) scale(${k})"><image href="${IMG_LVG}" x="0" y="0" width="676" height="333"/>`;
     const gp=flying()?(FL.gearPos??1):1,dn=gp>=1,tr=gp>0&&gp<1;
     [56,140,224].forEach(x=>{if(!dn)s+=`<rect x="${x+8}" y="106" width="64" height="44" fill="#222428"/>`;if(tr)s+=t(x+40,104,'UNLK',17,R)});
     if(LV.fan)s+=t(396,136,'ON',12,B);
@@ -25,21 +32,15 @@ function leversSvg(){const G='#3cff3c',B='#3ad7ff',R='#ff3b30',ln='#e8eef5';
     if(!LV.askid)s+=`<circle cx="395" cy="258" r="24" fill="#1a1d22"/><rect x="389" y="258" width="12" height="38" rx="5" fill="#2c3036" stroke="#555"/>`;
     s+=hit(350,216,70,92,'askid','x');
     const up=LV.gear==='UP';s+=`<image href="${IMG_LVGL}" x="524" y="${up?17:92}" width="48" height="230"/>`+hit(490,0,186,333,'gear',up?'DOWN':'UP');
-    s+=`</g>`}
-  s+=btn(480,40,112,46,'gear','UP','GEAR UP',LV.gear==='UP')+btn(480,100,112,46,'gear','DOWN','GEAR DOWN',LV.gear==='DOWN');
-  {const gp=flying()?(FL.gearPos??1):1;s+=t(536,176,gp>=1?'DOWN LOCKED':gp<=0?'UP LOCKED':'IN TRANSIT',12,gp>=1?G:gp<=0?ln:R)}
-  /* ---- thrust levers (image 554 x 688) and their buttons ---- */
-  {const k=294/688;s+=`<g transform="translate(0,236) scale(${k})"><image href="${IMG_LVT}" x="0" y="0" width="554" height="688"/>`;
-    const dy=THR_POS.find(p=>p[0]===LV.thr)[2]-262;
-    s+=`<image href="${IMG_LVTL}" x="190" y="${172+dy}" width="72" height="153"/><image href="${IMG_LVTR}" x="300" y="${172+dy}" width="75" height="153"/></g>`}
-  THR_POS.forEach(([k,l],i)=>{s+=btn(244,240+i*41.5,128,36,'thr',k,l,LV.thr===k,k.startsWith('REV')?'#ff9a55':null)});
-  /* ---- flaps lever (image 557 x 334) and its buttons ---- */
-  {const k=223/557;s+=`<g transform="translate(377,236) scale(${k})"><image href="${IMG_LVF}" x="0" y="0" width="557" height="334"/>`;
-    const y=FLP_Y[LV.flaps];s+=`<image href="${IMG_LVFK}" x="${128-60}" y="${y-46}" width="120" height="92"/>`;
-    FLP_Y.forEach((yy,i)=>{s+=hit(0,yy-28,250,56,'flaps',i)});s+=`</g>`}
-  ['0','1','2','3','FULL'].forEach((l,i)=>{s+=btn(380+i*44,380,40,36,'flaps',i,l,LV.flaps===i)});
-  const cf=flying()?FL.conf:['0','1+F','2','3','FULL'][LV.flaps];s+=t(488,446,cf==='0'?'CLEAN':'CONF '+cf,15,'#ffd9a0');
-  s+=t(488,474,'FLAPS LEVER',11,'#9aa6b3',null,600);
+    s+=`</g>`;
+    s+=btn(342,138,124,34,'gear','UP','GEAR UP',up)+btn(470,138,124,34,'gear','DOWN','GEAR DOWN',!up);
+    s+=t(468,190,dn?'DOWN LOCKED':gp<=0?'UP LOCKED':'IN TRANSIT',12,dn?G:gp<=0?ln:R)}
+  /* ---- flaps lever: knob and gate only (image 240 x 302), knob on the gate positions ---- */
+  {const k=290/302,x0=350;s+=`<g transform="translate(${x0},200) scale(${k})"><image href="${IMG_LVF}" x="0" y="0" width="240" height="302"/>`;
+    const y=FLP_Y[LV.flaps]-20;s+=`<image href="${IMG_LVFK}" x="${128-70}" y="${y-53}" width="140" height="107"/>`;
+    FLP_Y.forEach((yy,i)=>{s+=hit(0,yy-20-28,240,56,'flaps',i)});s+=`</g>`;
+    const cf=flying()?FL.conf:['0','1+F','2','3','FULL'][LV.flaps];s+=t(590,222,'FLAPS',13,ln,'end')+t(590,242,cf==='0'?'CLEAN':cf,13,'#ffd9a0','end')}
+  ['0','1','2','3','FULL'].forEach((l,i)=>{s+=btn(342+i*51,496,47,30,'flaps',i,l,LV.flaps===i,null,12)});
   return s}
 function drawLevers(){const o=$('#lvPanel');if(!o)return;o.hidden=!LVP.on;const b=$('#lvBtn');if(b){b.setAttribute('aria-pressed',String(LVP.on));b.textContent=LVP.on?'SD':'LEVERS'}
   if(!LVP.on)return;const h=leversSvg();if(o._h!==h){o.innerHTML=`<svg viewBox="0 0 600 530" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" aria-label="Levers">${h}</svg>`;o._h=h}}
