@@ -5,7 +5,7 @@
    red UNLK in transit, AUTO BRK blue ON and green DECEL, BRK FAN ON) are drawn over the pushbuttons. Commands go to lever(). */
 const LVP={on:false};
 const IMG_LVG='img/lv-gear.webp',IMG_LVGL='img/lv-gear-lever.webp',IMG_LVT='img/lv-thr.webp',IMG_LVTL='img/lv-thr-l.webp',IMG_LVTR='img/lv-thr-r.webp',
-  IMG_LVF='img/lv-flaps.webp',IMG_LVFK='img/lv-flaps-knob.webp',IMG_LVE='img/lv-eng.webp';
+  IMG_LVF='img/lv-flaps.webp',IMG_LVFK='img/lv-flaps-knob.webp',IMG_LVE='img/lv-eng.webp',IMG_LVM1='img/lv-eng-ma.webp',IMG_LVM2='img/lv-eng-mb.webp';
 /* thrust lever positions on the quadrant image (y of the scale marks: TOGA, FLX/MCT, CL, the white 0 line, the REV zone to FULL);
    the centre of the handles is put on the mark */
 const THR_POS=[['TOGA','TOGA',73],['FLX','FLX/MCT',101],['CL','CL',135],['N50','50% N1',209],['IDLE','IDLE',283],['REVIDLE','IDLE REV',327],['REVMAX','MAX REV',375]];   /* quadrant image cropped 125 px at the top */
@@ -22,7 +22,10 @@ function leversSvg(){const G='#3cff3c',B='#3ad7ff',R='#ff3b30',ln='#e8eef5';
     const y=THR_POS.find(p=>p[0]===LV.thr)[2]-58;   /* handle images 117 high: centre on the mark */
     s+=`<image href="${IMG_LVTL}" x="34" y="${y}" width="128" height="117"/><image href="${IMG_LVTR}" x="170" y="${y}" width="128" height="117"/></g>`}
   THR_POS.forEach(([k,l],i)=>{s+=btn(192,2+i*47.5,84,42,'thr',k,l.replace('FLX/MCT','FLX MCT'),LV.thr===k,k.startsWith('REV')?'#ff9a55':null,12)});
-  s+=`<image href="${IMG_LVE}" x="0" y="339" width="276" height="192"/>`;
+  /* ENG MASTER panel (image 563 x 392): master levers OFF (down) or ON (up); always ON while the engines run (flight) */
+  {const k=276/563;s+=`<g transform="translate(0,339) scale(${k})"><image href="${IMG_LVE}" x="0" y="0" width="563" height="392"/>`;
+    [[1,108,80,IMG_LVM1],[2,384,84,IMG_LVM2]].forEach(([n,x,w,im])=>{const on=LV['m'+n];s+=`<image href="${im}" x="${x}" y="${on?74:162}" width="${w}" height="89"/>`+hit(x-20,60,w+40,200,'master',n)});
+    s+=`</g>`}
   /* ---- right top: landing gear panel (image 676 x 333) ---- */
   {const x0=282,k=318/676;s+=`<g transform="translate(${x0},2) scale(${k})"><image href="${IMG_LVG}" x="0" y="0" width="676" height="333"/>`;
     const gp=flying()?(FL.gearPos??1):1,dn=gp>=1,tr=gp>0&&gp<1;

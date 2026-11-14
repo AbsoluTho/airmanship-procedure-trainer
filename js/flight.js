@@ -96,12 +96,12 @@ function flightStart(){const miss=flightReady();if(miss.length)return miss;
   const P=buildPath(),o=DB.apt[orig()],r=o.rwy[S.active.rwy],tr=r.crs+(o.var||0);
   Object.assign(FL,{active:true,running:true,t:0,utc0:Date.now(),path:P,s:0,seg:1,xtk:0,pos:r.pos,hdgT:tr,trkT:tr,roll:0,pitch:0,alt:r.tdze??o.elev,vs:0,ias:0,tas:0,gs:0,mach:0,
     ground:true,lat:'RWY',latArm:FCU.hdgMgd&&!(S.active.legs[1]&&S.active.legs[1].k==='disc')?'NAV':null,ver:'SRS',verArm:[FCU.lvlch?'CLB':'OP CLB'],thr:'IDLE',conf:['0','1+F','2','3','FULL'][LV.flaps],gear:true,gearPos:1,gaFlap:false,pmGearT:null,pmF3T:null,revDone:false,
-    fob:S.fuel.block-(S.fuel.taxi??0.2),fromIx:0,eoEng:null,crzDes:false,ldgSeq:0,gearT:null,f3T:null,inHold:null,holdExit:null,hsActive:null,cst:null,acc:0,accT:0,soe:false,opSmall:false,spdIsMach:false,capAlt:null,altHold:null,fmaT:{},loc:false,gsCap:false,tdReached:false,stage:'LINEUP',lvrT:null});LV.thr='IDLE';LV.gear='DOWN';LV.decel=false;
+    fob:S.fuel.block-(S.fuel.taxi??0.2),fromIx:0,eoEng:null,crzDes:false,ldgSeq:0,gearT:null,f3T:null,inHold:null,holdExit:null,hsActive:null,cst:null,acc:0,accT:0,soe:false,opSmall:false,spdIsMach:false,capAlt:null,altHold:null,fmaT:{},loc:false,gsCap:false,tdReached:false,stage:'LINEUP',lvrT:null});LV.thr='IDLE';LV.gear='DOWN';LV.decel=false;LV.m1=LV.m2=true;
   FCU.athr=true;FL.td=P.sThr-tdDist();FL.sig=planSig();S.phase='TAKEOFF';setFma();flightTick(0);return[]}
 function q2conf(){const f=S.perf.flaps;return f===1?'1+F':String(f||1)}
 
 /* ---------- LEVERS: thrust levers, flaps lever, landing gear lever, autobrake (the pilot's commands) ---------- */
-const LV={thr:'IDLE',flaps:0,gear:'DOWN',abrk:null,fan:false,askid:true,decel:false};
+const LV={thr:'IDLE',flaps:0,gear:'DOWN',abrk:null,fan:false,askid:true,decel:false,m1:false,m2:false};
 const VFE={'0':999,'1':230,'1+F':215,'2':200,'3':185,'FULL':177},VLE=280;
 let PM_AUTO=false;   /* test hook: a pilot monitoring that moves the levers (off in the app) */
 function lever(k,v){
@@ -113,6 +113,7 @@ function lever(k,v){
   else if(k==='flaps'){const n=+v;if(n>=0&&n<=4)LV.flaps=n}
   else if(k==='gear'){if(v==='UP'&&FL.active&&FL.ground)return;LV.gear=v}   /* weight on wheels: no gear up on the ground */
   else if(k==='abrk')LV.abrk=LV.abrk===v?null:v;
+  else if(k==='master'){if(FL.active)return;LV['m'+v]=!LV['m'+v]}   /* engines running in flight: masters stay ON */
   else if(k==='fan')LV.fan=!LV.fan;
   else if(k==='askid')LV.askid=!LV.askid;
   if(typeof refreshAll==='function')refreshAll()}

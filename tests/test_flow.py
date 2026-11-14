@@ -288,6 +288,8 @@ async def run(url,b):
       S.sec=clone(S.active);S.secMode=true;S.lr=FL.fromIx;S.page='LATREV';S.sp='OEJN';P.LATREV.lsk('R',4);S.secMode=false;S.page='SECIDX';P.SECIDX.lsk('L',4);
       const ret=[S.active.legs[idxK(S.active,'dest')].id,I().to];directTo('OEJN');P.DIR.lsk('R',6);step(0.5);
       const dt=S.active.legs.filter(l=>l.k==='tp'||l.k==='dest').map(l=>l.k).join();window.__flight('reset');window.__flight('pm:on');S.active=clone(window.__plan0);FCU.alt=34000;return{a,b,ret,dt}})()""")
+    m=await pg.evaluate("(()=>{LV.m1=LV.m2=false;lever('master',1);const off=LV.m1;lever('master',1);window.__flight('start');const a=[LV.m1,LV.m2];lever('master',1);const b=LV.m1;window.__flight('reset');return[off,a,b]})()")
+    assert m==[True,[True,True],True],f'ENG MASTER ON while the engines run, not switchable in flight: {m}'
     assert r['a']['lineup']==['LINEUP',0] and r['a']['n1']==50,f'lined up, still until the thrust levers move; 50% N1: {r["a"]}'
     assert r['a']['thr']=='LVR' and r['a']['thr2']=='CL','LVR CLB until the thrust levers are set to CL'
     assert 0.35<r['a']['climb']/r['b']['climb']<0.7,f'gear left down: about half the climb: {r["a"]["climb"]} vs {r["b"]["climb"]}'
