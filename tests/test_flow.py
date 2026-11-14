@@ -224,6 +224,20 @@ async def run(url,b):
     assert pf,'pre-flight FMA conditions (INIT B, FD)'
     vs=await pg.evaluate("(()=>{const o=[];const v0=[FL.ver,FCU.vsVal,FL.stage,FCU.ap1];FL.stage='AIR';FCU.ap1=true;for(const v of[1500,-500,0]){FL.ver='V/S';FCU.vsVal=v;setFma();o.push(FL.fma.c2[0][0])}[FL.ver,FCU.vsVal,FL.stage,FCU.ap1]=v0;setFma();return o})()")
     assert vs==['V/S +1500','V/S -500','V/S 0'],f'FMA V/S value: {vs}'
+    ch=await pg.evaluate("""(()=>{const A0=clone(S.active);S.tmpy=null;S.page='FPLN';S.fpOff=fplnRows(S.active).findIndex(r=>r.k==='dest');press('L1');press('R1');const l1=S.arr.list;
+      const it=P.ARR.items(),i=it.findIndex(x=>x.id&&x.id!==S.active.appr);press('L'+(3+i));const nw=S.tmpy&&S.tmpy.appr;press('R6');const act=S.active.appr;
+      S.page='LATREV';S.lr=0;render();const dep=[...document.querySelectorAll('#scr .ln')].map(l=>l.textContent).join(' ').includes('<DEPARTURE');S.active=A0;S.tmpy=null;S.page='FPLN';return[l1,!!nw,nw===act,dep]})()""")
+    ar=await pg.evaluate("(()=>{S.page='ARR';S.arrAlt=false;S.arr={list:'APPR',off:0};press('RIGHT');const a=S.arr.list;press('LEFT');const b=S.arr.list;S.page='DEP';S.dep={list:'RWY',off:0};press('RIGHT');const c=S.dep.list;S.page='FPLN';return[a,b,c]})()")
+    assert ar==['STAR','APPR','SID'],f'arrow keys: ARRIVAL approaches/STARs, DEPARTURES runways/SIDs: {ar}'
+    assert ch==['APPR',True,True,True],f'ARRIVAL opens on the approaches; a new approach replaces the old one after INSERT; DEPARTURE on the origin: {ch}'
+    vc=await pg.evaluate("""(()=>{const A0=clone(S.active);const PP=vnPath(),i=S.active.legs.findIndex(l=>l.id==='TBK');const t0=tdDist();
+      const sTBK=PP.pts.find(q=>q.ix===i).s,dc=PP.sThr-sTBK,a0=profileAlt(dc);
+      S.page='FPLN';S.fpOff=fplnRows(S.active).findIndex(r=>r.id==='TBK');S.sp='/6000';P.FPLN.lsk('R',1);const t1=tdDist(),a1=profileAlt(dc);
+      render();const row=[...document.querySelectorAll('#scr .ln')][2].textContent;
+      S.active=clone(A0);const iA=S.active.legs.findIndex(l=>l.id==='TBK');S.active.legs[iA].alt={t:'+',v:6000};const a2=profileAlt(dc),t2=tdDist();
+      S.active=A0;press('RIGHT');render();const b=[...document.querySelectorAll('#scr .ln')][1].textContent;press('LEFT');S.fpOff=0;
+      return[Math.round(a0),Math.round(a1),t1>t0,row.includes('6000'),Math.round(a2)===Math.round(a0),Math.abs(t2-t0)<0.01,b.includes('EFOB')]})()""")
+    assert vc[1]==6000 and vc[0]>6000 and vc[2] and vc[3] and vc[4] and vc[5] and vc[6],f'altitude constraint at TBK: path and T/D recalculated (AT), not for +; F-PLN B: {vc}'
     fk=await pg.evaluate("(()=>{S.page='FPLN';S.fpOff=6;press('FPLN');return S.fpOff})()")
     assert fk==0,f'F-PLN key shows the F-PLN from the top: {fk}'
     h2=await pg.evaluate("(()=>{const L=window.__S().active.legs,i=L.findIndex(l=>l.k==='hold');return[L[i+1].k+':'+L[i+1].id,L[i+2].k]})()")
@@ -353,7 +367,7 @@ async def run(url,b):
       return[ids,fma,Object.keys(STARS.OEMA).length,Object.keys(SIDS.OEMA).sort().join(),Object.keys(APPRS.OETB).join()]})()""")
     assert r[0]=='BOVET MA409 MA425 MA401 MA426 MA427 MA428 MUVDA MA510 OEMA',f'STAR BOVE1F + via MA428 + RNP36: {r[0]}'
     assert r[1]=='FINAL APP',f'RNP approach FMA: {r[1]}'
-    assert r[2]==32 and r[3]=='17,18,35,36' and r[4]=='ILS24,VOR24,VOR06,VOR13,VOR31,ILS31',f'chart data: {r[2:]}'
+    assert r[2]==32 and r[3]=='17,18,35,36' and r[4]=='ILS24,VOR24,VOR06,VOR13,VOR31-1,ILS31,VOR31-2',f'chart data: {r[2:]}'
     await P('PERF');await P('MENU');assert 'MCDU MENU' in await pg.evaluate("[...document.querySelectorAll('#scr .ln')].map(l=>l.textContent).join(' ')")
     await P('L1');assert await pg.evaluate("window.__S().page")=='PERFTO','MCDU MENU: FMGC returns to the last FMGC page'
     await pg.evaluate("localStorage.removeItem('airmanship.stored.v1')")

@@ -15,7 +15,8 @@ function vnPath(){if(flying()&&FL.path)return FL.path;const sig=planSig();if(_vn
 /* constrained legs with their along-path position s and distance to the threshold dc */
 function cstrList(P){P=P||vnPath();const p=S.active;if(!p||!P)return[];const out=[],seen=new Set();
   for(const pt of P.pts){if(pt.ix==null||seen.has(pt.ix))continue;seen.add(pt.ix);const l=p.legs[pt.ix];if(!l||(!l.alt&&!l.spd)||l.k==='orig'||l.k==='dest')continue;
-    out.push({ix:pt.ix,id:l.id,s:pt.s,dc:P.sThr-pt.s,alt:l.alt||null,spd:l.spd||null,ph:legSeg(l)})}
+    const ph=l.seg==='dep'?'clb':legSeg(l)==='des'?'des':pt.s>P.sThr/2?'des':'clb';   /* en-route: by position along the route */
+    out.push({ix:pt.ix,id:l.id,s:pt.s,dc:P.sThr-pt.s,alt:l.alt||null,spd:l.spd||null,ph})}
   return out}
 
 /* managed descent path (ft) as a function of the distance to the threshold (NM) */

@@ -140,3 +140,8 @@ P.CFDS={render(){cput(1,'CFDS');cput(2,'MENU','w','S');put(3,0,'<LAST LEG REPORT
 /* the MCDU MENU key remembers the FMGC page to return to */
 {const p0=press;press=function(k){if(k==='MENU'&&!FM_PAGES_SKIP.includes(S.page))S.fmPage=S.page;return p0(k)};window.__press=press}
 window.__stored=()=>STORED;window.__reqMs=v=>{REQ_MS=v};
+
+/* ARRIVAL and DEPARTURES: the ← → keys change the list (FlyByWire / A320 MCDU): ARRIVAL approaches ⇄ STARs (VIAs with
+   the VIA key), DEPARTURES runways ⇄ SIDs (and the transitions after a SID). A new choice goes into the TMPY F-PLN. */
+P.ARR.arrow=function(d){const o=S.arrAlt?['APPR']:['APPR','STAR'],i=Math.max(0,o.indexOf(S.arr.list==='VIA'?'APPR':S.arr.list));S.arr={list:o[(i+d+o.length)%o.length],off:0}};
+P.DEP.arrow=function(d){const p=cur(),o=p&&p.rwy?(p.sid?['RWY','SID','TRANS']:['RWY','SID']):['RWY'],i=Math.max(0,o.indexOf(S.dep.list));S.dep={list:o[(i+d+o.length)%o.length],off:0}};
