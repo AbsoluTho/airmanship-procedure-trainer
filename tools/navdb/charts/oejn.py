@@ -118,3 +118,111 @@ sid('34C', 'KARO2W', W34C + [W('JN610', '-12000'), W('JN733'), W('DENBU'), W('KA
 sid('34C', 'RIBA2W', W34C + [W('JN522', '-9000'), W('JN521', '@12000'), W('RIBAM')])
 # ORPAR: two charts agree, 1.6 NM from the older hand-typed position
 a.fx['ORPAR'] = [21.55051, 39.45302]
+
+# ================= STARs =================
+# ---------- BOSUT, EGMEG, ULULU 2L, MUVOL 1A (RWY 34L), chart 10-2 ----------
+a.grid(470, 22.0, 1108, 21.0, 595, 38.5, 896, 39.0)
+for n, x, y in [('MUVOL', 447, 280), ('ALKEV', 527, 338), ('KAVOD', 673, 452), ('GINKU', 885, 613), ('TOTNU', 912, 685),
+                ('JN818', 945, 776), ('GEVUS', 968, 836), ('JN908', 990, 896), ('JN906', 1012, 955), ('ITUXI', 1070, 935),
+                ('JN812', 1050, 875), ('VEDIR', 1028, 815), ('ULULU', 857, 833), ('TADMA', 787, 1153), ('EGMEG', 633, 1197),
+                ('JN830', 872, 1128), ('REXED', 1050, 1052), ('TAPSU', 1093, 1138), ('JN840', 1133, 1177), ('BOSUT', 1213, 1243)]:
+    a.cfix(n, x, y)
+L34L = [W('ITUXI', '+5000'), W('JN812'), W('VEDIR', '@3100')]
+star('BOSU2L', ['34L'], [W('BOSUT'), W('JN840', '-13000'), W('TAPSU'), W('REXED', '-8500', 210)] + L34L)
+star('EGME2L', ['34L'], [W('EGMEG'), W('TADMA'), W('JN830', '-11000'), W('REXED', '-8500', 210)] + L34L)
+star('MUVO1A', ['34L'], [W('MUVOL'), W('ALKEV'), W('KAVOD', '+17000', 250), W('GINKU', '+13000', 210), W('TOTNU'), W('JN818'),
+                         W('GEVUS', '+10000'), W('JN908'), W('JN906')] + L34L)
+star('ULUL2L', ['34L'], [W('ULULU'), W('GEVUS', '+10000', 210), W('JN908'), W('JN906')] + L34L)
+
+# ---------- BOSUT, EGMEG, ULULU 2M, MUVOL 1B (RWY 34C), chart 10-2A ----------
+a.grid(477, 22.0, 1113, 21.0, 565, 38.5, 862, 39.0)
+for n, x, y in [('PUSPO', 1015, 650), ('ASVAK', 1037, 712), ('ITOMA', 1058, 772), ('JN798', 1080, 832), ('JN796', 1102, 890),
+                ('PUVNU', 1043, 913), ('LORUS', 1020, 855), ('KASOP', 998, 795), ('JN917', 905, 762), ('JN920', 958, 733),
+                ('ULULU', 824, 840), ('JN910', 640, 1138), ('EGMEG', 602, 1200), ('IMLER', 1148, 1120), ('JN732', 1110, 968),
+                ('BOSUT', 1180, 1248), ('GINKU', 852, 620)]:
+    a.cfix(n, x, y)
+M34C = [W('ASVAK'), W('ITOMA', '@3000'), W('JN798'), W('JN796'), W('PUVNU', '@3000'), W('LORUS', '@3000'), W('KASOP', '@2100')]
+star('BOSU2M', ['34C'], [W('BOSUT'), W('IMLER', '-10000', 210), W('JN732', '-5500'), W('PUVNU', '@3000'), W('LORUS', '@3000'), W('KASOP', '@2100')])
+star('EGME2M', ['34C'], [W('EGMEG'), W('JN910', '-17000'), W('ULULU', '+13000'), W('JN917', '+10000', 210), W('JN920', '+8000')] + M34C)
+star('MUVO1B', ['34C'], [W('MUVOL'), W('ALKEV'), W('KAVOD', '+17000', 250), W('GINKU', '+13000', 210), W('PUSPO', '+7000')] + M34C)
+star('ULUL2M', ['34C'], [W('ULULU'), W('JN917', '+10000', 210), W('JN920', '+8000')] + M34C)
+
+# ---------- BOSUT, EGMEG, ULULU 2N, MUVOL 1C (RWY 34R), chart 10-2B ----------
+a.grid(475, 22.0, 1113, 21.0, 580, 38.5, 878, 39.0)
+for n, x, y in [('OTAPA', 1068, 910), ('SOLOG', 1045, 850), ('PAXOS', 1025, 790)]:
+    a.cfix(n, x, y)
+N34R = [W('ASVAK'), W('ITOMA', '@3000'), W('JN798'), W('JN796'), W('OTAPA', '@3000'), W('SOLOG', '@3000'), W('PAXOS', '@2100')]
+star('BOSU2N', ['34R'], [W('BOSUT'), W('IMLER', '-10000', 210), W('JN732', '-5500'), W('OTAPA', '@3000'), W('SOLOG', '@3000'), W('PAXOS', '@2100')])
+star('EGME2N', ['34R'], [W('EGMEG'), W('JN910', '-17000'), W('ULULU', '+13000'), W('JN917', '+10000', 210), W('JN920', '+8000')] + N34R)
+star('MUVO1C', ['34R'], [W('MUVOL'), W('ALKEV'), W('KAVOD', '+17000', 250), W('GINKU', '+13000', 210), W('PUSPO', '+7000')] + N34R)
+star('ULUL2N', ['34R'], [W('ULULU'), W('JN917', '+10000', 210), W('JN920', '+8000')] + N34R)
+
+# ---------- BOSUT, EGMEG, ULULU 2R, MUVOL 1F (RWY 16R), chart 10-2C ----------
+a.grid(477, 22.0, 1113, 21.0, 600, 38.5, 900, 39.0)
+for n, x, y in [('JN997', 793, 395), ('JN911', 880, 410), ('JN912', 820, 433), ('SOGER', 903, 468), ('JN918', 843, 492),
+                ('RESEN', 925, 530), ('ORSOD', 865, 550), ('JN914', 905, 662), ('JN917', 942, 762), ('GEVUS', 970, 843),
+                ('JN906', 1015, 960), ('JN814', 1157, 1015), ('IMLER', 1183, 1120), ('JN371', 700, 1103)]:
+    a.cfix(n, x, y)
+R16R = [W('JN917', '@8000', 210), W('JN914', '@8000'), W('ORSOD', '@4000'), W('JN918'), W('JN912'), W('JN911', '@4000'), W('SOGER', '@4000'), W('RESEN', '@3000')]
+star('BOSU2R', ['16R'], [W('BOSUT'), W('IMLER', '+16000'), W('JN814', '+15000'), W('JN906', '+12000'), W('GEVUS')] + R16R)
+star('EGME2R', ['16R'], [W('EGMEG'), W('JN371', '-15000'), W('ULULU', '+12000')] + R16R)
+star('MUVO1F', ['16R'], [W('MUVOL'), W('ALKEV', '+13000', 250), W('JN997', '+6000', 210), W('JN911', '@4000'), W('SOGER', '@4000'), W('RESEN', '@3000')])
+star('ULUL2R', ['16R'], [W('ULULU')] + R16R)
+
+# ---------- BOSUT, EGMEG, ULULU 2S, MUVOL 1D (RWY 16L), chart 10-2D ----------
+a.grid(473, 22.0, 1110, 21.0, 878, 38.5, 1178, 39.0)
+for n, x, y in [('ORMIX', 1192, 428), ('NIVGO', 1240, 410), ('JN801', 1263, 470), ('UMADU', 1287, 532), ('LOXON', 1213, 490),
+                ('ORKOK', 1235, 550), ('PUSPO', 1330, 648), ('ITOMA', 1373, 770), ('JN904', 1410, 908), ('JN814', 1435, 1012)]:
+    a.cfix(n, x, y)
+S16L = [W('PUSPO', '@8000'), W('UMADU', '@3000'), W('JN801'), W('NIVGO'), W('ORMIX', '@3000'), W('LOXON', '@3000'), W('ORKOK', '@2000')]
+star('BOSU2S', ['16L'], [W('BOSUT'), W('IMLER', '+16000', 250), W('JN814', '+15000'), W('JN904', '+11000'), W('ITOMA', '+8000', 210)] + S16L)
+star('EGME2S', ['16L'], [W('EGMEG'), W('JN371', '-15000', 250), W('ULULU', '+12000'), W('JN917', '+9000', 210)] + S16L)
+star('MUVO1D', ['16L'], [W('MUVOL'), W('ALKEV', '+13000', 250), W('JN997', '-5000', 210), W('ORMIX', '@3000'), W('LOXON', '@3000'), W('ORKOK', '@2000')])
+star('ULUL2S', ['16L'], [W('ULULU'), W('JN917', '+9000', 210)] + S16L)
+
+# ---------- BOSUT, EGMEG, ULULU 2T, MUVOL 1E (RWY 16C), chart 10-2E ----------
+a.grid(475, 22.0, 1110, 21.0, 877, 38.5, 1177, 39.0)
+for n, x, y in [('TAVKU', 1177, 425), ('JN901', 1237, 405), ('JN903', 1258, 465), ('DAVGA', 1200, 485), ('RIGOG', 1282, 523),
+                ('EMOXO', 1222, 545)]:
+    a.cfix(n, x, y)
+T16C = [W('PUSPO', '@8000'), W('RIGOG', '@3000'), W('JN903'), W('JN901'), W('TAVKU', '@3000'), W('DAVGA', '@3000'), W('EMOXO', '@2000')]
+star('BOSU2T', ['16C'], [W('BOSUT'), W('IMLER', '+16000', 250), W('JN814', '+15000'), W('JN904', '+11000'), W('ITOMA', '+8000', 210)] + T16C)
+star('EGME2T', ['16C'], [W('EGMEG'), W('JN371', '-15000', 250), W('ULULU', '+12000'), W('JN917', '+9000', 210)] + T16C)
+star('MUVO1E', ['16C'], [W('MUVOL'), W('ALKEV', '+13000', 250), W('JN997', '-5000', 210), W('TAVKU', '@3000'), W('DAVGA', '@3000'), W('EMOXO', '@2000')])
+star('ULUL2T', ['16C'], [W('ULULU'), W('JN917', '+9000', 210)] + T16C)
+
+# ---------- IMDAP 2L, MISAM / NOMDA / VEMEM 1A (RWY 34L), chart 10-2E1 ----------
+a.grid(528, 22.5, 1467, 21.5, 178, 39.0, 1052, 40.0)
+for n, x, y in [('NOMDA', 265, 326), ('LOPAV', 270, 515), ('NIVGO', 272, 908), ('IMDAP', 612, 1050), ('OBTUG', 368, 1167),
+                ('RABTU', 940, 837), ('VEMEM', 1070, 750), ('RABEP', 1002, 1107), ('MISAM', 1080, 1087)]:
+    a.cfix(n, x, y)
+I34L = [W('OBTUG', '+13000', 210), W('TOTNU'), W('JN818'), W('GEVUS', '+10000'), W('JN908'), W('JN906'), W('ITUXI', '+5000'), W('JN812'), W('VEDIR', '@3100')]
+star('IMDA2L', ['34L'], [W('IMDAP')] + I34L)
+star('MISA1A', ['34L'], [W('MISAM'), W('RABEP', '@15000', 230), W('IMDAP', '@15000')] + I34L)
+star('NOMD1A', ['34L'], [W('NOMDA'), W('LOPAV', '+17000', 250), W('NIVGO', '+15000'), W('GINKU', '+13000', 210)] + I34L[1:])
+star('VEME1A', ['34L'], [W('VEMEM'), W('RABTU', '+17000', 250), W('IMDAP', '+15000')] + I34L)
+
+# ---------- IMDAP 2M, MISAM / NOMDA / VEMEM 1B (RWY 34C), chart 10-2E2 ----------
+def imdap(sfx, sfx1, rwy, tail):
+    star('IMDA' + sfx, [rwy], [W('IMDAP')] + tail)
+    star('MISA' + sfx1, [rwy], [W('MISAM'), W('RABEP', '@15000', 230), W('IMDAP', '@15000')] + tail)
+    star('NOMD' + sfx1, [rwy], [W('NOMDA'), W('LOPAV', '+17000', 250), W('NIVGO', '+15000')] + tail)
+    star('VEME' + sfx1, [rwy], [W('VEMEM'), W('RABTU', '+17000', 250), W('IMDAP', '+15000')] + tail)
+imdap('2M', '1B', '34C', [W('OBTUG', '+9000', 210), W('PUSPO', '+7000')] + M34C)
+imdap('2N', '1C', '34R', [W('OBTUG', '+9000', 210), W('PUSPO', '+7000')] + N34R)
+
+# ---------- IMDAP 2R, MISAM / NOMDA / VEMEM 1F (RWY 16R), chart 10-2E4 ----------
+a.grid(459, 22.5, 1256, 21.5, 552, 39.0, 1297, 40.0)
+for n, x, y in [('LADLA', 628, 390), ('NABGI', 567, 718), ('JN916', 723, 1030)]:
+    a.cfix(n, x, y)
+def imdap16(sfx, sfx1, rwy, tail, nomda):
+    star('IMDA' + sfx, [rwy], [W('IMDAP')] + tail)
+    star('MISA' + sfx1, [rwy], [W('MISAM'), W('RABEP', '@11000', 230), W('IMDAP', '+10000')] + tail)
+    star('VEME' + sfx1, [rwy], [W('VEMEM'), W('RABTU', '+13000', 250), W('IMDAP', '+10000')] + tail)
+    star('NOMD' + sfx1, [rwy], [W('NOMDA'), W('LADLA', '+13000', 250)] + nomda)
+imdap16('2R', '1F', '16R', [W('JN916', '-8000', 210), W('JN914', '-6000'), W('ORSOD', '@4000'), W('JN918'), W('JN912'), W('JN911', '@4000'), W('SOGER', '@4000'), W('RESEN', '@3000')],
+        [W('NABGI', '@6000', 210), W('JN911', '@6000'), W('SOGER', '@4000'), W('RESEN', '@3000')])
+imdap16('2S', '1D', '16L', [W('UMADU', '@3000', 210), W('JN801'), W('NIVGO'), W('ORMIX', '@3000'), W('LOXON', '@3000'), W('ORKOK', '@2000')],
+        [W('NABGI', '@6000', 210), W('ORMIX', '@6000'), W('LOXON', '+3000'), W('ORKOK', '@2000')])
+imdap16('2T', '1E', '16C', [W('RIGOG', '@3000', 210), W('JN903'), W('JN901'), W('TAVKU', '@3000'), W('DAVGA', '@3000'), W('EMOXO', '@2000')],
+        [W('NABGI', '@6000', 210), W('TAVKU', '@6000'), W('DAVGA', '+3000'), W('EMOXO', '@2000')])

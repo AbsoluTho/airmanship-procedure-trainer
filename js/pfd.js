@@ -19,7 +19,9 @@ function drawPFD(g,W,H,powered){g.save();g.setTransform(1,0,0,1,0,0);g.fillStyle
   const CX=300,CY=346,SY=340;   /* sphere centre and aircraft symbol / reference line */
 
   /* ---- FMA ---- */
-  const cols=[[55,170],[170,290],[290,423],[423,537],[537,628]],F=FL.fma;
+  /* before the flight: with INIT B done and the FDs on, the FMA reads CLB and NAV armed (cyan) and 1 FD 2 */
+  const preF=!on&&EFIS.fd&&S.fuel&&S.fuel.zfw!=null&&S.fuel.block!=null?{c1:[],c2:[null,['CLB','b']],c3:[null,S.active&&!S.active.noSid&&FCU.hdgMgd!==false?['NAV','b']:null],c4:[],c5:[null,['1 FD 2','w']]}:null;
+  const cols=[[55,170],[170,290],[290,423],[423,537],[537,628]],F=preF||FL.fma;
   [170,290,423,537].forEach(x=>L(x,42,x,120,'#c9ccd6',1.5));
   ['c1','c2','c3','c4','c5'].forEach((c,k)=>{const[x1,x2]=cols[k],xm=(x1+x2)/2;(F[c]||[]).forEach((ln,j)=>{if(!ln||!ln[0])return;
     const flash=ln[2]&&Math.floor(FL.t*2)%2===0,fs=k>=3?22:25;if(!flash)T(ln[0],xm,60+27*j,ln[1],fs,'center');
