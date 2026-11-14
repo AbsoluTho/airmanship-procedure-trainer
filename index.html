@@ -14,11 +14,11 @@
 <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png">
 <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="stylesheet" href="css/app.css?v=71b3595b">
+<link rel="stylesheet" href="css/app.css?v=8f1688ed">
 </head>
 <body>
 <div class="app">
-  <header class="top"><span class="mark">Airmanship Procedure Trainer</span><span class="appver">v0.15.0 · Phase 2 prototype</span></header>
+  <header class="top"><span class="mark">Airmanship Procedure Trainer</span><span class="appver">v0.15.1 · Phase 2 prototype</span></header>
   <nav class="tabs" role="tablist">
     <button class="tab" role="tab" data-v="mcdu" aria-selected="true">MCDU</button>
     <button class="tab" role="tab" data-v="3d" aria-selected="false">Cockpit 3D</button>
@@ -49,6 +49,7 @@
           <button class="fb go" type="button" data-fl="start">START FLIGHT</button>
           <button class="fb" type="button" data-fl="pause">PAUSE</button>
           <button class="fb" type="button" data-fl="reset">RESET FLIGHT</button>
+          <button class="fb" type="button" id="fsBtn" title="Instruments in full screen">FULL SCREEN</button>
         </div>
         <div class="fl-row"><span class="fl-l">Setup</span>
           <button class="fb sm" type="button" data-fl="setup:save" title="Save the MCDU, FCU and EFIS set-up (once START is possible)">SAVE</button><button class="fb sm" type="button" data-fl="setup:load" title="Load the saved set-up, ready for START">LOAD</button><span class="fl-l" id="flSetup"></span>
@@ -134,7 +135,7 @@
 <script src="js/mcdu.js?v=bcabc041"></script>
 <script src="js/mcdu2.js?v=8871cffd"></script>
 <script src="js/perf.js?v=5299fc45"></script>
-<script src="js/fcu.js?v=23325c92"></script>
+<script src="js/fcu.js?v=be162ae6"></script>
 <script src="js/nd.js?v=3cbf3e5e"></script>
 <script src="js/flight.js?v=e14a7263"></script>
 <script src="js/vnav.js?v=f8e8618f"></script>
@@ -149,6 +150,6 @@
 <script src="js/engstart.js?v=8c63415e"></script>
 <script src="js/sdpages.js?v=fe8668eb"></script>
 <script src="js/cockpit3d.js?v=1ee46420"></script>
-<script src="js/app.js?v=9ebd617e"></script>
+<script src="js/app.js?v=91aa308a"></script>
 </body>
 </html>
