@@ -11,12 +11,12 @@ function setupSave(){if(flying()||flightReady().length)return false;
   const s={};for(const[k,v]of Object.entries(S))if(!SETUP_SKIP_S.includes(k))s[k]=v;
   const f={};for(const[k,v]of Object.entries(FCU))if(!SETUP_SKIP_FCU.includes(k))f[k]=v;
   const e=Object.assign({},EFIS);delete e.ctr;
-  const a=S.active,d={v:1,t:Date.now(),label:(I().from||'----')+'/'+(I().to||'----')+(a&&a.rwy?' '+a.rwy:'')+(a&&a.sid?' '+a.sid:''),S:clone(s),FCU:clone(f),EFIS:clone(e)};
+  const a=S.active,d={v:1,t:Date.now(),label:(I().from||'----')+'/'+(I().to||'----')+(a&&a.rwy?' '+a.rwy:'')+(a&&a.sid?' '+a.sid:''),S:clone(s),FCU:clone(f),EFIS:clone(e),LV:{flaps:LV.flaps,abrk:LV.abrk,fan:LV.fan,askid:LV.askid}};
   try{localStorage.setItem(SETUP_KEY,JSON.stringify(d));return true}catch(err){S.msg='SETUP NOT SAVED';return false}}
 function setupLoad(){const d=setupRead();if(!d)return false;if(FL.active)flightReset();
   const el=S.elec;S=Object.assign(freshState(),clone(d.S));S.elec=el;S.page='FPLN';S.fpOff=0;S.msgs=[];S.msgOff={};
   if(typeof ALIGN_S!=='undefined')S.irsT0=Date.now()-ALIGN_S*1000;   /* IRS already aligned */
-  Object.assign(FCU,d.FCU,{ap1:false,ap2:false,athr:false,exped:false});Object.assign(EFIS,d.EFIS,{ctr:null});
+  Object.assign(FCU,d.FCU,{ap1:false,ap2:false,athr:false,exped:false});Object.assign(EFIS,d.EFIS,{ctr:null});if(d.LV)Object.assign(LV,d.LV,{thr:'IDLE',gear:'DOWN'});
   refreshAll();if(typeof fcuRefresh==='function')fcuRefresh();return true}
 const hhmmLocal=t=>{const x=new Date(t);return String(x.getHours()).padStart(2,'0')+':'+String(x.getMinutes()).padStart(2,'0')};
 {const ui0=flightUI;flightUI=function(){ui0();const host=$('#flight');if(!host)return;const d=setupRead(),sv=host.querySelector('[data-fl="setup:save"]'),ld=host.querySelector('[data-fl="setup:load"]'),info=$('#flSetup');

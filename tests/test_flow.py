@@ -85,7 +85,13 @@ async def run(url,b):
     done=await pg.evaluate("[...document.querySelectorAll('#tasks li.done')].length")
     assert done==14,f'exercise tasks done: {done}/14'
     alt_rows=await pg.evaluate("fplnRows(window.__S().active).map(r=>r.k).join(',')")
-    assert 'altorig,altn' in alt_rows,'alternate F-PLN rows'
+    assert 'altorig,altdisc,altn' in alt_rows,f'alternate F-PLN: destination, discontinuity, ALTN: {alt_rows}'
+    # ALTN route: a waypoint typed on the discontinuity is inserted, CLR on the discontinuity joins DCT; CLR twice clears CLR at once
+    r=await pg.evaluate("""(()=>{const R=fplnRows(S.active),i=R.findIndex(r=>r.k==='altdisc');S.page='FPLN';S.fpOff=i;S.sp='DEMSU';P.FPLN.lsk('L',1);
+      const a=fplnRows(S.active).filter(r=>r.k.startsWith('alt')).map(r=>r.k+(r.id?':'+r.id:'')).join(' ');
+      S.fpOff=fplnRows(S.active).findIndex(r=>r.k==='altdisc');S.sp='CLR';P.FPLN.lsk('L',1);const b=fplnRows(S.active).filter(r=>r.k.startsWith('alt')).map(r=>r.k).join(' ');
+      S.sp='';clrKey();const c1=S.sp;clrKey();const c2=S.sp;I().altR={altn:I().altn,wpts:[],dct:false};S.fpOff=0;return[a,b,c1,c2]})()""")
+    assert r==['altorig:OETB altwpt:DEMSU altdisc altn:OEMA','altorig altwpt altn','CLR',''],f'ALTN route and CLR: {r}'
     # ---- automatic flight, flown with the FCU ----
     assert 'FCU' in (await pg.evaluate('flightReady().join()')),'FCU altitude required before takeoff'
     await pg.evaluate("window.__FCU.alt=7000;window.__efis('ls')")
@@ -127,6 +133,7 @@ async def run(url,b):
     await pg.evaluate("window.__ecam.show(true)")
     # descent constraints for the flight: SPD 220 and AT OR BELOW 7000 at D179O (DES then flies level at 7000)
     await pg.evaluate("(()=>{const l=window.__S().active.legs.find(l=>l.id==='D179O');l.spd=220;l.alt={t:'-',v:7000}})()")
+    await pg.evaluate("window.__flight('pm:on')")   # test pilot monitoring moves the levers
     await pg.evaluate("window.__flight('start')")
     seen=await pg.evaluate("""(()=>{const seen=new Set(),log=[];let n=0,did={};const add=()=>{const f=FL.fma;[f.c1,f.c2,f.c3,f.c4].forEach(c=>(c||[]).forEach(x=>x&&x[0]&&seen.add(x[0])));if(f.land)seen.add(f.land);seen.add('PH:'+S.phase);seen.add('LAT:'+FL.lat);seen.add('VER:'+FL.ver)};
       while(FL.stage!=='STOP'&&n<60000){step(0.5);setFma();add();n++;const dtg=FL.path.sThr-FL.s;
@@ -136,6 +143,7 @@ async def run(url,b):
         if(S.phase==='CLB'&&FL.spdIsMach&&FL.alt>25000){seen.add('MACH IN CLB');did.mclb=1}
         if(did.mclb&&S.phase==='DES'&&!FL.spdIsMach&&FL.alt<30000)seen.add('SPEED IN DES');
         if(!did.ap&&FL.alt-groundElev()>1200){fcuButton('ap1');did.ap=1}
+        if(FL.stage==='ROLLOUT'){if(LV.decel)seen.add('AUTOBRAKE DECEL');if(LV.thr==='REVMAX')seen.add('MAX REV')}
         /* DIR TO 80 deg left of the track: one left turn onto the waypoint, within 0.5 NM of the path, no right turn back */
         if(did.dt&&!did.dtok){const d=((FL.trkT-did.dt.trk+540)%360)-180;if(d>1)did.dt.right=1;did.dt.trk=FL.trkT;did.dt.xtk=Math.max(did.dt.xtk,Math.abs(FL.xtk||0));
           if(FL.t-did.dt.t>240){if(!did.dt.right&&did.dt.xtk<0.5)seen.add('DIR TO NO OVERSHOOT');else seen.add('DIRTO right='+did.dt.right+' xtk='+did.dt.xtk.toFixed(2));did.dtok=1}}
@@ -174,7 +182,7 @@ async def run(url,b):
         if(!did.lvl6&&FL.ver==='DES'&&Math.abs(FL.vs)<60&&Math.abs(FL.alt-7000)<40)seen.add('DES LEVEL AT CSTR'),did.lvl6=1;
         if(!did.pr&&S.phase==='CLB'&&FL.alt>8000){const v=vPredict(),q=v&&v.wp[ixOf('RIBIL')];if(q&&q.met)seen.add('RIBIL PREDICTED MET');did.pr=1}}
       seen.add('END:'+FL.stage);return[...seen]})()""")
-    for m in ['DIR TO NO OVERSHOOT','RWY TRK AIRBORNE','NAV FROM 400','EARLY DES 1000','PATH JOINED','APPR AT DECEL','GEAR AT 6NM','CONF3 5S AFTER GEAR','FULL 3S AFTER CONF3','SD PAGES IN CRZ','TREND TAKEOFF','TREND LANDING','MACH IN CLB','SPEED IN DES','SD:eng','SD:crz','SD:wheel','SPD CST 210','ALT CST','ALT CST 7000','CLB AFTER ORPAR','ALT ARMED MAGENTA','RIBIL PREDICTED MET','BELOW 7000 AFTER D179O','SPD CST 220 DES','DES LEVEL AT CSTR','DIR TO INSERTED','PATH FROM T-P','FROM LINE SEQUENCED','QNH ABOVE TA','STD SET','PERF CRZ T/D','CONF1 AT 12NM','CONF2 AT 8NM','MAN','SRS','RWY','NAV','THR CLB','CLB','LEVEL7000','ALT','ALT CRZ','HDG','NAV REJOINED','DES','THR IDLE','LOC *','LOC','G/S*','G/S','CAT 3','DUAL','LAND','FLARE','RETARD','ROLL OUT','PH:CLB','PH:CRZ','PH:DES','PH:APPR','PH:DONE','END:STOP']:
+    for m in ['AUTOBRAKE DECEL','MAX REV','DIR TO NO OVERSHOOT','RWY TRK AIRBORNE','NAV FROM 400','EARLY DES 1000','PATH JOINED','APPR AT DECEL','GEAR AT 6NM','CONF3 5S AFTER GEAR','FULL 3S AFTER CONF3','SD PAGES IN CRZ','TREND TAKEOFF','TREND LANDING','MACH IN CLB','SPEED IN DES','SD:eng','SD:crz','SD:wheel','SPD CST 210','ALT CST','ALT CST 7000','CLB AFTER ORPAR','ALT ARMED MAGENTA','RIBIL PREDICTED MET','BELOW 7000 AFTER D179O','SPD CST 220 DES','DES LEVEL AT CSTR','DIR TO INSERTED','PATH FROM T-P','FROM LINE SEQUENCED','QNH ABOVE TA','STD SET','PERF CRZ T/D','CONF1 AT 12NM','CONF2 AT 8NM','MAN','SRS','RWY','NAV','THR CLB','CLB','LEVEL7000','ALT','ALT CRZ','HDG','NAV REJOINED','DES','THR IDLE','LOC *','LOC','G/S*','G/S','CAT 3','DUAL','LAND','FLARE','RETARD','ROLL OUT','PH:CLB','PH:CRZ','PH:DES','PH:APPR','PH:DONE','END:STOP']:
         assert m in seen,f'never seen in the flight: {m}  (seen: {sorted(seen)})'
     await pg.evaluate("window.__flight('reset');window.__ecam.show(false)")
     # ---- LOAD SETUP after a flight: back to the saved set-up, ready for START ----
@@ -268,6 +276,23 @@ async def run(url,b):
     r=await pg.evaluate("""(()=>{let n=0,land=false;while(FL.stage!=='STOP'&&n<20000){step(0.5);n++;if(FL.path.sThr-FL.s<20)FCU.appr=true;if(FL.ver==='LAND')land=true}return[FL.stage,land,S.phase]})()""")
     assert r==['STOP',True,'DONE'],f'second approach flown to a landing: {r}'
     await pg.evaluate("window.__flight('reset');window.__S().active=clone(window.__plan0)")
+    # ---- LEVERS (no pilot monitoring): take-off by the thrust levers, LVR CLB until CL, gear left down halves the climb, VFE limit ----
+    r=await pg.evaluate("""(()=>{const fly=(gearUp)=>{window.__flight('reset');window.__flight('pm:off');S.active=clone(window.__plan0);S.tmpy=null;FCU.alt=7000;FCU.hdgMgd=true;FCU.spdMgd=true;
+        lever('flaps',1);window.__flight('start');const o={};for(let n=0;n<40;n++)step(0.5);o.lineup=[FL.stage,FL.ias];lever('thr','N50');for(let n=0;n<10;n++)step(0.5);
+        o.n1=Math.round(engStep()[0].n1);lever('thr','FLX');let n=0;while(FL.stage!=='AIR'&&n<400){step(0.5);n++}const t0=FL.t,a0=FL.alt;
+        while(FL.t-t0<25){step(0.5);if(gearUp&&FL.alt-groundElev()>50&&LV.gear==='DOWN')lever('gear','UP')}o.climb=FL.alt-a0;
+        while(FL.alt-groundElev()<2500)step(0.5);o.thr=FL.thr;lever('thr','CL');step(0.5);o.thr2=FL.thr;
+        n=0;while(n<500){step(0.5);n++}o.ias=Math.round(FL.ias);o.conf=FL.conf;o.gear=FL.gear;return o};
+      const a=fly(false),b=fly(true);
+      /* immediate return: COPY ACTIVE, NEW DEST at the FROM waypoint = origin, ACTIVATE SEC in flight */
+      S.sec=clone(S.active);S.secMode=true;S.lr=FL.fromIx;S.page='LATREV';S.sp='OEJN';P.LATREV.lsk('R',4);S.secMode=false;S.page='SECIDX';P.SECIDX.lsk('L',4);
+      const ret=[S.active.legs[idxK(S.active,'dest')].id,I().to];directTo('OEJN');P.DIR.lsk('R',6);step(0.5);
+      const dt=S.active.legs.filter(l=>l.k==='tp'||l.k==='dest').map(l=>l.k).join();window.__flight('reset');window.__flight('pm:on');S.active=clone(window.__plan0);FCU.alt=34000;return{a,b,ret,dt}})()""")
+    assert r['a']['lineup']==['LINEUP',0] and r['a']['n1']==50,f'lined up, still until the thrust levers move; 50% N1: {r["a"]}'
+    assert r['a']['thr']=='LVR' and r['a']['thr2']=='CL','LVR CLB until the thrust levers are set to CL'
+    assert 0.35<r['a']['climb']/r['b']['climb']<0.7,f'gear left down: about half the climb: {r["a"]["climb"]} vs {r["b"]["climb"]}'
+    assert r['a']['conf']=='1' and r['a']['ias']<=227,f'flaps 1 not retracted: speed held below VFE 230: {r["a"]}'
+    assert r['ret'][0]=='OEJN' and r['dt']=='tp,dest',f'immediate return: SEC with NEW DEST OEJN activated in flight, DIR TO OEJN: {r}'
     # ---- CO RTE, ROUTE selection, INIT REQUEST, STORED ROUTES, MCDU MENU (fresh MCDU) ----
     await pg.evaluate("S=freshState();window.__S().msgs=[];render()")
     for ch in 'OEJNOETB2': await P(ch)

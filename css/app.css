@@ -148,7 +148,7 @@ button{font:inherit;color:inherit}
 .dutoggle{position:absolute;z-index:3;top:1.1%;left:50%;transform:translateX(-50%);border:1px solid rgba(255,255,255,.35);border-radius:999px;background:rgba(18,24,32,.85);color:#9fe3ff;font:600 11px/1 "IBM Plex Mono",ui-monospace,monospace;letter-spacing:.06em;padding:5px 12px;cursor:pointer}
 .dutoggle:hover{background:rgba(30,40,54,.95)}
 /* ECAM control panel over the lower half of the ND, and its on/off button in the ND's lower right corner */
-.ecp-pan{position:absolute;z-index:2;left:3%;width:94%;bottom:14.132%;aspect-ratio:676/248;border-radius:6px;overflow:hidden;box-shadow:0 4px 14px rgba(0,0,0,.6)}
+.ecp-pan{position:absolute;z-index:2;left:3%;width:94%;bottom:4%;aspect-ratio:526/248;border-radius:6px;overflow:hidden;box-shadow:0 4px 14px rgba(0,0,0,.6)}
 .ecp-pan[hidden]{display:none}
 .ecp-pan img{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none}
 .ecp-k{position:absolute;border:0;background:transparent;padding:0;cursor:pointer;border-radius:4px}
@@ -213,3 +213,11 @@ button{font:inherit;color:inherit}
 #sdsvg .p-apu .Line{stroke-width:2px}#sdsvg .p-apu .Line.White{stroke:#fff}#sdsvg .p-apu .Line.Grey{stroke:#787878}#sdsvg .p-apu .Line.Amber{stroke:#e68000}#sdsvg .p-apu .Line.Red{stroke:#ff0000}#sdsvg .p-apu .Line.Green{stroke:#00ff00}
 #sdsvg .p-apu .Circle{fill:none;stroke-width:2.5px}#sdsvg .p-apu .Circle.Green{stroke:#00ff00}#sdsvg .p-apu .Circle.Amber{stroke:#e68000}
 #sdsvg .sdv2 .SW4{stroke-width:4px}#sdsvg .p-sts .EWDWarn{font-size:26px;letter-spacing:1px;white-space:pre}
+
+/* LEVERS panel in place of the lower ECAM display */
+.lv-panel{position:absolute;inset:0;z-index:2;border-radius:8px;overflow:hidden;background:#5b6b7f;touch-action:manipulation}
+.lv-panel[hidden]{display:none}
+.lv-panel svg{width:100%;height:100%;display:block;user-select:none;-webkit-user-select:none}
+.lv-panel .lvk:active rect{filter:brightness(1.4)}
+.lv-btn{position:absolute;z-index:3;top:0;left:50%;transform:translate(-50%,-55%);border:1px solid rgba(255,255,255,.35);border-radius:999px;background:rgba(18,24,32,.9);color:#9fe3ff;font:600 11px/1 "IBM Plex Mono",ui-monospace,monospace;letter-spacing:.08em;padding:6px 12px;cursor:pointer}
+.lv-btn[aria-pressed="true"]{color:#3cff3c}

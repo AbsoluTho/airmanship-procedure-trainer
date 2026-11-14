@@ -95,10 +95,47 @@ function flightReady(){const a=S.active,i=I(),q=S.perf,f=S.fuel,miss=[];
 function flightStart(){const miss=flightReady();if(miss.length)return miss;
   const P=buildPath(),o=DB.apt[orig()],r=o.rwy[S.active.rwy],tr=r.crs+(o.var||0);
   Object.assign(FL,{active:true,running:true,t:0,utc0:Date.now(),path:P,s:0,seg:1,xtk:0,pos:r.pos,hdgT:tr,trkT:tr,roll:0,pitch:0,alt:r.tdze??o.elev,vs:0,ias:0,tas:0,gs:0,mach:0,
-    ground:true,lat:'RWY',latArm:FCU.hdgMgd&&!(S.active.legs[1]&&S.active.legs[1].k==='disc')?'NAV':null,ver:'SRS',verArm:[FCU.lvlch?'CLB':'OP CLB'],thr:'TO',conf:q2conf(),gear:true,
-    fob:S.fuel.block-(S.fuel.taxi??0.2),fromIx:0,eoEng:null,crzDes:false,ldgSeq:0,gearT:null,f3T:null,inHold:null,holdExit:null,hsActive:null,cst:null,acc:0,accT:0,soe:false,opSmall:false,spdIsMach:false,capAlt:null,altHold:null,fmaT:{},loc:false,gsCap:false,tdReached:false,stage:'ROLL',lvrT:null});
+    ground:true,lat:'RWY',latArm:FCU.hdgMgd&&!(S.active.legs[1]&&S.active.legs[1].k==='disc')?'NAV':null,ver:'SRS',verArm:[FCU.lvlch?'CLB':'OP CLB'],thr:'IDLE',conf:['0','1+F','2','3','FULL'][LV.flaps],gear:true,gearPos:1,gaFlap:false,pmGearT:null,pmF3T:null,revDone:false,
+    fob:S.fuel.block-(S.fuel.taxi??0.2),fromIx:0,eoEng:null,crzDes:false,ldgSeq:0,gearT:null,f3T:null,inHold:null,holdExit:null,hsActive:null,cst:null,acc:0,accT:0,soe:false,opSmall:false,spdIsMach:false,capAlt:null,altHold:null,fmaT:{},loc:false,gsCap:false,tdReached:false,stage:'LINEUP',lvrT:null});LV.thr='IDLE';LV.gear='DOWN';LV.decel=false;
   FCU.athr=true;FL.td=P.sThr-tdDist();FL.sig=planSig();S.phase='TAKEOFF';setFma();flightTick(0);return[]}
 function q2conf(){const f=S.perf.flaps;return f===1?'1+F':String(f||1)}
+
+/* ---------- LEVERS: thrust levers, flaps lever, landing gear lever, autobrake (the pilot's commands) ---------- */
+const LV={thr:'IDLE',flaps:0,gear:'DOWN',abrk:null,fan:false,askid:true,decel:false};
+const VFE={'0':999,'1':230,'1+F':215,'2':200,'3':185,'FULL':177},VLE=280;
+let PM_AUTO=false;   /* test hook: a pilot monitoring that moves the levers (off in the app) */
+function lever(k,v){
+  if(k==='thr'){if(!['IDLE','REVIDLE','REVMAX','N50','CL','FLX','TOGA'].includes(v))return;
+    if(v.startsWith('REV')&&!(FL.active&&FL.ground))return;   /* reverse on the ground only */
+    LV.thr=v;if(!FL.active)return;
+    if(FL.stage==='LINEUP'&&(v==='FLX'||v==='TOGA')){FL.stage='ROLL';FL.thr='TO'}   /* the take-off roll starts at FLX/MCT or TOGA */
+    else if(FL.stage==='AIR'){if(v==='TOGA'&&!['TO','LVR'].includes(FL.thr))goAround();else if(v==='CL'&&['TO','LVR','MCT'].includes(FL.thr))FL.thr='CL';else if(v==='FLX'&&FL.thr!=='TO')FL.thr='MCT'}}
+  else if(k==='flaps'){const n=+v;if(n>=0&&n<=4)LV.flaps=n}
+  else if(k==='gear'){if(v==='UP'&&FL.active&&FL.ground)return;LV.gear=v}   /* weight on wheels: no gear up on the ground */
+  else if(k==='abrk')LV.abrk=LV.abrk===v?null:v;
+  else if(k==='fan')LV.fan=!LV.fan;
+  else if(k==='askid')LV.askid=!LV.askid;
+  if(typeof refreshAll==='function')refreshAll()}
+/* flaps lever position to configuration: lever 1 is 1+F on the ground and when retracting below 210 kt; 1+F becomes 1 above 210 kt */
+function lvConf(){const n=LV.flaps;if(n!==1)return['0','1+F','2','3','FULL'][n];
+  if(FL.conf==='1+F')return FL.ias>210&&!FL.ground?'1':'1+F';if(FL.conf==='1')return'1';
+  return FL.ground||(FL.conf!=='0'&&FL.ias<210)?'1+F':'1'}
+function lvStep(dt){FL.conf=lvConf();
+  const tg=FL.ground?1:(LV.gear==='DOWN'?1:0);FL.gearPos=Math.max(0,Math.min(1,(FL.gearPos??1)+Math.sign(tg-(FL.gearPos??1))*dt/10));FL.gear=FL.gearPos>0}
+/* test-only pilot monitoring: the lever actions of the earlier automatic profile */
+function autoPM(dtg,sp){const st=FL.stage,h=FL.alt-groundElev();
+  if(st==='LINEUP'){if(LV.flaps!==(S.perf.flaps||1)){lever('flaps',S.perf.flaps||1);return}lever('thr',LV.thr==='IDLE'?'N50':(S.perf.flex!=null?'FLX':'TOGA'));return}
+  if(st==='ROLLOUT'){if(LV.thr==='IDLE'&&FL.ias>70&&!FL.revDone)lever('thr','REVMAX');else if(LV.thr==='REVMAX'&&FL.ias<=70){lever('thr','IDLE');FL.revDone=true}return}
+  if(st!=='AIR')return;
+  if(FL.thr==='LVR'&&LV.thr!=='CL')lever('thr','CL');
+  if(FL.ver==='FLARE'&&h<25&&LV.thr!=='IDLE')lever('thr','IDLE');
+  if(S.phase==='GA'&&!FL.gaFlap){FL.gaFlap=true;if(LV.flaps>0)lever('flaps',LV.flaps-1)}
+  if(LV.gear==='DOWN'&&FL.vs>300&&h>50&&S.phase!=='APPR')lever('gear','UP');
+  if(S.phase==='APPR'){if(!LV.abrk)lever('abrk','MED');let n=LV.flaps;if(dtg<=12)n=Math.max(n,1);if(dtg<=8)n=Math.max(n,2);
+    if(dtg<=6&&LV.gear!=='DOWN'){lever('gear','DOWN');FL.pmGearT=FL.t}
+    if(FL.pmGearT!=null&&FL.t-FL.pmGearT>=5&&n<3){n=3;FL.pmF3T=FL.t}if(FL.pmF3T!=null&&!S.p2.conf3&&FL.t-FL.pmF3T>=3)n=4;
+    if(n!==LV.flaps)lever('flaps',n)}
+  else if(h>400){let n=LV.flaps;if(FL.ias>=sp.S-2)n=0;else if(FL.ias>=sp.F-2)n=Math.min(n,1);if(n!==LV.flaps)lever('flaps',n)}}
 function flightReset(){S.eo=false;Object.assign(FL,{active:false,running:false,eoEng:null,path:null,stage:'IDLE',fma:{c1:[],c2:[],c3:[],c4:[],c5:[]},ias:0,gs:0,tas:0,vs:0});
   FCU.ap1=FCU.ap2=FCU.athr=FCU.loc=FCU.appr=FCU.exped=false;if(FCU.spdMgd)FCU.mach=false;S.phase='PREFLIGHT';S.apprArm=false;refreshAll()}
 
@@ -137,7 +174,10 @@ function fcuEvent(ev){if(!FL.active)return;const A=FCU.alt;
 /* ---------- FMA (mode strings from the FlyByWire A32NX FMA) ---------- */
 function setFma(){const st=FL.stage,a=S.perf,fx=a.flex!=null&&S.phase!=='GA'?'FLX '+a.flex:'TOGA',f={c1:[],c2:[],c3:[],c4:[],c5:[]};
   const guide=EFIS.fd||FCU.ap1||FCU.ap2;
-  if(FL.thr==='TO'&&st!=='IDLE'){f.c1=[['MAN','w'],[fx,'w']]}
+  const fx2=LV.thr==='TOGA'||S.phase==='GA'?'TOGA':(a.flex!=null?'FLX '+a.flex:'MCT');
+  if(st==='LINEUP'){f.c1=[]}
+  else if(FL.thr==='TO'&&st!=='IDLE'){f.c1=[['MAN','w'],[fx2,'w']]}
+  else if(FL.thr==='MCT'){f.c1=[['MAN','w'],['MCT','w']]}
   else if(FL.thr==='LVR'){f.c1=[['LVR CLB','w',true]]}
   else if(FCU.athr&&!['ROLLOUT','STOP','IDLE'].includes(st)){
     if(FL.ver==='FLARE'&&FL.alt-groundElev()<25)f.c1=[['RETARD','w']];
@@ -168,6 +208,7 @@ const cstArmed=()=>FL.verArm.length===1&&FL.verArm[0]==='ALT'&&['CLB','DES'].inc
 /* ---------- one simulation step ---------- */
 function step(dt){const ias0=FL.ias;if(FL.sig!==planSig()&&!FL.ground)flightReplan();const P=FL.path,q=S.perf,p2=S.p2,crz=I().crz*100,sp=cfgSpeeds(),gnd=groundElev(),A=FCU.alt;
   const agl=()=>FL.alt-gnd;
+  if(PM_AUTO)autoPM(P.sThr-FL.s,sp);lvStep(dt);
   /* LOC, LAND and ROLL OUT never search back along the path (after a go-around the path starts on the final approach) */
   const pr=['NAV','RWY','RWY TRK'].includes(FL.lat)?project(P,FL.pos,FL.seg-2,FL.seg+6):['LOC*','LOC','LAND','ROLL OUT'].includes(FL.lat)?project(P,FL.pos,FL.seg-1,P.pts.length-1):project(P,FL.pos,1,P.pts.length-1);
   if(pr){FL.s=FL.lat==='NAV'?Math.max(FL.s,pr.s):pr.s;FL.seg=pr.i;FL.xtk=pr.xtk}
@@ -180,10 +221,10 @@ function step(dt){const ias0=FL.ias;if(FL.sig!==planSig()&&!FL.ground)flightRepl
   const fi=FL.fromIx;for(const pt of P.pts)if(pt.ix!=null&&pt.s<=FL.s+0.05&&pt.ix>FL.fromIx)FL.fromIx=pt.ix;
   if(FL.fromIx!==fi&&S.page==='FPLN'&&!S.secMode)S.fpOff=0;   /* waypoint sequenced: the F-PLN starts again at the FROM line */
 
-  if(FL.stage==='ROLL'){FL.ias+=(S.perf.flex!=null?4.37:4.94)*dt;if(FL.ias>=q.vr){FL.pitch=Math.min(15,FL.pitch+3*dt);if(FL.ias>=q.vr+4){FL.ground=false;FL.stage='AIR'}}}
+  if(FL.stage==='ROLL'){FL.ias+=(LV.thr==='TOGA'?4.94:4.37)*dt;if(FL.ias>=q.vr){FL.pitch=Math.min(15,FL.pitch+3*dt);if(FL.ias>=q.vr+4){FL.ground=false;FL.stage='AIR'}}}
   const ga=S.phase==='GA',thrRed=ga?(p2.gaThr??defGa()):(q.thr??defRed()),acc=ga?(p2.gaAcc??defGa()):(q.acc??defRed());
   if(FL.thr==='TO'&&!FL.ground&&FL.alt>=thrRed){FL.thr='LVR';FL.lvrT=FL.t}
-  if(FL.thr==='LVR'&&FL.t-FL.lvrT>4)FL.thr='CL';
+  if(FL.thr==='LVR'&&LV.thr==='CL')FL.thr='CL';   /* LVR CLB until the pilot sets the thrust levers to CL */
 
   let vsT=0,spdT=FL.ias,trkT=FL.trkT;
   if(FL.stage==='AIR'){
@@ -204,7 +245,8 @@ function step(dt){const ias0=FL.ias;if(FL.sig!==planSig()&&!FL.ground)flightRepl
     else if(['LOC*','LOC','LAND'].includes(FL.lat)&&lg){const d=destRwy(),tgt=dst(d.r.pos,lg.crs+180,Math.max(-2,lg.along-L));trkT=brg(FL.pos,tgt)}
     /* ---- vertical ---- */
     const capBand=Math.max(80,Math.abs(FL.vs)*0.12),CK=cstrNow();FL.cst=CK;
-    if(FL.ver==='SRS'){spdT=ga?FL.gaSpd:q.v2+10;vsT=ga?Math.min(2400,FL.vs+600):2400;
+    const gp=FL.gear&&!FL.ground&&(['TAKEOFF','CLB','GA'].includes(S.phase)||CLIMBING.includes(FL.ver)||FL.ver==='SRS')?0.5:1;FL.gp=gp;   /* gear left down in the climb: half the climb rate and acceleration */
+    if(FL.ver==='SRS'){spdT=ga?FL.gaSpd:q.v2+10;vsT=(ga?Math.min(2400,FL.vs+600):2400)*gp;
       if(FL.alt>=acc){FL.opSmall=false;if(A>FL.alt+capBand){FL.ver=FL.verArm.includes('OP CLB')?'OP CLB':'CLB';FL.verArm=['ALT']}else{FL.ver='ALT*';FL.verArm=[]}if(!ga)S.phase='CLB'}}
     FL.soe=false;
     if(CLIMBING.includes(FL.ver)){if(FL.opSmall&&FL.ver!=='EXP CLB')vsT=1000;else FL.soe=true;   /* THR CLB, speed on elevator: V/S computed after the speed target */
@@ -277,28 +319,27 @@ function step(dt){const ias0=FL.ias;if(FL.sig!==planSig()&&!FL.ground)flightRepl
     if((S.phase==='CRZ'||S.phase==='CLB')&&FL.s>FL.path.len*0.4&&(vsT<0||FL.vs<-300)&&(DESCENDING.includes(FL.ver)||FL.ver==='V/S'||FL.ver==='FPA')&&FL.alt<crz-200)S.phase='DES';
     if(S.phase==='DES'&&dtg<DECEL_NM&&['NAV','LOC*','LOC'].includes(FL.lat))S.phase='APPR';   /* DECEL: approach phase in NAV or LOC, else ACTIVATE APPR PHASE */
     /* ---- configuration (PM) ---- */
-    /* deceleration: 12 NM flaps 1 (S speed), 8 NM flaps 2 (F speed) and gear down, 5 NM approach speed */
-    /* 12 NM flaps 1, 8 NM flaps 2, 6 NM gear down, 5 s later flaps 3, 3 s later flaps FULL (flaps 3 is the last step for a CONF 3 landing) */
-    if(S.phase==='APPR'){let q=FL.ldgSeq||0;if(dtg<=12&&q<1)q=1;if(dtg<=8&&q<2)q=2;if(dtg<=6&&q<3){q=3;FL.gearT=FL.t}
-      if(q===3&&FL.t-FL.gearT>=5){q=4;FL.f3T=FL.t}if(q===4&&!p2.conf3&&FL.t-FL.f3T>=3)q=5;
-      FL.ldgSeq=q;FL.conf=['0','1','2','2','3','FULL'][q];FL.gear=q>=3}
-    else{if(S.phase==='GA'&&FL.ver!=='SRS'&&['FULL','3','2'].includes(FL.conf)&&FL.ias>=sp.F-10)FL.conf='1+F';
-      if(FL.conf==='1+F'&&FL.ias>sp.F)FL.conf='1';if(FL.conf==='1'&&FL.ias>sp.S)FL.conf='0';if(FL.gear&&agl()>200)FL.gear=false}
-    if(FL.ver==='FLARE'&&agl()<=1&&FL.vs<=0){FL.ground=true;FL.stage='ROLLOUT';FL.ver='ROLL OUT';FL.lat='ROLL OUT';FL.alt=gnd;FL.vs=0;FCU.ap1=FCU.ap2=false;FCU.athr=false}}
-  if(FL.stage==='ROLLOUT'){FL.ias=Math.max(0,FL.ias-(FL.ias>40?5:3.5)*dt);FL.pitch=Math.max(0,FL.pitch-2*dt);
+    /* configuration: flaps and landing gear on the pilot's commands (LEVERS panel), no automatic sequence */
+    if(FL.ver==='FLARE'&&agl()<=1&&FL.vs<=0&&FL.gearPos<1){FL.ground=true;FL.alt=gnd;FL.vs=0;FL.ias=0;FL.stage='STOP';S.phase='GEAR UP LANDING';FL.running=false;S.msg='GEAR NOT DOWN AT TOUCHDOWN'}
+    if(FL.ver==='FLARE'&&agl()<=1&&FL.vs<=0&&FL.gearPos>=1){FL.ground=true;FL.stage='ROLLOUT';FL.ver='ROLL OUT';FL.lat='ROLL OUT';FL.alt=gnd;FL.vs=0;FCU.ap1=FCU.ap2=false;FCU.athr=false}}
+  if(FL.stage==='ROLLOUT'){const idle=['IDLE','REVIDLE','REVMAX'].includes(LV.thr),ab=idle&&LV.askid&&LV.abrk;
+    let dec=!idle?0.8:ab?{LO:3.3,MED:5,MAX:6}[LV.abrk]:LV.askid?(FL.ias>40?4:3):2.5;if(ab&&FL.ias<40)dec=Math.min(dec,3.5);
+    if(LV.thr==='REVMAX'&&FL.ias>70)dec+=1.5;else if(LV.thr==='REVIDLE'&&FL.ias>70)dec+=0.4;LV.decel=!!ab&&FL.ias>2;
+    FL.ias=Math.max(0,FL.ias-dec*dt);FL.pitch=Math.max(0,FL.pitch-2*dt);
     const lg=locGeo(FL.pos),d=destRwy();trkT=brg(FL.pos,dst(d.r.pos,lg.crs+180,lg.along-1));if(FL.ias<=0){FL.stage='STOP';S.phase='DONE';FL.running=false}}
   if(FL.stage==='ROLL'){const o=DB.apt[orig()],r=o.rwy[S.active.rwy];trkT=r.crs+(o.var||0)}
 
+  if(FL.stage==='AIR')spdT=Math.min(spdT,VFE[FL.conf]-4,FL.gear?VLE-4:999);   /* flaps or gear not retracted: the speed is held below VFE / VLE */
   /* speed on elevator (OP CLB, CLB, EXP CLB with CLB thrust; OP DES, EXP DES with idle): the vertical speed is what the thrust leaves
      once the acceleration toward the target speed is paid for (climb or descent capability minus the energy used to accelerate) */
   if(FL.stage==='AIR'&&FL.soe){const gw=gwNowF(),cfgD=({'0':0,'1':1,'1+F':1.3,'2':2,'3':3,'FULL':4}[FL.conf]||0)*220+(FL.gear?500:0),climb=CLIMBING.includes(FL.ver),k=Math.max(150,FL.tas)*5.3;
     const cap=climb?Math.max(400,(3300-FL.alt*0.06)*(64/gw))*(FL.eoEng?0.42:1)-cfgD:-(600+Math.max(0,FL.ias-200)*12+FL.alt*0.035)-cfgD;
-    let a=Math.max(-1,Math.min(1,(spdT-FL.ias)*0.12)),v=cap-k*a;
-    if(climb&&v<0){v=0;a=cap/k}if(!climb&&v>0){v=0;a=cap/k}
+    const g2=FL.gp||1,cap2=climb?cap*g2:cap;let a=Math.max(-1,Math.min(1,(spdT-FL.ias)*0.12))*(climb?g2:1),v=cap2-k*a;
+    if(climb&&v<0){v=0;a=cap2/k}if(!climb&&v>0){v=0;a=cap/k}
     FL.accT=a;vsT=v}
   FL.spdT=spdT;vsT=Math.max(-6000,Math.min(6000,vsT));
   /* ---- dynamics ---- */
-  if(FL.stage==='AIR'){FL.ias+=FL.soe?FL.accT*dt:Math.max(-1.6*dt,Math.min(1.6*dt,spdT-FL.ias));FL.vs+=Math.max(-600*dt,Math.min(600*dt,vsT-FL.vs));FL.alt+=FL.vs/60*dt}
+  if(FL.stage==='AIR'){const g3=FL.gp||1;FL.ias+=FL.soe?FL.accT*dt:Math.max(-1.6*dt,Math.min(1.6*g3*dt,spdT-FL.ias));FL.vs+=Math.max(-600*dt,Math.min(600*dt,vsT-FL.vs));FL.alt+=FL.vs/60*dt}
   else if(FL.ground)FL.alt=gnd;
   FL.tas=tasOf(FL.ias,FL.alt);FL.gs=FL.ground?FL.ias:FL.tas;FL.mach=FL.tas/sos(FL.alt);
   const dh=((trkT-FL.trkT+540)%360)-180,rate=Math.max(-3,Math.min(3,dh*0.6));FL.trkT=(FL.trkT+rate*dt+360)%360;FL.hdgT=FL.trkT;
@@ -325,7 +366,7 @@ function utcStr(ms){const d=new Date(ms);return String(d.getUTCHours()).padStart
 /* ---------- control bar ---------- */
 function flightUI(){const host=$('#flight');if(!host)return;const miss=FL.active?[]:flightReady();
   const st=$('#flState'),rd=$('#flReady');
-  if(st)st.innerHTML=FL.active?`<b>${S.phase}</b><span>${Math.max(0,FL.path.sThr-FL.s).toFixed(0)} NM to go</span><span>${Math.floor(FL.t/60)} min</span><span>${FL.conf==='0'?'CLEAN':'CONF '+FL.conf}${FL.gear?' · GEAR DOWN':''}</span>`:`<b>READY?</b><span>${miss.length?'Complete first:':'All set. Press START.'}</span>`;
+  if(st)st.innerHTML=FL.active&&FL.stage==='LINEUP'?`<b>LINED UP</b><span>LEVERS: thrust levers 50% N1, then FLX/MCT or TOGA</span>`:FL.active?`<b>${S.phase}</b><span>${Math.max(0,FL.path.sThr-FL.s).toFixed(0)} NM to go</span><span>${Math.floor(FL.t/60)} min</span><span>${FL.conf==='0'?'CLEAN':'CONF '+FL.conf}${FL.gear?' · GEAR DOWN':''}</span>`:`<b>READY?</b><span>${miss.length?'Complete first:':'All set. Press START.'}</span>`;
   if(rd){rd.innerHTML=miss.map(m=>`<li>${m}</li>`).join('');rd.hidden=!miss.length||FL.active}
   const b=k=>host.querySelector(`[data-fl="${k}"]`);
   b('start').hidden=FL.active;b('start').disabled=!!miss.length;b('pause').hidden=!FL.active||FL.stage==='STOP';b('pause').textContent=FL.running?'PAUSE':'RESUME';
@@ -338,7 +379,8 @@ function flightBtn(k){
   else if(k==='pause'){FL.running=!FL.running}
   else if(k==='reset')flightReset();
   else if(k.startsWith('rate'))FL.rate=+k.slice(5);
-  else if(k==='ga')goAround();
+  else if(k==='ga')lever('thr','TOGA');
+  else if(k.startsWith('pm:'))PM_AUTO=k==='pm:on';
   else if(k.startsWith('eng:')){const n=+k.slice(4);if(FL.active&&!FL.ground){FL.eoEng=FL.eoEng===n?null:n;S.eo=!!FL.eoEng}}
   else if(k==='td')flightSkip(()=>FL.s>=FL.td-5||FL.tdReached);
   else if(k==='appr')flightSkip(()=>FL.path.sThr-FL.s<=30);

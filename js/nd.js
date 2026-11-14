@@ -76,7 +76,7 @@ function drawND(g,W,H,powered){g.save();g.setTransform(1,0,0,1,0,0);g.fillStyle=
   const diamond=(x,y,col,s)=>{g.beginPath();g.moveTo(x,y-s);g.lineTo(x+s,y);g.lineTo(x,y+s);g.lineTo(x-s,y);g.closePath();g.strokeStyle=NC[col];g.lineWidth=3;g.stroke()};
   const star=(x,y,col)=>{g.strokeStyle=NC[col];g.lineWidth=3;g.beginPath();for(let i=0;i<4;i++){const a=i*Math.PI/4;g.moveTo(x-11*Math.cos(a),y-11*Math.sin(a));g.lineTo(x+11*Math.cos(a),y+11*Math.sin(a))}g.stroke()};
   const geos=[];if(A)geos.push([planGeo(A,'g'),false]);if(T)geos.push([planGeo(T,'y'),true]);if(S.secMode&&S.sec)geos.push([planGeo(S.sec,'w'),'sec']);
-  if(A&&I().altn&&DB.apt[I().altn]){const d=A.legs[idxK(A,'dest')],dp=legPos(d),ap=DB.apt[I().altn].pos;line([dp,ap],'b',[14,10]);
+  if(A&&I().altn&&DB.apt[I().altn]){const d=A.legs[idxK(A,'dest')],dp=legPos(d),ap=DB.apt[I().altn].pos,R=typeof altRte==='function'?altRte():{wpts:[],dct:true};const wp=R.wpts.map(id=>DB.wpt[id]).filter(Boolean);line([dp,...wp,...(R.dct?[ap]:[])],'b',[14,10]);
     const[x,y]=pj(ap);star(x,y,'b');label(I().altn,x+16,y+2,'b')}
   /* offset: the original route dashed between the entry point and the rejoin point, the offset path solid */
   const ofR=p=>{if(!p||!p.ofst)return null;const ie=p.legs.findIndex(l=>l.seg==='arr'||l.k==='dest');return[p.ofst.ix0??0,ie]};

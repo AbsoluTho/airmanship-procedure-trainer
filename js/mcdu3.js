@@ -81,7 +81,7 @@ P.LATREV={render(){const p=cur(),l=lrLeg(),isW=l.k==='wpt',isO=l.k==='orig',isD=
   if(isW)put(7,0,'<HOLD');
   if(isD){put(6,1,'ALTN','w','S');put(7,0,I().altn?'<'+I().altn:'[    ]','b')}
   if(isW&&I().altn&&!S.secMode){put(8,1,'ENABLE','b','S');put(9,0,'{ALTN','b')}
-  if(!isD&&!isA&&!ppos){rput(8,'NEW DEST ','w','S');rput(9,'[  ]','b')}
+  if(!isD&&!isA&&(!ppos||l.k==='tp')){rput(8,'NEW DEST ','w','S');rput(9,'[  ]','b')}
   if(isW)rput(11,'AIRWAYS>');
   if(!tmpyFoot())put(13,0,'<RETURN')},
  lsk(s,n){const p=cur(),l=lrLeg(),k=s+n,v=S.sp;
@@ -102,8 +102,8 @@ P.LATREV={render(){const p=cur(),l=lrLeg(),isW=l.k==='wpt',isO=l.k==='orig',isD=
   if(k==='L4'&&l.k==='wpt'&&I().altn&&!S.secMode){enableAltn(S.lr);return go('FPLN')}
   if(k==='R3'&&(l.k==='wpt'||l.k==='dest'||l.k==='orig'&&!flying())){if(!v)return;if(!/^[A-Z0-9]{2,5}$/.test(v))return err('FORMAT ERROR');
     if(!DB.wpt[v])return err('NOT IN DATA BASE');insertWpt(edit(),l.k==='dest'?S.lr-1:S.lr,v,true);ok();return go('FPLN')}
-  if(k==='R4'&&(l.k==='wpt'||l.k==='orig')){if(!v)return;if(!/^[A-Z]{4}$/.test(v))return err('FORMAT ERROR');if(!DB.apt[v])return err('NOT IN DATA BASE');
-    if(v===p.legs[0].id)return err('NOT ALLOWED');newDest(edit(),S.lr,v);S.fpOff=0;ok();return go('FPLN')}
+  if(k==='R4'&&(l.k==='wpt'||l.k==='orig'||l.k==='tp')){if(!v)return;if(!/^[A-Z]{4}$/.test(v))return err('FORMAT ERROR');if(!DB.apt[v])return err('NOT IN DATA BASE');
+    if(v===p.legs[0].id&&!flying())return err('NOT ALLOWED');newDest(edit(),S.lr,v);   /* in flight the origin is allowed: immediate return */S.fpOff=0;ok();return go('FPLN')}
   if(k==='R5'&&l.k==='wpt'){S.awy={idx:S.lr,rows:[]};return go('AWY')}
   if(k==='R2')return err('NOT IN PROTOTYPE');
   return err('NOT ALLOWED')}};
