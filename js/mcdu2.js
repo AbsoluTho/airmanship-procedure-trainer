@@ -343,7 +343,7 @@ function directTo(id){if(!flying()||FL.ground)return err('NOT ALLOWED');
   if(!DB.wpt[id]&&!(DB.nav&&DB.nav[id]))return err('NOT IN DATA BASE');
   S.tmpy=clone(S.active);const q=S.tmpy,from=FL.fromIx;let ti=q.legs.findIndex((l,ix)=>ix>from&&(l.k==='wpt'||l.k==='dest')&&l.id===id);
   if(ti<0){if(!DB.wpt[id]&&DB.nav[id])DB.wpt[id]=DB.nav[id].pos;q.legs.splice(from+1,0,W(id,{seg:'enr'}),{k:'disc'});ti=from+1}
-  q.legs.splice(from+1,ti-from-1,{k:'tp',id:'T-P',pos:FL.pos.slice(),seg:'enr'});S.dirTo=id;normalize(q);ok()}
+  q.legs.splice(from+1,ti-from-1,{k:'tp',id:'T-P',pos:FL.pos.slice(),trk:FL.trkT,gs:FL.gs,seg:'enr'});S.dirTo=id;normalize(q);ok()}
 P.DIR={render(){cput(1,'DIR TO',S.tmpy&&S.dirTo?'y':'w');put(2,1,'DIR TO','w','S');
   if(S.tmpy&&S.dirTo){put(3,0,'*'+S.dirTo,'y');rput(2,'RADIAL IN','w','S');rput(3,'[ ]°','b');put(4,1,'WITH','w','S');put(5,0,'*ABEAM PTS','b')}else put(3,0,'[     ]','b');
   put(6,1,'F-PLN WPTS','w','S');const L=dirList();for(let j=0;j<dirRows();j++){const x=L[(S.dirOff||0)+j];if(x)put(7+2*j,0,'<'+x.l.id+(x.l.k==='dest'?(x.l.rwy||''):''),'g')}
@@ -352,7 +352,8 @@ P.DIR={render(){cput(1,'DIR TO',S.tmpy&&S.dirTo?'y':'w');put(2,1,'DIR TO','w','S
   if(k==='L1'){const v=S.sp;if(!v)return;if(!/^[A-Z0-9]{2,5}$/.test(v))return err('FORMAT ERROR');return directTo(v)}
   if(s==='L'&&n>=3&&n<3+dirRows()){const x=dirList()[(S.dirOff||0)+n-3];if(!x)return;return directTo(x.l.id)}   /* the waypoint beside the key */
   if(k==='L6'&&S.tmpy){S.tmpy=null;S.dirTo=null;return ok()}
-  if(k==='R6'&&S.tmpy&&S.dirTo){S.active=S.tmpy;S.tmpy=null;S.dirTo=null;FCU.hdgMgd=true;if(flying()){FL.lat='NAV';FL.latArm=null}ok();return go('FPLN')}
+  if(k==='R6'&&S.tmpy&&S.dirTo){const tp=S.tmpy.legs.find(l=>l.k==='tp');if(tp&&flying())Object.assign(tp,{pos:FL.pos.slice(),trk:FL.trkT,gs:FL.gs});   /* the turn starts where INSERT is pressed */
+    S.active=S.tmpy;S.tmpy=null;S.dirTo=null;FCU.hdgMgd=true;if(flying()){FL.lat='NAV';FL.latArm=null}ok();return go('FPLN')}
   return err('NOT ALLOWED')},
  slew(d){const n=dirList().length;S.dirOff=Math.max(0,Math.min(Math.max(0,n-dirRows()),(S.dirOff||0)-d))}};
 /* F-PLN waypoints shown on DIR TO: L3 to L6, or L3 to L5 while the temporary F-PLN shows ERASE/INSERT on L6 */

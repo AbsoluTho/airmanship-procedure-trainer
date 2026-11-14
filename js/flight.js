@@ -15,7 +15,7 @@ function buildPath(plan){const p=plan||S.active,pts=[],holds=[];let vr=DB.apt[p.
   const push=(pos,ix)=>{const last=pts[pts.length-1];if(last&&gc(last.p,pos)<0.01){if(ix!=null)last.ix=ix;return}pts.push({p:pos,ix})};
   let tp=-1;p.legs.forEach((l,i)=>{if(l.k==='tp')tp=i});   /* after a DIR TO the path starts at the turn point */
   for(let ix=Math.max(0,tp);ix<p.legs.length;ix++){const l=p.legs[ix];
-    if(l.k==='tp'){push(l.pos,ix);continue}
+    if(l.k==='tp'){push(l.pos,ix);dirArc(p,ix).forEach(q=>push(q,null));continue}
     if(l.seg==='map')break;
     /* go-around heading leg: the heading flown until its altitude (about 600 ft per NM) */
     if(l.k==='hdg'&&pts.length){const c=+((String(l.lbl).match(/(\d{3})/)||[0,0])[1]),vd=DB.apt[p.legs[idxK(p,'dest')].id].var||0,from=flying()?FL.alt:0,L=l.alt?Math.max(2,(l.alt.v-from)/600):5;
@@ -35,6 +35,18 @@ function buildPath(plan){const p=plan||S.active,pts=[],holds=[];let vr=DB.apt[p.
   const H=holds.map(ix=>{const i0=pts.findIndex(q=>q.h0===ix),i1=pts.findIndex(q=>q.h1===ix);return{ix,i0,s0:pts[i0].s,s1:pts[i1].s}}).filter(h=>h.i0>=0);
   const oe=pts.find(q=>q.oe),os_=pts.find(q=>q.os);
   return{pts,len:s,sThr:thr.s,holds:H,ofstEnd:oe?oe.s:null,ofstStart:os_?os_.s:null}}
+/* DIR TO (FlyByWire DF leg geometry): from the turn point, a turn on the track flown when DIR TO was inserted, at the
+   radius the aircraft can fly at that ground speed (2.5 deg/s), until the aircraft points at the waypoint; then a straight
+   line, tangent to the turn. No overshoot and no reverse turn. Empty when the turn is not needed or cannot reach it. */
+function dirArc(p,ix){const l=p.legs[ix];if(l.trk==null)return[];
+  const nx=p.legs.slice(ix+1).find(q=>q.k==='wpt'||q.k==='dest');if(!nx)return[];
+  const tgt=nx.k==='wpt'?DB.wpt[nx.id]:(()=>{const a=DB.apt[nx.id],r=nx.rwy&&a.rwy[nx.rwy];return r?r.pos:a.pos})();if(!tgt)return[];
+  const rel=((brg(l.pos,tgt)-l.trk+540)%360)-180;if(Math.abs(rel)<3)return[];
+  const side=rel>0?1:-1,R=Math.max(0.5,(l.gs||250)/3600/(2.5*D2R)),C=dst(l.pos,l.trk+90*side,R);
+  if(gc(C,tgt)<R*1.05)return[];   /* the waypoint is inside the turn circle */
+  const pts=[];for(let k=1;k<=72;k++){const h=l.trk+side*5*k,q=dst(C,h-90*side,R);pts.push(q);
+    if(Math.abs(((brg(q,tgt)-h+540)%360)-180)<=5)break}
+  return pts}
 const planSig=()=>{const p=S.active;return p?p.legs.map(l=>l.k+(l.id||'')+(l.rwy||'')+(l.k==='hold'?[l.crs,l.turn,l.time,l.dist].join(','):'')).join('|')+(p.appr||'')+(p.ofst?'|OFST'+p.ofst.side+p.ofst.nm:''):''};
 /* the active F-PLN changed in flight (DIR TO, ENABLE ALTN, new approach...): rebuild the path from the present position */
 function flightReplan(){const P=buildPath();FL.path=P;const pr=project(P,FL.pos,1,P.pts.length-1);FL.s=pr?pr.s:0;FL.seg=pr?pr.i:1;FL.fromIx=0;

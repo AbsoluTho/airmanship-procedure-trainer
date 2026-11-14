@@ -42,7 +42,7 @@ function planGeo(p,base){const G={lines:[],wpts:[],rwys:[]};let prev=null,vr=0;
     if(l.k==='wpt'){const pos=DB.wpt[l.id];if(!pos){prev=null;return}
       if(prev)G.lines.push({pts:l.lbl==='ARC'&&l.ctr&&DB.wpt[l.ctr]?arcPts(prev,pos,DB.wpt[l.ctr]):[prev,pos],col,ix});
       G.wpts.push({id:l.id,pos,col,alt:l.alt,spd:l.spd,ix});prev=pos;return}
-    if(l.k==='tp'){prev=l.pos;return}
+    if(l.k==='tp'){const a=typeof dirArc==='function'?dirArc(p,ix):[];if(a.length)G.lines.push({pts:[l.pos,...a],col,ix});prev=a.length?a[a.length-1]:l.pos;return}
     if(l.k==='ca'&&prev){const o=p.legs[0],ap=DB.apt[o.id],r=ap.rwy[o.rwy];if(!r){prev=null;return}
       const q=dst(r.pos,r.crs+vr,r.len/1852+l.aal/320);G.lines.push({pts:[prev,q],col});prev=q;return}
     if(l.k==='hdg'&&prev){const c=crs(l.lbl);if(c==null){prev=null;return}const q=dst(prev,c+vr,5);G.lines.push({pts:[prev,q],col});prev=q;return}
