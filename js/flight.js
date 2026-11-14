@@ -199,7 +199,7 @@ function setFma(){const st=FL.stage,a=S.perf,fx=a.flex!=null&&S.phase!=='GA'?'FL
       f.c3=[[FL.lat==='LOC*'?'LOC *':FL.lat,'g'],FL.latArm?[FL.latArm,'b']:null]}}
   if(npaAppr()){const M={'LOC *':'APP NAV','LOC':'APP NAV','G/S*':'FINAL','G/S':'FINAL'},ren=c=>c&&c.map(x=>x&&[M[x[0]]||x[0].replace('G/S','FINAL').replace(/^LOC\b/,'APP NAV'),x[1]]);
     f.c2=ren(f.c2);f.c3=ren(f.c3);
-    if(f.land||(f.c2[0]&&f.c2[0][0]==='FINAL'&&f.c3[0]&&f.c3[0][0]==='APP NAV')){f.land=null;f.c2=[['FINAL APP','g']];f.c3=[]}}
+    if(f.land==='LAND'||(!f.land&&f.c2[0]&&f.c2[0][0]==='FINAL'&&f.c3[0]&&f.c3[0][0]==='APP NAV')){f.land=null;f.c2=[['FINAL APP','g']];f.c3=[]}}
   if(FL.tdReached&&!DESCENDING.includes(FL.ver))f.msg='T/D REACHED';
   if((FCU.appr||FCU.loc)&&!['ROLLOUT','STOP','IDLE'].includes(st)&&FCU.appr){const q=S.p2,aps=(FCU.ap1?1:0)+(FCU.ap2?1:0),mn=q.radio!=null?(q.radio==='NO'?'NO DH':'DH '+q.radio):q.baro!=null?'BARO '+q.baro:'';
     f.c4=aps?[['CAT 3','w'],[aps===2?'DUAL':'SINGLE','w'],[mn,'b']]:[['CAT 1','w'],null,[mn,'b']]}
@@ -313,7 +313,7 @@ function step(dt){const ias0=FL.ias;if(FL.sig!==planSig()&&!FL.ground)flightRepl
         else if(S.phase==='DES'){const em=iasOf(0.80*sos(FL.alt),FL.alt),v=FL.ver==='EXP DES'?340:FL.alt<dl.alt+1000?dl.spd:mgd.des();
           mm=FL.ver==='EXP DES'?em<340:mmo<v;spdT=FL.ver==='EXP DES'?Math.min(340,em):Math.min(v,mmo)}
         else if(S.phase==='GA')spdT=sp.GD;
-        else if(S.phase==='APPR'){const vapp=p2.vapp??sp.VLS+5;spdT={0:sp.GD,1:sp.S,2:sp.F,3:Math.max(vapp,sp.F-10),FULL:vapp}[FL.conf]??vapp}}
+        else if(S.phase==='APPR'){const vapp=p2.vapp??sp.VLS+5;spdT={'0':sp.GD,'1':sp.S,'1+F':sp.S,'2':sp.F,'3':Math.max(vapp,sp.F-10),FULL:vapp}[FL.conf]??sp.GD}}   /* the speed of the configuration actually set */
       /* managed speed in a hold: the hold speed, from the deceleration point before its fix */
       {const hs=holdSpd(),nh=(P.holds||[]).find(h=>FL.holdExit!==h.ix&&h.s1>FL.s);if(nh&&(FL.inHold===nh.ix||nh.s0-FL.s<=Math.max(0,FL.ias-hs)*0.07+2)){FL.hsActive=nh.ix;if(FCU.spdMgd||FCU.spd==null){spdT=Math.min(spdT,hs);mm=false}}else FL.hsActive=null}
       /* engine out (FMGC EO condition): managed speed green dot in climb and cruise */
@@ -328,6 +328,10 @@ function step(dt){const ias0=FL.ias;if(FL.sig!==planSig()&&!FL.ground)flightRepl
     if(S.phase==='DES'&&dtg<DECEL_NM&&['NAV','LOC*','LOC'].includes(FL.lat))S.phase='APPR';   /* DECEL: approach phase in NAV or LOC, else ACTIVATE APPR PHASE */
     /* ---- configuration (PM) ---- */
     /* configuration: flaps and landing gear on the pilot's commands (LEVERS panel), no automatic sequence */
+    /* any other vertical mode (FPA, V/S, DES, FINAL) near the runway: flare at 40 ft, then touchdown and rollout */
+    if(!['FLARE','G/S*','G/S','LAND'].includes(FL.ver)&&FL.vs<0&&agl()<40&&dtg<1.5&&dtg>-1.5&&FL.gear){FL.ver='FLARE';FL.verArm=[]}
+    /* the ground: below the runway elevation away from the runway (or gear up there) the flight ends */
+    if(FL.alt<gnd-1&&FL.vs<0&&FL.ver!=='FLARE'){const rw=dtg<1.5&&dtg>-1.5&&FL.gearPos>=1;if(rw){FL.ver='FLARE'}else{FL.alt=gnd;FL.vs=0;FL.ias=0;FL.ground=true;FL.stage='STOP';S.phase='GROUND CONTACT';FL.running=false;S.msg='GROUND CONTACT'}}
     if(FL.ver==='FLARE'&&agl()<=1&&FL.vs<=0&&FL.gearPos<1){FL.ground=true;FL.alt=gnd;FL.vs=0;FL.ias=0;FL.stage='STOP';S.phase='GEAR UP LANDING';FL.running=false;S.msg='GEAR NOT DOWN AT TOUCHDOWN'}
     if(FL.ver==='FLARE'&&agl()<=1&&FL.vs<=0&&FL.gearPos>=1){FL.ground=true;FL.stage='ROLLOUT';FL.ver='ROLL OUT';FL.lat='ROLL OUT';FL.alt=gnd;FL.vs=0;FCU.ap1=FCU.ap2=false;FCU.athr=false}}
   if(FL.stage==='ROLLOUT'){const idle=['IDLE','REVIDLE','REVMAX'].includes(LV.thr),ab=idle&&LV.askid&&LV.abrk;

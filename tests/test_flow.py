@@ -238,6 +238,8 @@ async def run(url,b):
       S.active=A0;press('RIGHT');render();const b=[...document.querySelectorAll('#scr .ln')][1].textContent;press('LEFT');S.fpOff=0;
       return[Math.round(a0),Math.round(a1),t1>t0,row.includes('6000'),Math.round(a2)===Math.round(a0),Math.abs(t2-t0)<0.01,b.includes('EFOB')]})()""")
     assert vc[1]==6000 and vc[0]>6000 and vc[2] and vc[3] and vc[4] and vc[5] and vc[6],f'altitude constraint at TBK: path and T/D recalculated (AT), not for +; F-PLN B: {vc}'
+    fp=await pg.evaluate("(()=>{const r0=refreshAll,f0=fcuRefresh;refreshAll=()=>{};fcuRefresh=()=>{};const v0=[FL.ver,FCU.trkFpa,FCU.fpa,FL.active];FL.active=true;FL.ver='V/S';FCU.trkFpa=false;FCU.fpa=-3.2;fcuButton('trkfpa');const r=[FL.ver,FCU.fpa];fcuButton('trkfpa');[FL.ver,FCU.trkFpa,FCU.fpa,FL.active]=v0;refreshAll=r0;fcuRefresh=f0;return r})()")
+    assert fp==['FPA',0],f'FPA starts at 0.0 when selected: {fp}'
     fk=await pg.evaluate("(()=>{S.page='FPLN';S.fpOff=6;press('FPLN');return S.fpOff})()")
     assert fk==0,f'F-PLN key shows the F-PLN from the top: {fk}'
     h2=await pg.evaluate("(()=>{const L=window.__S().active.legs,i=L.findIndex(l=>l.k==='hold');return[L[i+1].k+':'+L[i+1].id,L[i+2].k]})()")
