@@ -255,6 +255,14 @@ async def run(url,b):
         if(st===3&&brg(FL.pos,DB.wpt.PAXOS)>275){st=4;directTo('PAXOS');S.sp='';P.DIR.lsk('R',1);P.DIR.lsk('R',6);o.fp=S.active.legs.slice(FL.fromIx+1).map(l=>l.id||l.k).slice(0,4).join(' ')}}
       window.__flight('reset');PM_AUTO=pm;S.active=A0;S.tmpy=null;FCU.hdgMgd=true;return o})()""")
     assert sq=={'ca':'(1548)','abeam':'(1548)','fp':'IN156 PAXOS NALPI OEJN'},f'downwind beside the final: nothing sequenced (FBW sequencing area); DIR TO PAXOS keeps NALPI and the runway: {sq}'
+    ab=await pg.evaluate("""(()=>{const A0=clone(S.active),f0=[FL.active,FL.ground,FL.pos,FL.trkT,FL.gs,FL.fromIx,FL.stage],r0=refreshAll,c0=fcuRefresh;refreshAll=()=>{};fcuRefresh=()=>{};
+      const p=newPlan('OETB','OEJN');setRunway(p,'13');p.legs.splice(2,1);const di=idxK(p,'dest');p.legs.splice(di,0,W('PUSPO',{seg:'enr'}));p.appr='ILS34RZ';p.via='SOLOG';buildArr(p);normalize(p);p.legs=p.legs.filter(l=>l.k!=='disc');S.active=p;
+      Object.assign(FL,{active:true,ground:false,stage:'AIR',pos:dst(DB.wpt.PUSPO,0,25),trkT:180,gs:300,fromIx:1});
+      directTo('PAXOS');P.DIR.lsk('L',2);const t=S.tmpy.legs.map(l=>l.id||l.k).slice(2,5).join(' '),on=S.dirAb;P.DIR.lsk('R',1);const rad=[S.dirAb,S.tmpy.legs.some(l=>l.ab)];
+      P.DIR.lsk('L',2);P.DIR.lsk('R',6);const a=S.active.legs.map(l=>l.id||l.k).slice(2,5).join(' ');
+      const g=planGeo(S.active,'g',3),flown=g.lines.some(L=>L.ix!=null&&L.ix<=3)||g.wpts.some(w=>w.ix<3);
+      Object.assign(FL,{active:f0[0],ground:f0[1],pos:f0[2],trkT:f0[3],gs:f0[4],fromIx:f0[5],stage:f0[6]});S.active=A0;S.tmpy=null;refreshAll=r0;fcuRefresh=c0;return[t,on,rad,a,flown]})()""")
+    assert ab==['T-P ABPUS PAXOS',True,[False,False],'T-P ABPUS PAXOS',False],f'DIR TO WITH ABEAM PTS: ABPUS abeam PUSPO on the direct leg, cancelled by RADIAL IN; ND erases the flown route: {ab}'
     fk=await pg.evaluate("(()=>{S.page='FPLN';S.fpOff=6;press('FPLN');return S.fpOff})()")
     assert fk==0,f'F-PLN key shows the F-PLN from the top: {fk}'
     h2=await pg.evaluate("(()=>{const L=window.__S().active.legs,i=L.findIndex(l=>l.k==='hold');return[L[i+1].k+':'+L[i+1].id,L[i+2].k]})()")

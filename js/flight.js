@@ -40,7 +40,7 @@ function buildPath(plan){const p=plan||S.active,pts=[],holds=[];let vr=DB.apt[p.
    radius the aircraft can fly at that ground speed (2.5 deg/s), until the aircraft points at the waypoint; then a straight
    line, tangent to the turn. No overshoot and no reverse turn. Empty when the turn is not needed or cannot reach it. */
 function dirArc(p,ix){const l=p.legs[ix];if(l.trk==null)return[];
-  const nx=p.legs.slice(ix+1).find(q=>q.k==='wpt'||q.k==='dest');if(!nx)return[];
+  const nx=p.legs.slice(ix+1).find(q=>(q.k==='wpt'&&!q.ab)||q.k==='dest');if(!nx)return[];
   const tgt=nx.k==='wpt'?DB.wpt[nx.id]:(()=>{const a=DB.apt[nx.id],r=nx.rwy&&a.rwy[nx.rwy];return r?r.pos:a.pos})();if(!tgt)return[];
   const rel=((brg(l.pos,tgt)-l.trk+540)%360)-180;if(Math.abs(rel)<3)return[];
   const side=rel>0?1:-1,R=Math.max(0.5,(l.gs||250)/3600/(2.5*D2R)),C=dst(l.pos,l.trk+90*side,R);
@@ -307,7 +307,7 @@ function step(dt){const ias0=FL.ias;if(FL.sig!==planSig()&&!FL.ground)flightRepl
       if(FL.ver==='G/S*'&&Math.abs(ga-FL.alt)<30&&FL.t-FL.gssT>8)FL.ver='G/S';
       if(FL.ver==='G/S'&&agl()<400&&FL.lat==='LOC'){FL.ver='LAND';FL.lat='LAND'}
       if(FL.ver==='LAND'&&agl()<40)FL.ver='FLARE';
-      if(FL.ver==='FLARE')vsT=-Math.max(120,agl()*6)}
+      if(FL.ver==='FLARE')vsT=-Math.max(240,agl()*12)}   /* flare: about 7 s from 40 ft to touchdown */
     /* ---- speed ---- */
     if(FL.ver!=='SRS'){
       /* selected speed: SPD to MACH in the climb when the selected speed reaches the programmed Mach, MACH to SPD in the descent at the programmed descent speed */
@@ -331,7 +331,7 @@ function step(dt){const ias0=FL.ias;if(FL.sig!==planSig()&&!FL.ground)flightRepl
       FL.spdIsMach=!FCU.spdMgd&&FCU.spd!=null?FCU.mach:mm;if(FCU.spdMgd)FCU.mach=mm;
       /* speed constraint (managed speed only) */
       if((FCU.spdMgd||FCU.spd==null)&&CK.spd!=null&&!['EXP CLB','EXP DES'].includes(FL.ver))spdT=Math.max(sp.VLS,Math.min(spdT,CK.spd));
-      if(FL.ver==='FLARE')spdT=Math.min(spdT,FL.ias-1)}
+      if(FL.ver==='FLARE')spdT=Math.min(spdT,FL.ias-dt)}   /* about 1 kt/s lost in the flare */
     /* ---- phases ---- */
     if(S.phase==='CLB'&&FL.ver==='ALT'&&Math.abs(FL.alt-crz)<50)S.phase='CRZ';
     if((S.phase==='CRZ'||S.phase==='CLB')&&FL.s>FL.path.len*0.4&&(vsT<0||FL.vs<-300)&&(DESCENDING.includes(FL.ver)||FL.ver==='V/S'||FL.ver==='FPA')&&FL.alt<crz-200)S.phase='DES';
@@ -345,8 +345,8 @@ function step(dt){const ias0=FL.ias;if(FL.sig!==planSig()&&!FL.ground)flightRepl
     if(FL.ver==='FLARE'&&agl()<=1&&FL.vs<=0&&FL.gearPos<1){FL.ground=true;FL.alt=gnd;FL.vs=0;FL.ias=0;FL.stage='STOP';S.phase='GEAR UP LANDING';FL.running=false;S.msg='GEAR NOT DOWN AT TOUCHDOWN'}
     if(FL.ver==='FLARE'&&agl()<=1&&FL.vs<=0&&FL.gearPos>=1){FL.ground=true;FL.stage='ROLLOUT';FL.ver='ROLL OUT';FL.lat='ROLL OUT';FL.alt=gnd;FL.vs=0;FCU.ap1=FCU.ap2=false;FCU.athr=false}}
   if(FL.stage==='ROLLOUT'){const idle=['IDLE','REVIDLE','REVMAX'].includes(LV.thr),ab=idle&&LV.askid&&LV.abrk;
-    let dec=!idle?0.8:ab?{LO:3.3,MED:5,MAX:6}[LV.abrk]:LV.askid?(FL.ias>40?4:3):2.5;if(ab&&FL.ias<40)dec=Math.min(dec,3.5);
-    if(LV.thr==='REVMAX'&&FL.ias>70)dec+=1.5;else if(LV.thr==='REVIDLE'&&FL.ias>70)dec+=0.4;LV.decel=!!ab&&FL.ias>2;
+    let dec=!idle?0.6:ab?{LO:2.5,MED:3.7,MAX:4.6}[LV.abrk]:LV.askid?(FL.ias>40?3:2.3):1.9;if(ab&&FL.ias<40)dec=Math.min(dec,2.7);   /* gentler roll-out (v0.15.7) */
+    if(LV.thr==='REVMAX'&&FL.ias>70)dec+=1.1;else if(LV.thr==='REVIDLE'&&FL.ias>70)dec+=0.3;LV.decel=!!ab&&FL.ias>2;
     FL.ias=Math.max(0,FL.ias-dec*dt);FL.pitch=Math.max(0,FL.pitch-2*dt);
     const lg=locGeo(FL.pos),d=destRwy();trkT=brg(FL.pos,dst(d.r.pos,lg.crs+180,lg.along-1));if(FL.ias<=0){FL.stage='STOP';S.phase='DONE';FL.running=false}}
   if(FL.stage==='ROLL'){const o=DB.apt[orig()],r=o.rwy[S.active.rwy];trkT=r.crs+(o.var||0)}

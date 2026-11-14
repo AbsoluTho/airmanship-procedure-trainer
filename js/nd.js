@@ -33,7 +33,8 @@ function holdPts(F,crsT,right){const L=3.5,rt=1.5,t=crsT*D2R,sg=right?1:-1;
   add(rt*v[0],rt*v[1],a=>[rt*(-Math.cos(a)*v[0]+Math.sin(a)*u[0]),rt*(-Math.cos(a)*v[1]+Math.sin(a)*u[1])]);
   add(rt*v[0]-L*u[0],rt*v[1]-L*u[1],a=>[rt*(Math.cos(a)*v[0]-Math.sin(a)*u[0]),rt*(Math.cos(a)*v[1]-Math.sin(a)*u[1])]);
   return pts}
-function planGeo(p,base){const G={lines:[],wpts:[],rwys:[]};let prev=null,vr=0;
+/* from: the FROM leg in flight. The flown route behind it is erased; the FROM waypoint and the active leg stay (FBW: display from the FROM leg) */
+function planGeo(p,base,from){const G={lines:[],wpts:[],rwys:[]};let prev=null,vr=0;from=from??-1;
   const crs=t=>{const m=String(t||'').match(/(\d{3})/);return m?+m[1]:null};
   p.legs.forEach((l,ix)=>{const col=l.seg==='map'?'b':base;
     if(l.k==='orig'||l.k==='dest'){const ap=DB.apt[l.id],r=l.rwy&&ap.rwy[l.rwy],pos=r?r.pos:ap.pos;vr=ap.var||0;
@@ -44,11 +45,12 @@ function planGeo(p,base){const G={lines:[],wpts:[],rwys:[]};let prev=null,vr=0;
       G.wpts.push({id:l.id,pos,col,alt:l.alt,spd:l.spd,ix});prev=pos;return}
     if(l.k==='tp'){const a=typeof dirArc==='function'?dirArc(p,ix):[];if(a.length)G.lines.push({pts:[l.pos,...a],col,ix});prev=a.length?a[a.length-1]:l.pos;return}
     if(l.k==='ca'&&prev){const o=p.legs[0],ap=DB.apt[o.id],r=ap.rwy[o.rwy];if(!r){prev=null;return}
-      const q=dst(r.pos,r.crs+vr,r.len/1852+Math.min(3,l.aal/320));G.lines.push({pts:[prev,q],col});prev=q;return}
-    if(l.k==='hdg'&&prev){const c=crs(l.lbl);if(c==null){prev=null;return}const q=dst(prev,c+vr,5);G.lines.push({pts:[prev,q],col});prev=q;return}
+      const q=dst(r.pos,r.crs+vr,r.len/1852+Math.min(3,l.aal/320));G.lines.push({pts:[prev,q],col,ix});prev=q;return}
+    if(l.k==='hdg'&&prev){const c=crs(l.lbl);if(c==null){prev=null;return}const q=dst(prev,c+vr,5);G.lines.push({pts:[prev,q],col,ix});prev=q;return}
     if(l.k==='hold'&&prev&&l.fix){G.lines.push({pts:holdLoop(prev,l.crs+vr,l.turn!=='L',holdLen(l),HOLD_R),col,ix});return}   /* pilot-entered hold */
-    if(l.k==='hold'&&prev){const c=crs(l.lbl);if(c!=null)G.lines.push({pts:holdPts(prev,c+vr,/R$/.test(l.id)),col});return}
+    if(l.k==='hold'&&prev){const c=crs(l.lbl);if(c!=null)G.lines.push({pts:holdPts(prev,c+vr,/R$/.test(l.id)),col,ix});return}
     prev=null});
+  if(from>=0){G.lines=G.lines.filter(L=>L.ix==null||L.ix>from);G.wpts=G.wpts.filter(w=>w.ix>=from)}
   return G}
 
 /* ---------- projection ----------
@@ -75,7 +77,7 @@ function drawND(g,W,H,powered){g.save();g.setTransform(1,0,0,1,0,0);g.fillStyle=
   const line=(pts,col,dash,w)=>{g.strokeStyle=NC[col];g.lineWidth=w||3.5;g.setLineDash(dash||[]);g.beginPath();pts.forEach((p,i)=>{const[x,y]=pj(p);i?g.lineTo(x,y):g.moveTo(x,y)});g.stroke();g.setLineDash([])};
   const diamond=(x,y,col,s)=>{g.beginPath();g.moveTo(x,y-s);g.lineTo(x+s,y);g.lineTo(x,y+s);g.lineTo(x-s,y);g.closePath();g.strokeStyle=NC[col];g.lineWidth=3;g.stroke()};
   const star=(x,y,col)=>{g.strokeStyle=NC[col];g.lineWidth=3;g.beginPath();for(let i=0;i<4;i++){const a=i*Math.PI/4;g.moveTo(x-11*Math.cos(a),y-11*Math.sin(a));g.lineTo(x+11*Math.cos(a),y+11*Math.sin(a))}g.stroke()};
-  const geos=[];if(A)geos.push([planGeo(A,'g'),false]);if(T)geos.push([planGeo(T,'y'),true]);if(S.secMode&&S.sec)geos.push([planGeo(S.sec,'w'),'sec']);
+  const fr=flying()&&!FL.ground?FL.fromIx:-1;const geos=[];if(A)geos.push([planGeo(A,'g',fr),false]);if(T)geos.push([planGeo(T,'y',fr),true]);if(S.secMode&&S.sec)geos.push([planGeo(S.sec,'w'),'sec']);
   if(A&&I().altn&&DB.apt[I().altn]){const d=A.legs[idxK(A,'dest')],dp=legPos(d),ap=DB.apt[I().altn].pos,R=typeof altRte==='function'?altRte():{wpts:[],dct:true};const wp=R.wpts.map(id=>DB.wpt[id]).filter(Boolean);line([dp,...wp,...(R.dct?[ap]:[])],'b',[14,10]);
     const[x,y]=pj(ap);star(x,y,'b');label(I().altn,x+16,y+2,'b')}
   /* offset: the original route dashed between the entry point and the rejoin point, the offset path solid */
