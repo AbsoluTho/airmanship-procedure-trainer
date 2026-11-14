@@ -33,13 +33,17 @@ function setSid(p,sid){dropSeg(p,'dep');p.sid=sid;p.noSid=false;const legs=[caLe
   p.legs.splice(1,0,...legs);const nx=p.legs[1+legs.length],last=legs[legs.length-1];
   if(nx&&nx.k!=='disc'&&!(nx.k==='wpt'&&nx.id===last.id))p.legs.splice(1+legs.length,0,{k:'disc'});
   p.sid=sid;p.trans=null;normalize(p)}
-function buildArr(p){dropSeg(p,'arr','map');const di=idxK(p,'dest'),d=p.legs[di];const ap=APPRS[d.id][p.appr];
-  const via=p.via&&ap.vias[p.via]?clone(ap.vias[p.via]).map(l=>Object.assign(l,{seg:'arr',via:p.via})):[];
-  const fin=clone(ap.final).map(l=>Object.assign(l,{seg:'arr',via:p.appr}));const legs=[...via,...fin];
-  d.rwy=ap.rwy;d.lbl=ap.dest.lbl;d.alt=ap.dest.alt;d.via=p.appr;
+/* arrival: STAR, then the approach via, then the final approach and the missed approach. A fix ending one part and
+   starting the next is kept once (the later constraints win). Without an approach (or a runway only) the STAR alone. */
+function buildArr(p){dropSeg(p,'arr','map');const di=idxK(p,'dest'),d=p.legs[di];const ap=(APPRS[d.id]||{})[p.appr];
+  const st=p.star&&p.star!=='NO STAR'&&(STARS[d.id]||{})[p.star],tag=(L,v)=>clone(L).map(l=>Object.assign(l,{seg:'arr',via:v}));
+  let legs=[...(st?tag(st.legs,p.star):[]),...(ap&&p.via&&ap.vias[p.via]?tag(ap.vias[p.via],p.via):[]),...(ap?tag(ap.final,p.appr):[])];
+  legs=legs.filter((l,i)=>!(l.k==='wpt'&&legs[i+1]&&legs[i+1].k==='wpt'&&legs[i+1].id===l.id));
+  if(ap){d.rwy=ap.rwy;d.lbl=ap.dest.lbl;d.alt=ap.dest.alt;d.via=p.appr}
+  if(!legs.length){normalize(p);return}
   p.legs.splice(di,0,...legs);const pv=p.legs[di-1];
   if(pv.k!=='disc'&&!(pv.k==='wpt'&&pv.id===legs[0].id))p.legs.splice(di,0,{k:'disc'});
-  const d2=idxK(p,'dest');p.legs.splice(d2+1,0,...clone(ap.missed).map(l=>Object.assign(l,{seg:'map',via:''})));normalize(p)}
+  if(ap){const d2=idxK(p,'dest');p.legs.splice(d2+1,0,...clone(ap.missed).map(l=>Object.assign(l,{seg:'map',via:''})))}normalize(p)}
 function insertAwy(p,fi,via,to){const from=p.legs[fi].id;let seq;
   if(via){const L=AWY[via],i=L.indexOf(from),j=L.indexOf(to);seq=i<j?L.slice(i+1,j+1):L.slice(j,i).reverse()}else seq=[to];
   const legs=seq.map(id=>W(id,{seg:'enr',via:via||''}));
@@ -226,9 +230,10 @@ function enableAltn(ix){const p=S.tmpy||S.active,a=I().altn;p.legs=p.legs.slice(
 const arrApt=()=>{const p=cur();return S.arrAlt?I().altn:p.legs[idxK(p,'dest')].id};
 P.ARR={items(){const p=cur(),aid=arrApt(),t=S.arrAlt?{}:(APPRS[aid]||{});
   if(S.arr.list==='APPR'&&!Object.keys(t).length){const rw=Object.keys((DB.apt[aid]||{rwy:{}}).rwy);return rw.length?rw.map(r=>({id:'RWY'+r,rwy:r,txt:('<RWY'+r).padEnd(8)+'CRS'+String(DB.apt[aid].rwy[r].crs).padStart(3,'0')})):[{id:null,txt:'<NO APPR'}]}
-  if(S.arr.list==='APPR'){const k=Object.keys(t);return k.length?k.map(id=>({id,txt:('<'+id).padEnd(8)+(t[id]?'CRS'+t[id].crs+' '+t[id].nav:'')})):[{id:null,txt:'<NO APPR'}]}
+  if(S.arr.list==='APPR'){const k=Object.keys(t);return k.length?k.map(id=>({id,txt:('<'+id).padEnd(8)+(t[id]?'CRS'+String(t[id].crs).padStart(3,'0')+' '+(t[id].nav||t[id].vor||''):'')})):[{id:null,txt:'<NO APPR'}]}
   if(S.arr.list==='VIA'){const ap=t[p.appr];return[{id:'NO VIA',txt:'<NO VIA'},...Object.keys(ap.vias).map(id=>({id,txt:'<'+id}))]}
-  return[{id:'NO STAR',txt:'<NO STAR'}]},
+  const ss=S.arrAlt?{}:(STARS[aid]||{}),ap=t[p.appr],rw=ap?ap.rwy:(p.appr&&/^RWY/.test(p.appr)?p.appr.slice(3):null);
+  return[{id:'NO STAR',txt:'<NO STAR'},...Object.keys(ss).filter(id=>!rw||ss[id].rwys.includes(rw)).map(id=>({id,txt:'<'+id}))]},
  render(){const p=cur(),d=p.legs[idxK(p,'dest')],c=S.tmpy?'y':'g';
   csegs(1,[['ARRIVAL','w'],[' TO ','w','S'],[arrApt(),S.arrAlt?'b':'g']]);
   put(2,1,'APPR','w','S');put(2,10,'VIA','w','S');
@@ -250,7 +255,7 @@ P.ARR={items(){const p=cur(),aid=arrApt(),t=S.arrAlt?{}:(APPRS[aid]||{});
     if(S.arr.list==='APPR'){const d=p.legs[idxK(p,'dest')];if(!(APPRS[d.id]||{})[x.id])return err('NOT IN DATA BASE');
       const q=edit();q.appr=x.id;q.via=null;q.star=null;buildArr(q);S.arr={list:'VIA',off:0}}
     else if(S.arr.list==='VIA'){const q=edit();q.via=x.id==='NO VIA'?null:x.id;buildArr(q);S.arr={list:'STAR',off:0}}
-    else{edit().star='NO STAR'}return}
+    else{const q=edit();q.star=x.id;buildArr(q)}return}
   return err('NOT ALLOWED')},
  slew(d){const n=this.items().length;S.arr.off=Math.max(0,Math.min(Math.max(0,n-3),S.arr.off-d))}};
 

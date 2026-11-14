@@ -10,7 +10,7 @@ const TASKS=[
  ['DEPARTURE: RWY 16C, SID MIGD2E',()=>{const a=S.active;return!!a&&a.rwy==='16C'&&a.sid==='MIGD2E'}],
  ['AIRWAYS: L677 to WEJ, V54 to TBK',()=>{const a=S.active;if(!a)return false;const ids=a.legs.filter(l=>l.k==='wpt').map(l=>l.id);
    return seqIn(ids,['MIGDA','RIDEP','YEN','RAGNO','ORGIM','TUGRU','WEJ','LABUN','NETOL','DEMSU'])}],
- ['ARRIVAL: ILS31 via D179O',()=>{const a=S.active;return!!a&&a.appr==='ILS31'&&a.via==='D179O'}],
+ ['ARRIVAL: ILS24 via D179O',()=>{const a=S.active;return!!a&&a.appr==='ILS24'&&a.via==='D179O'}],
  ['No discontinuity left before the destination',()=>{const a=S.active;if(!a)return false;const di=idxK(a,'dest');return!!a.sid&&!!a.appr&&!a.legs.slice(0,di).some(l=>l.k==='disc')}],
  ['ND PLAN: scroll the F-PLN until OETB is the PLAN centre',()=>EFIS.mode==='PLAN'&&!!EFIS.ctr&&EFIS.ctr.id==='OETB'&&!!S.active&&!!S.active.appr],
  ['INIT B: ZFW/ZFWCG 58.4/27.5',()=>S.fuel.zfw===58.4&&S.fuel.cg===27.5],

@@ -9,8 +9,8 @@
 
 /* ---------- company routes (training database) ---------- */
 const CO_RTES={
-  OEJNOETB1:{from:'OEJN',to:'OETB',altn:'OEMA',rwy:'16C',sid:'MIGD2E',route:[['L677','WEJ'],['V54','TBK']],appr:'ILS31',via:'D179O'},
-  OEJNOETB2:{from:'OEJN',to:'OETB',altn:'OEMA',rwy:'16C',sid:'MIGD2E',route:[['L677','WEJ'],['V54','TBK']],appr:'ILS31',via:'TBK'}};
+  OEJNOETB1:{from:'OEJN',to:'OETB',altn:'OEMA',rwy:'16C',sid:'MIGD2E',route:[['L677','WEJ'],['V54','TBK']],appr:'ILS24',via:'D179O'},
+  OEJNOETB2:{from:'OEJN',to:'OETB',altn:'OEMA',rwy:'16C',sid:'MIGD2E',route:[['L677','WEJ'],['V54','TBK']],appr:'ILS24',via:'D043O'}};
 /* AOC answers to INIT REQUEST, by flight number (company route and INIT A data) */
 const AOC_OFP={TRN385:{rte:'OEJNOETB1',ci:20,crz:340,temp:-46,tropo:36000}};
 
