@@ -82,7 +82,9 @@ function drawPFD(g,W,H,powered){g.save();g.setTransform(1,0,0,1,0,0);g.fillStyle
     for(let y=sy(ap_);y<sy(vsw);y+=10){g.fillStyle=PC.a;g.fillRect(120,y,8,5);g.fillStyle='#000';g.fillRect(120,y+5,8,5)}
     g.fillStyle=PC.r;g.fillRect(120,sy(vsw),8,520-sy(vsw));
     FL._cs={conf:FL.conf,GD:sp.GD,S:sp.S,F:sp.F}}
-  if(on&&FL.ground&&FL.stage==='ROLL')T('1',124,sy(S.perf.v1),'b',22);
+  if(on&&FL.ground&&FL.stage==='ROLL'){T('1',124,sy(S.perf.v1),'b',22);
+    /* VR: cyan hollow circle, a little smaller than the green dot */
+    if(S.perf.vr){g.strokeStyle=PC.b;g.lineWidth=2.5;g.beginPath();g.arc(129,sy(S.perf.vr),4,0,7);g.stroke()}}
   g.restore();
   L(55,182,135,182,'w',2);L(55,497,135,497,'w',2);L(119,182,119,497,'w',2);
   /* characteristic speeds, drawn in front of the attitude so they are not cut */
@@ -117,7 +119,8 @@ function drawPFD(g,W,H,powered){g.save();g.setTransform(1,0,0,1,0,0);g.fillStyle
   const cstT=on&&typeof cstTarget==='function'?cstTarget():null,tgtA=cstT??FCU.alt,tgtC=cstT!=null?'m':'b';
   {const fcu=tgtA,y=ay(fcu);if(y>=182&&y<=497){g.save();g.beginPath();g.rect(477,182,49,315);g.clip();g.strokeStyle=PC[tgtC];g.lineWidth=2.5;g.strokeRect(478,y-10,46,20);g.restore()}}
   /* vertical deviation (green dot): the managed descent path on the altitude tape; low dot = aircraft above the path */
-  if(on&&!FL.ground&&['DES','APPR'].includes(S.phase)&&!['G/S*','G/S','LAND','FLARE','ROLL OUT'].includes(FL.ver)&&FL.path){const dtg=FL.path.sThr-FL.s;
+  /* also in cruise from 25 NM before T/D: the path comes down from the top of the tape and meets the aircraft at T/D */
+  if(on&&!FL.ground&&(['DES','APPR'].includes(S.phase)||S.phase==='CRZ'&&(FL.s>=FL.td-25||DESCENDING.includes(FL.ver)))&&!['G/S*','G/S','LAND','FLARE','ROLL OUT'].includes(FL.ver)&&FL.path){const dtg=FL.path.sThr-FL.s;
     if(dtg>0.5){const pa=profileAlt(dtg)+(alt-FL.alt),y=Math.max(196,Math.min(484,ay(pa)));g.fillStyle=PC.g;g.beginPath();g.arc(470,y,6.5,0,7);g.fill()}}
   /* readout window: black band with yellow top and bottom, drum box on the right */
   g.fillStyle='#000';g.fillRect(477,323,49,34);g.fillRect(526,313,32,54);
