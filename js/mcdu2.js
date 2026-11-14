@@ -228,8 +228,8 @@ P.SECIDX={render(){cput(1,'SEC INDEX');put(3,0,'{COPY ACTIVE','b');rput(3,'INIT>
   if(k==='L1'){if(!S.active)return err('NOT ALLOWED');S.sec=clone(S.active);S.secOff=0;return}
   if(k==='L2'){if(!S.sec)return err('NOT ALLOWED');S.secMode=true;S.fpOffMain=S.fpOff;S.fpOff=S.secOff||0;return go('FPLN')}
   if(k==='L3'&&S.sec){S.sec=null;return}
-  if(k==='L4'&&S.sec){if(flying())return err('NOT ALLOWED');S.active=S.sec;S.sec=null;S.tmpy=null;S.fpOff=0;return}
-  if(k==='L6'&&S.sec){if(flying())return err('NOT ALLOWED');const a=S.active;S.active=S.sec;S.sec=a;S.tmpy=null;S.fpOff=0;return}
+  if(k==='L4'&&S.sec){S.active=S.sec;S.sec=null;S.tmpy=null;S.fpOff=0;if(flying())FCU.hdgMgd=true;return}   /* in flight too: immediate return or diversion (path rebuilt from the present position) */
+  if(k==='L6'&&S.sec){const a=S.active;S.active=S.sec;S.sec=a;S.tmpy=null;S.fpOff=0;return}
   return err('NOT IN PROTOTYPE')}};
 /* ---------- FUEL PRED ---------- */
 P.FUELPRED={render(){const f=S.fuel,pr=predict(),d=destId(),al=I().altn,D='---.-',T='----';
@@ -340,9 +340,10 @@ P.RWYPG={render(){const id=S.lookup.rwy;cput(1,'RUNWAY');put(2,1,'IDENT','w','S'
 function dirList(){const p=S.active;if(!p)return[];const from=flying()?FL.fromIx:0;
   return p.legs.map((l,ix)=>({l,ix})).filter(x=>x.ix>from&&(x.l.k==='wpt'||x.l.k==='dest')&&x.l.seg!=='map')}
 function directTo(id){if(!flying()||FL.ground)return err('NOT ALLOWED');
-  if(!DB.wpt[id]&&!(DB.nav&&DB.nav[id]))return err('NOT IN DATA BASE');
+  const isDest=S.active.legs.some(l=>l.k==='dest'&&l.id===id);   /* DIR TO the destination airport (after NEW DEST) */
+  if(!isDest&&!DB.wpt[id]&&!(DB.nav&&DB.nav[id]))return err('NOT IN DATA BASE');
   S.tmpy=clone(S.active);const q=S.tmpy,from=FL.fromIx;let ti=q.legs.findIndex((l,ix)=>ix>from&&(l.k==='wpt'||l.k==='dest')&&l.id===id);
-  if(ti<0){if(!DB.wpt[id]&&DB.nav[id])DB.wpt[id]=DB.nav[id].pos;q.legs.splice(from+1,0,W(id,{seg:'enr'}),{k:'disc'});ti=from+1}
+  if(ti<0&&!isDest){if(!DB.wpt[id]&&DB.nav[id])DB.wpt[id]=DB.nav[id].pos;q.legs.splice(from+1,0,W(id,{seg:'enr'}),{k:'disc'});ti=from+1}
   q.legs.splice(from+1,ti-from-1,{k:'tp',id:'T-P',pos:FL.pos.slice(),trk:FL.trkT,gs:FL.gs,seg:'enr'});S.dirTo=id;normalize(q);ok()}
 P.DIR={render(){cput(1,'DIR TO',S.tmpy&&S.dirTo?'y':'w');put(2,1,'DIR TO','w','S');
   if(S.tmpy&&S.dirTo){put(3,0,'*'+S.dirTo,'y');rput(2,'RADIAL IN','w','S');rput(3,'[ ]°','b');put(4,1,'WITH','w','S');put(5,0,'*ABEAM PTS','b')}else put(3,0,'[     ]','b');

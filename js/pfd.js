@@ -74,7 +74,7 @@ function drawPFD(g,W,H,powered){g.save();g.setTransform(1,0,0,1,0,0);g.fillStyle
   const sv=Math.max(30,ias),kpx=3.69,sy=v=>SY-(v-sv)*kpx;
   g.save();g.beginPath();g.rect(55,182,90,315);g.clip();g.fillStyle=PC.tape;g.fillRect(55,182,64,315);
   for(let v=Math.floor((sv-50)/10)*10;v<=sv+50;v+=10){if(v<30)continue;const y=sy(v);L(108,y,119,y,'w',2.5);if(v%20===0)T(String(v),97,y,'w',21,'right')}
-  if(on&&!FL.ground){const sp=cfgSpeeds(),vmax=vmaxFor(FL.conf,FL.alt);
+  if(on&&!FL.ground){const sp=cfgSpeeds(),vmax=Math.min(vmaxFor(FL.conf,FL.alt),FL.gear?280:999);   /* VFE of the configuration, VLE 280 with the gear down */
     for(let y=sy(vmax);y>170;y-=14){g.fillStyle=PC.r;g.fillRect(119,y-14,8,7);g.fillStyle='#000';g.fillRect(119,y-7,8,7)}
     const vfe=VFE_NEXT[FL.conf];if(vfe){const y=sy(vfe);L(108,y-2,118,y-2,'a',2);L(108,y+2,118,y+2,'a',2)}
     /* VLS (amber), alpha prot (amber/black), VSW (red) */

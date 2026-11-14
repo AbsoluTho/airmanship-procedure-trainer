@@ -12,8 +12,9 @@ const EC_C={w:'#ffffff',g:'#3df24e',b:'#3fd2ff',a:'#ff9a1f',m:'#ff8cf0',r:'#ff20
 /* ---------- engine model (N1, N2, EGT, FF) from the thrust and vertical modes ---------- */
 function engTarget(){const on=flying(),alt=on?FL.alt:elevO(),q=S.perf,flx=q.flex!=null&&S.phase!=='GA';
   if(!on||FL.stage==='STOP'||FL.stage==='IDLE')return{n1:19.6,n2:58.9,egt:395,ff:290};
-  if(FL.stage==='ROLLOUT')return{n1:FL.ias>70?71:21,n2:FL.ias>70?88:60,egt:FL.ias>70?560:420,ff:FL.ias>70?1300:300};
-  if(FL.thr==='TO')return flx?{n1:Math.max(80,92.4-(q.flex-30)*0.26),n2:96.2,egt:715,ff:2750}:{n1:92.8,n2:98.4,egt:760,ff:3000};
+  if(FL.stage==='LINEUP')return LV.thr==='N50'?{n1:50,n2:79,egt:520,ff:900}:{n1:19.6,n2:58.9,egt:395,ff:290};   /* thrust levers 50% N1 before FLX/TOGA */
+  if(FL.stage==='ROLLOUT')return LV.thr==='REVMAX'?{n1:71,n2:88,egt:560,ff:1300}:LV.thr==='REVIDLE'?{n1:25,n2:63,egt:440,ff:350}:{n1:21,n2:60,egt:420,ff:300};
+  if(FL.thr==='TO')return flx&&LV.thr!=='TOGA'?{n1:Math.max(80,92.4-(q.flex-30)*0.26),n2:96.2,egt:715,ff:2750}:{n1:92.8,n2:98.4,egt:760,ff:3000};
   const climb=CLIMBING.includes(FL.ver)||FL.ver==='SRS'||(['V/S','FPA'].includes(FL.ver)&&FL.vs>500);
   if(climb)return{n1:Math.min(91.5,87.4+alt/1e4*1.2),n2:94+alt/1e4*0.8,egt:690-alt/1e4*25,ff:Math.max(1050,1650-alt/1e4*180)};
   if(DESCENDING.includes(FL.ver)||FL.vs<-1200&&FL.ias>=(FL.spdT||0)-3)return{n1:21+alt/1e4*3.6,n2:62+alt/1e4*3,egt:430+alt/1e4*20,ff:280+alt/1e4*25};
@@ -178,9 +179,10 @@ function drawSD(c){const P=ecCtx(c,77,68,521,494),pg=sdPage(),on=flying(),E=EC.e
   const ut=new Date(on?FL.utc0+FL.t*1000:Date.now());T(String(ut.getUTCHours()).padStart(2,'0'),326,529,'g',17,'right');T('H',336,530,'b',14,'center');T(String(ut.getUTCMinutes()).padStart(2,'0'),345,529,'g',17);
   const gw=S.fuel.zfw!=null&&(on||S.fuel.block!=null)?Math.round((S.fuel.zfw+(on?FL.fob:S.fuel.block-(S.fuel.taxi??0.2)))*1000/100)*100:null;
   T('GW',441,509,'w',17);T(gw!=null?String(gw):'XX',547,509,gw!=null?'g':'a',17,'right');T('KG',566,510,'b',14)}}
-/* ---------- ECAM control panel (photo 676 x 248) over the lower half of the ND; MCDU / ECAM switch ---------- */
-const ECP_PH=[['tocfg',254,43],['emer',480,50,60,48],['eng',186,113],['bleed',254,113],['press',319,113],['elec',386,113],['hyd',454,113],['fuel',519,113],
-  ['apu',186,157],['cond',254,157],['door',319,157],['wheel',386,157],['fctl',454,157],['all',519,157],['clr',186,202],['sts',319,202],['rcl',386,202],['clr2',519,202]];
+/* ---------- ECAM control panel (photo 526 x 248, brightness knobs cropped) over the lower half of the ND; MCDU / ECAM switch ---------- */
+/* photo cropped at x=150 (no brightness knobs): 526 x 248 */
+const ECP_PH=[['tocfg',104,43],['emer',330,50,60,48],['eng',36,113],['bleed',104,113],['press',169,113],['elec',236,113],['hyd',304,113],['fuel',369,113],
+  ['apu',36,157],['cond',104,157],['door',169,157],['wheel',236,157],['fctl',304,157],['all',369,157],['clr',36,202],['sts',169,202],['rcl',236,202],['clr2',369,202]];
 const IMG_EWD='img/ecam-ewd.webp',IMG_SD='img/ecam-sd.webp',IMG_ECP='img/ecam-ecp.webp';
 function ecamUI(){const pan=$('#ecp');if(pan){pan.hidden=!EC.ecp;pan.querySelectorAll('[data-ecp]').forEach(b=>{const k=b.dataset.ecp;b.classList.toggle('lit',EC.page===k)})}
   const nb=$('#ecpBtn');if(nb)nb.setAttribute('aria-pressed',String(!!EC.ecp))}
@@ -201,7 +203,7 @@ function buildEcam(){const home=$('#mcduHome');if(!home||$('#ecam'))return;const
    </div>`);
   const nd=$('#ndBezel')&&$('#ndBezel').parentElement;
   if(nd){nd.insertAdjacentHTML('beforeend',`<div class="ecp-pan" id="ecp" hidden aria-label="ECAM control panel"><img alt="" src="${IMG_ECP}">${ECP_PH.map(([k,x,y,w,h])=>{w=w||46;h=h||32;
-      return`<button type="button" class="ecp-k" data-ecp="${k}" aria-label="${k.toUpperCase()}" style="left:${pc(x-w/2,676)};top:${pc(y-h/2,248)};width:${pc(w,676)};height:${pc(h,248)}"><i></i></button>`}).join('')}</div>
+      return`<button type="button" class="ecp-k" data-ecp="${k}" aria-label="${k.toUpperCase()}" style="left:${pc(x-w/2,526)};top:${pc(y-h/2,248)};width:${pc(w,526)};height:${pc(h,248)}"><i></i></button>`}).join('')}</div>
      <button type="button" class="ecp-btn" id="ecpBtn" aria-pressed="false" title="ECAM control panel on/off">ECP</button>`);
     $('#ecpBtn').addEventListener('click',()=>{EC.ecp=!EC.ecp;ecamUI()})}
   $('#duToggle').addEventListener('click',()=>ecamShow(!EC.on));

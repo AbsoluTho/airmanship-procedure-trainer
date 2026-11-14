@@ -4,7 +4,7 @@ An unofficial A320 **procedure** trainer that runs in the browser (iPad first). 
 
 Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator manuals. The navigation data was typed from charts for training only and must never be used for navigation.
 
-## Status: Phase 2 prototype (v0.13.1)
+## Status: Phase 2 prototype (v0.14.0)
 
 - **MCDU** (Thales FMS2 layout, per FCOM DSC-22): keyboard and scratchpad, INIT A, F-PLN with TMPY (ERASE/INSERT), LAT REV, DEPARTURE, AIRWAYS (with airway-to-airway intersection), ARRIVAL, waypoint insertion, CLR of waypoints and discontinuities.
 - **Exercise** OEJN to OETB: RWY 16C MIGD2E, L677 WEJ, V54 TBK, ILS 31 via D179O, ALTN OEMA, FL340, CI 20, with automatic progress checks.
@@ -12,6 +12,16 @@ Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator
 - **ND** (ROSE LS, ROSE VOR, ROSE NAV, ARC, PLAN; range 10 to 320 NM; CSTR, WPT, ARPT options; ROSE LS and ROSE VOR show the compass only for now): active F-PLN in green, TMPY in yellow dashed, missed approach in blue, alternate route in blue dashed, DME arcs and holds drawn. PLAN centres on the waypoint on the second line of the MCDU F-PLN page. Also live on both NDs in the 3D cockpit (EXT PWR on).
 - **INIT B**: TAXI, ZFW/ZFWCG, BLOCK, TRIP/TIME, RTE RSV, ALTN, FINAL, EXTRA, TOW/LW, TRIP WIND, MIN DEST FOB. **F-PLN** now shows TIME predictions and EFOB at destination once ZFW and BLOCK are entered.
 - **PERF TAKE OFF**: V1/VR/V2 (with V1/VR/V2 DISAGREE), F/S/O speeds, RWY, TO SHIFT, FLAPS/THS, FLEX, TRANS ALT, THR RED/ACC, ENG OUT ACC. Changing the takeoff runway clears the V speeds (CHECK TAKE OFF DATA).
+- **LEVERS** (v0.14.0): a LEVERS button between the upper ECAM and the SD shows the levers in place of the SD (upper ECAM visible), built from John's cockpit images (moving parts cut out and moved: gear lever, thrust lever blocks, flaps knob; lights drawn over the pushbuttons): thrust levers with buttons (TOGA, FLX/MCT, CL, 50% N1, IDLE, IDLE REV, MAX REV), flaps lever (0, 1, 2, 3, FULL), landing gear lever with the LDG GEAR indication (green triangles down and locked, red UNLK in transit, 10 s travel), AUTO BRK LO/MED/MAX (blue ON, green DECEL), BRK FAN, A/SKID & N/W STRG.
+  - **Take-off on the levers**: START lines the aircraft up (engines idle); thrust levers 50% N1, then FLX/MCT or TOGA starts the roll. LVR CLB stays until the levers are set to CL. TOGA in flight: go-around.
+  - **Configuration on the pilot's commands**: no automatic approach sequence and no automatic retraction. Lever 1 gives 1+F on the ground and when retracting below 210 kt; 1+F becomes 1 above 210 kt. Speed held below VFE (1+F 215, 1 230, 2 200, 3 185, FULL 177) and VLE 280 with the gear down; the PFD maximum speed follows.
+  - **Gear left down in the climb**: half the climb rate and half the acceleration. Touchdown with the gear not down: GEAR UP LANDING.
+  - **Rollout**: ground spoilers and autobrake only with the levers at idle or reverse; AUTO BRK LO 3.3, MED 5, MAX 6 kt/s, manual braking without autobrake, A/SKID OFF reduces braking; MAX REV adds deceleration above 70 kt.
+  - Tests switch on a hidden pilot monitoring (`window.__flight('pm:on')`) that moves the levers as the earlier automatic profile did; the app itself is fully manual.
+- **ECP**: brightness knobs removed, panel and keys about 30 per cent larger.
+- **ALTN F-PLN**: destination (or threshold with an approach), F-PLN DISCONTINUITY, ALTN airport. A waypoint typed on the discontinuity inserts the ALTN route; CLR on the discontinuity joins DCT. ENABLE ALTN uses the ALTN route.
+- **NEW DEST and immediate return**: NEW DEST also from PPOS (T-P); the origin is allowed in flight; DIR TO the new destination airport. ACTIVATE SEC and SWAP ACTIVE work in flight (COPY ACTIVE, NEW DEST at the FROM waypoint, ACTIVATE SEC).
+- **CLR**: pressing CLR again clears CLR at once.
 - **DIR TO turn** (v0.13.1): the direct leg starts with a turn from the track flown when INSERT is pressed, at the radius the aircraft flies at that ground speed (2.5°/s), then a straight line tangent to it (FlyByWire DF leg geometry). Drawn on the ND and flown by NAV: no overshoot, no reverse turn.
 - **Navigation database from the charts** (v0.13.0): `tools/navdb/procgen.py` turns the airport files in `tools/navdb/charts/` into `js/data/procgen.js`. Fix positions are worked out from chart geometry (VOR radial/DME, distance on the extended centreline, track and distance from another fix), anchored on OurAirports thresholds and VORs; where two charts place the same fix, the generator prints the difference (most under 1 NM). Training data only, never for navigation.
   - **Tabuk (OETB)**: ILS 24 (ITBK 109.5, vias D043O, D179O, D061T), VOR 24, VOR 06, VOR 13, VOR 31. No SIDs or STARs published (NO SID). The old ILS 31 was removed: it is not on the charts.

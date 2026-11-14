@@ -60,7 +60,7 @@ function insertWpt(p,i,id,after){
   else if(!after&&p.legs[i].k==='disc')p.legs.splice(i,1,W(id,{seg:'enr'}),{k:'disc'});
   else p.legs.splice(at,0,W(id,{seg:'enr'}),{k:'disc'});
   normalize(p)}
-function legPos(l){if(l.k==='wpt')return DB.wpt[l.id];if(l.k==='tp')return l.pos;
+function legPos(l){if(l.k==='wpt'||l.k==='altwpt')return DB.wpt[l.id];if(l.k==='tp')return l.pos;
   if(l.k==='altorig'){const a=DB.apt[l.id];return l.rwy&&a.rwy[l.rwy]?a.rwy[l.rwy].pos:a.pos}
   if(l.k==='orig'||l.k==='dest'||l.k==='altn'){const a=DB.apt[l.id];return l.rwy&&a.rwy[l.rwy]?a.rwy[l.rwy].pos:a.pos}return null}
 function dists(p){let prev=null;return p.legs.map(l=>{
@@ -126,9 +126,13 @@ function fplnRows(p){let rows=p?p.legs.map((l,ix)=>Object.assign({},l,{ix})):[];
   if(p&&flying()&&(p===S.active||p===S.tmpy)&&!S.secMode)rows=rows.filter(r=>r.ix>=FL.fromIx);   /* sequenced legs disappear; first line is the FROM waypoint */
   rows.push({k:'end',t:'END OF F-PLN'});
   /* alternate F-PLN: destination, then direct to the alternate airport (shown in blue) */
-  if(I().altn&&p){const d=p.legs[idxK(p,'dest')];rows.push({k:'altorig',id:d.id,rwy:d.rwy});rows.push({k:'altn',id:I().altn,rwy:I().altnRwy||null,via:'DCT'});rows.push({k:'end',t:'END OF ALTN F-PLN'})}
+  if(I().altn&&p){const d=p.legs[idxK(p,'dest')],R=altRte();rows.push({k:'altorig',id:d.id,rwy:d.rwy});
+    R.wpts.forEach((id,i)=>rows.push({k:'altwpt',id,i}));if(!R.dct)rows.push({k:'altdisc'});
+    rows.push({k:'altn',id:I().altn,rwy:I().altnRwy||null,via:R.wpts.length?'':'DCT'});rows.push({k:'end',t:'END OF ALTN F-PLN'})}
   else rows.push({k:'end',t:'NO ALTN F-PLN'});
   return rows}
+/* ALTN F-PLN: waypoints entered by the pilot, and a discontinuity before the ALTN airport until it is cleared (then DCT) */
+function altRte(){const i=I();if(!i.altR||i.altR.altn!==i.altn)i.altR={altn:i.altn,wpts:[],dct:false};return i.altR}
 const dash=t=>{const n=COLS-t.length,a=Math.floor(n/2);return'-'.repeat(a)+t+'-'.repeat(n-a)};
 function planCentre(p){const rows=fplnRows(p);for(let j=Math.min(S.fpOff+1,rows.length-1);j>=0;j--){const r=rows[j];
   const pos=(r.k==='altn')?legPos(r):(r.k&&r.k!=='end'&&r.k!=='disc')?legPos(r):null;if(pos)return{pos,id:r.id}}return null}
@@ -140,12 +144,13 @@ P.FPLN={render(){const p=cur(),rows=fplnRows(p),ds=p?dists(p):[];
   for(let n=0;n<5;n++){const r=rows[S.fpOff+n];if(!r)break;const ln=3+2*n,lb=ln-1;
     if(n===0){put(lb,8,flying()?'UTC':'TIME','w','S');rput(lb,'SPD/ALT','w','S',22)}
     if(r.k==='end'){put(ln,0,dash(r.t),'w');continue}
-    if(r.k==='disc'){put(ln,0,dash('F-PLN DISCONTINUITY'),'w');continue}
-    const alt_=r.k==='altn'||r.k==='altorig';
+    if(r.k==='disc'||r.k==='altdisc'){put(ln,0,dash('F-PLN DISCONTINUITY'),'w');continue}
+    const alt_=r.k==='altn'||r.k==='altorig'||r.k==='altwpt';
     const col=alt_||r.seg==='map'?'b':(flying()&&p===S.active&&!S.tmpy&&n===1&&S.fpOff===0)?'w':base;   /* TO waypoint in white */
     if(r.k==='hold'){fplnHoldRow(r,ln,lb,col,p,n);continue}
     if(r.k==='pw'){fplnPwRow(r,ln,lb,col);continue}
-    if(r.k==='altn'&&n>0){put(lb,1,'DCT','w','S');const a0=legPos({k:'altorig',id:p.legs[idxK(p,'dest')].id,rwy:p.legs[idxK(p,'dest')].rwy}),a1=legPos(r);if(a0&&a1)rput(lb,String(Math.round(gc(a0,a1))),'w','S',19)}
+    if((r.k==='altn'||r.k==='altwpt')&&n>0){const pr_=rows[S.fpOff+n-1];if(r.via)put(lb,1,r.via,'w','S');
+      const a0=pr_&&pr_.k!=='altdisc'?legPos(pr_.k==='altwpt'?{k:'wpt',id:pr_.id}:pr_):null,a1=legPos(r.k==='altwpt'?{k:'wpt',id:r.id}:r);if(a0&&a1)rput(lb,String(Math.round(gc(a0,a1))),'w','S',19)}
     if(n>0&&!alt_){put(lb,1,(r.via||'').slice(0,6),'w','S');if(r.lbl)put(lb,8,r.lbl,'w','S');if(r.step!=null&&typeof stepKind==='function')put(lb,8,stepKind(p,r.ix),'w','S');
       const d=ds[r.ix];if(d!=null){const t=String(Math.round(d));if(firstD){rput(lb,t+'NM','w','S',21);firstD=false}else rput(lb,t,'w','S',19)}}
     const id=(r.k==='orig'||r.k==='dest'||alt_)?r.id+(r.rwy||''):r.id;
@@ -170,6 +175,11 @@ P.FPLN={render(){const p=cur(),rows=fplnRows(p),ds=p?dists(p):[];
   if(s==='R')return err('NOT IN PROTOTYPE');
   if(r.k==='end'||r.k==='altorig')return err('NOT ALLOWED');
   if(r.k==='altn'){if(S.sp==='CLR'){I().altn=null;I().altnRwy=null;return ok()}if(S.sp)return err('NOT ALLOWED');S.lr=-1;return go('LATREV')}
+  /* ALTN route: a waypoint typed on the discontinuity or on a waypoint is inserted there; CLR on the discontinuity joins DCT */
+  if(r.k==='altdisc'||r.k==='altwpt'){const R=altRte(),v=S.sp;if(!v)return err('NOT ALLOWED');
+    if(v==='CLR'){if(r.k==='altdisc')R.dct=true;else R.wpts.splice(r.i,1);return ok()}
+    if(!DB.wpt[v]&&!(DB.nav&&DB.nav[v]))return err('NOT IN DATA BASE');if(!DB.wpt[v])DB.wpt[v]=DB.nav[v].pos;
+    R.wpts.splice(r.k==='altdisc'?R.wpts.length:r.i,0,v);return ok()}
   const v=S.sp;
   if(v==='CLR'){if(r.k==='orig'||r.k==='dest')return err('NOT ALLOWED');const q=edit();
     if(r.k==='disc')q.legs.splice(r.ix,1);else q.legs.splice(r.ix,1,{k:'disc'});normalize(q);return ok()}
@@ -227,7 +237,7 @@ P.DEP={items(){const p=cur(),o=p.legs[0],ap=DB.apt[o.id];
  slew(d){const n=this.items().length;S.dep.off=Math.max(0,Math.min(Math.max(0,n-4),S.dep.off-d))}};
 
 /* ENABLE ALTN (FlyByWire A32NX): the route after this waypoint is replaced by a direct leg to the alternate, which becomes the destination */
-function enableAltn(ix){const p=S.tmpy||S.active,a=I().altn;p.legs=p.legs.slice(0,ix+1);p.legs.push({k:'dest',id:a,rwy:I().altnRwy||null});
+function enableAltn(ix){const p=S.tmpy||S.active,a=I().altn,R=altRte();p.legs=p.legs.slice(0,ix+1);R.wpts.forEach(id=>p.legs.push(W(id,{seg:'enr'})));p.legs.push({k:'dest',id:a,rwy:I().altnRwy||null});
   p.appr=null;p.via=null;p.star=null;I().to=a;I().altn=null;I().altnRwy=null;S.fpOff=0;ok()}
 const arrApt=()=>{const p=cur();return S.arrAlt?I().altn:p.legs[idxK(p,'dest')].id};
 P.ARR={items(){const p=cur(),aid=arrApt(),t=S.arrAlt?{}:(APPRS[aid]||{});
@@ -396,7 +406,7 @@ function err(m){S.msg=m}
 function ok(){S.sp='';S.msg=null}
 function go(pg){S.page=pg;if(pg==='FPLN'){}}
 function typeCh(ch){if(S.msg)S.msg=null;if(S.sp==='CLR')S.sp='';if(S.sp.length<22)S.sp+=ch}
-function clrKey(){if(S.msg){S.msg=null;return}if(!S.sp&&S.msgs&&S.msgs.length){S.msgs.shift();return}if(S.sp)S.sp=S.sp.slice(0,-1);else S.sp='CLR'}
+function clrKey(){if(S.msg){S.msg=null;return}if(!S.sp&&S.msgs&&S.msgs.length){S.msgs.shift();return}if(S.sp==='CLR'){S.sp='';return}if(S.sp)S.sp=S.sp.slice(0,-1);else S.sp='CLR'}   /* CLR again clears CLR at once */
 const TITLES={DIR:'DIR TO',PROG:'PROG',DATA:'DATA INDEX',RADNAV:'RADIO NAV',FUEL:'FUEL PRED',SECF:'SEC INDEX',ATC:'ATC MENU'};
 function press(k){
   if(k.length===1&&/[A-Z0-9./]/.test(k))typeCh(k);
