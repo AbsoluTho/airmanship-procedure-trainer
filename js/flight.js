@@ -193,7 +193,9 @@ function setFma(){const st=FL.stage,a=S.perf,fx=a.flex!=null&&S.phase!=='GA'?'FL
   if(guide&&st!=='IDLE'){
     if(['LAND','FLARE','ROLL OUT'].includes(FL.ver))f.land=FL.ver;
     else{const crzAlt=FCU.alt===I().crz*100&&FL.alt>20000;
-      f.c2=[[FL.ver==='ALT'&&crzAlt?'ALT CRZ':FL.ver==='ALT*'&&crzAlt?'ALT CRZ*':FL.ver,'g'],FL.verArm.length?[FL.verArm.join(' '),cstArmed()?'m':'b']:null];
+      const sg=v=>v>0?'+'+v:v<0?'-'+Math.abs(v):'0';   /* V/S +1500, V/S -500, V/S 0; FPA +3.0° */
+      const vtxt=FL.ver==='V/S'?'V/S '+sg(Math.round(FCU.vsVal||0)):FL.ver==='FPA'?'FPA '+(FCU.fpa>0?'+':FCU.fpa<0?'-':'')+Math.abs(FCU.fpa||0).toFixed(1)+'°':FL.ver;
+      f.c2=[[FL.ver==='ALT'&&crzAlt?'ALT CRZ':FL.ver==='ALT*'&&crzAlt?'ALT CRZ*':vtxt,'g'],FL.verArm.length?[FL.verArm.join(' '),cstArmed()?'m':'b']:null];
       f.c3=[[FL.lat==='LOC*'?'LOC *':FL.lat,'g'],FL.latArm?[FL.latArm,'b']:null]}}
   if(npaAppr()){const M={'LOC *':'APP NAV','LOC':'APP NAV','G/S*':'FINAL','G/S':'FINAL'},ren=c=>c&&c.map(x=>x&&[M[x[0]]||x[0].replace('G/S','FINAL').replace(/^LOC\b/,'APP NAV'),x[1]]);
     f.c2=ren(f.c2);f.c3=ren(f.c3);

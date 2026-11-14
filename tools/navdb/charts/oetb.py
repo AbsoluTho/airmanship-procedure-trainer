@@ -38,3 +38,10 @@ a.apprs['VOR31'] = dict(type='VOR', rwy='31', crs=303, vor='TBK',
                               'D043O': [W('D043O', '+5000'), ARC('D123O', 'TBK', '+5000')]},
                         final=[W('KUMDI', '@4200'), W('MA31', '@2900')], dest={'lbl': 'C303°', 'alt': A('@2598')},
                         missed=[HDG(310, 3500), W('MUPVA', '@6000'), HOLD(241, 'R', 6000)])
+# ILS 31 as first typed in the prototype from John's chart (IPKS 111.9 confirmed by John)
+a.apprs['ILS31'] = dict(type='ILS', rwy='31', crs=309, nav='IPKS', freq=111.9,
+                        vias={'D179O': [W('D179O', '+5500'), ARC('D136O', 'TBK', '+5500'), W('CI31', '@4200')],
+                              'D043O': [W('D043O', '+5000'), ARC('D120O', 'TBK', '+5000'), W('CI31', '@4200')],
+                              'TBK': [W('TBK', '+5000'), W('ITNOG', '@5000', lbl='C127°')]},
+                        final=[W('ITNOG', '+4200', lbl='C309°')], dest={'lbl': 'C309°', 'alt': A('@2598')},
+                        missed=[HDG(309, 3500), W('MUPVA', '+6000'), HOLD(241, 'R', 6000)])

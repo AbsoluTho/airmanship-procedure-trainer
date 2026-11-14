@@ -4,7 +4,7 @@ An unofficial A320 **procedure** trainer that runs in the browser (iPad first). 
 
 Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator manuals. The navigation data was typed from charts for training only and must never be used for navigation.
 
-## Status: Phase 2 prototype (v0.15.1)
+## Status: Phase 2 prototype (v0.15.2)
 
 - **MCDU** (Thales FMS2 layout, per FCOM DSC-22): keyboard and scratchpad, INIT A, F-PLN with TMPY (ERASE/INSERT), LAT REV, DEPARTURE, AIRWAYS (with airway-to-airway intersection), ARRIVAL, waypoint insertion, CLR of waypoints and discontinuities.
 - **Exercise** OEJN to OETB: RWY 16C MIGD2E, L677 WEJ, V54 TBK, ILS 31 via D179O, ALTN OEMA, FL340, CI 20, with automatic progress checks.
@@ -12,6 +12,7 @@ Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator
 - **ND** (ROSE LS, ROSE VOR, ROSE NAV, ARC, PLAN; range 10 to 320 NM; CSTR, WPT, ARPT options; ROSE LS and ROSE VOR show the compass only for now): active F-PLN in green, TMPY in yellow dashed, missed approach in blue, alternate route in blue dashed, DME arcs and holds drawn. PLAN centres on the waypoint on the second line of the MCDU F-PLN page. Also live on both NDs in the 3D cockpit (EXT PWR on).
 - **INIT B**: TAXI, ZFW/ZFWCG, BLOCK, TRIP/TIME, RTE RSV, ALTN, FINAL, EXTRA, TOW/LW, TRIP WIND, MIN DEST FOB. **F-PLN** now shows TIME predictions and EFOB at destination once ZFW and BLOCK are entered.
 - **PERF TAKE OFF**: V1/VR/V2 (with V1/VR/V2 DISAGREE), F/S/O speeds, RWY, TO SHIFT, FLAPS/THS, FLEX, TRANS ALT, THR RED/ACC, ENG OUT ACC. Changing the takeoff runway clears the V speeds (CHECK TAKE OFF DATA).
+- **FMA V/S and FPA values** (v0.15.2): the vertical column reads V/S +1500, V/S -500, V/S 0 (FPA +3.0°) with the selected value.
 - **FULL SCREEN** (v0.15.1): the FULL SCREEN button in the flight bar shows only the instruments (EFIS, FCU, PFD, ND with ECP, MCDU/ECAM) and the flight bar, sized to fill the window (browser full screen where allowed). EXIT FULL SCREEN (top right), Esc, or an iPad/phone turned to portrait leaves it.
 - **Jeddah from the charts** (v0.15.0): 48 SIDs (all six runways), 48 STARs (BOSUT/EGMEG/ULULU/MUVOL and IMDAP/MISAM/NOMDA/VEMEM, by runway) and 16 approaches (ILS Z and Y, RNP for 16C/16L/16R/34C/34R; ILS 34L), with vias from the IAFs and the published missed approaches. Fix positions read on each chart's lat/long grid; fixes on several charts agree within about 0.3 NM. Pre-flight FMA: CLB, NAV (cyan) and 1 FD 2 once INIT B is done with the FDs on.
 - **PERF TAKE OFF** (v0.14.2): V speeds are the pilot's choice (any order; V1/VR/V2 DISAGREE is only a message) and are not required for START (blank ones are computed from the take-off weight). The speed tape shows them from line-up: V1 '1', VR circle, V2 target. FLAPS/THS also accepts .4UP and UP.4 (1/.4UP shows 1/UP0.4).
@@ -32,7 +33,7 @@ Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator
 - **CLR**: pressing CLR again clears CLR at once.
 - **DIR TO turn** (v0.13.1): the direct leg starts with a turn from the track flown when INSERT is pressed, at the radius the aircraft flies at that ground speed (2.5°/s), then a straight line tangent to it (FlyByWire DF leg geometry). Drawn on the ND and flown by NAV: no overshoot, no reverse turn.
 - **Navigation database from the charts** (v0.13.0): `tools/navdb/procgen.py` turns the airport files in `tools/navdb/charts/` into `js/data/procgen.js`. Fix positions are worked out from chart geometry (VOR radial/DME, distance on the extended centreline, track and distance from another fix), anchored on OurAirports thresholds and VORs; where two charts place the same fix, the generator prints the difference (most under 1 NM). Training data only, never for navigation.
-  - **Tabuk (OETB)**: ILS 24 (ITBK 109.5, vias D043O, D179O, D061T), VOR 24, VOR 06, VOR 13, VOR 31. No SIDs or STARs published (NO SID). The old ILS 31 was removed: it is not on the charts.
+  - **Tabuk (OETB)**: ILS 24 (ITBK 109.5, vias D043O, D179O, D061T), VOR 24, VOR 06, VOR 13, VOR 31, and ILS 31 (IPKS 111.9, vias D179O, D043O, TBK; the first procedure of the prototype, from John's chart). No SIDs or STARs published (NO SID).
   - **Madinah (OEMA)**: 52 SIDs (RNAV 1C/1J/1K/1L, conventional VOR/DME 1D/1M/1N/1P with DME arcs, radar MADINAH 1T/1Z), 32 STARs for runways 17, 18, 35, 36, and 10 approaches (ILS 17, ILS 35, RNP 17/18/35/36, VOR 17/18/35/36).
   - **STARs** on the ARRIVAL page (listed for the runway of the approach). A fix shared by the STAR, the via and the final approach is kept once, where the later part starts.
   - **VOR and RNP approaches**: armed with APPR, flown on the runway final; FMA APP NAV and FINAL, then FINAL APP. LOC, LS display and LS autotune stay ILS-only.
