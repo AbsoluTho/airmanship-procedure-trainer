@@ -50,6 +50,24 @@ async def run(url,b):
     assert off==[],f'pressing the lit option turns it off: {off}'
     legs=await pg.evaluate('window.__S().active.legs.map(l=>l.k)')
     await pg.evaluate(f'window.__S().fpOff={(await pg.evaluate("fplnRows(window.__S().active).map(r=>r.k)")).index("dest")-1}');await k('UP');await k('DOWN')
+    missed=await pg.evaluate("""(() => {
+      const p=S.active, off=S.fpOff, rows=fplnRows(p);
+      const first=rows.findIndex(r=>r.seg==='map'&&r.k==='wpt');
+      const geometry=mode=>planGeo(p,'g',-1,showMissedApproach(p,mode));
+      const blue=mode=>geometry(mode).lines.some(l=>l.col==='b');
+      S.fpOff=first-2;render();
+      const before=blue('PLAN');
+      press('UP');
+      const atFirst=EFIS.ctr.id===rows[first].id&&blue('PLAN');
+      const arc=blue('ARC'),rose=blue('NAV');
+      press('UP');
+      const after=blue('PLAN');
+      press('DOWN');
+      const back=blue('PLAN');
+      S.fpOff=off;render();
+      return [before,atFirst,arc,rose,after,back];
+    })()""")
+    assert missed==[False,True,False,False,False,True],f'ND missed approach at the first centred missed fix: {missed}'
     # ---- part 2 pages (FlyByWire layouts) ----
     scr=lambda: pg.evaluate("[...document.querySelectorAll('#scr .ln')].map(l=>l.textContent).join(' ').replace(/\\s+/g,' ')")
     await k('INIT');await k('R3');x=await scr();assert 'IRS INIT' in x,('IRS INIT',x,await pg.evaluate('[window.__S().page,window.__S().msg,window.__S().sp]'))
@@ -428,8 +446,17 @@ async def run(url,b):
         if(!ap&&FL.alt-groundElev()>1200){fcuButton('ap1');ap=1}if(FL.ver==='ALT'&&FL.alt<8000&&!o.d){FCU.alt=34000;fcuPush('alt',false)}
         if(S.phase==='CRZ'&&!o.d&&FL.s>FL.td-30){FCU.alt=7000;fcuPush('alt',false);o.d=1}
         if(S.phase==='APPR'&&FL.path.sThr-FL.s<20)FCU.appr=true;if(FL.ver==='G/S'&&!o.g){FCU.alt=6000;o.g=1}if(o.g&&FL.alt-groundElev()<500)break}
-      window.__flight('ga');setFma();return[FL.fma.c1.map(x=>x&&x[0]).join(' '),FL.fma.c2[0][0],FL.lat,S.phase,FL.conf]})()""")
-    assert r==['MAN TOGA','SRS','GA TRK','GA','3'],f'go-around: MAN TOGA, SRS, GA TRK, GA phase, flaps one step up: {r}'
+      window.__flight('ga');setFma();
+      const modes=()=>[FL.fma.c1.map(x=>x[0]).join(' '),FL.fma.c2[0][0],FL.fma.c3[0][0]];
+      const toga=[...modes(),S.phase,FL.conf];
+      const route=S.active.legs;
+      lever('thr','FLX');
+      const selected=modes();
+      lever('thr','TOGA');
+      return [toga,selected,modes(),route===S.active.legs,
+        planGeo(S.active,'g',FL.fromIx,false).lines.some(l=>l.col==='g'&&S.active.legs[l.ix].seg==='ga')];
+    })()""")
+    assert r==[['MAN TOGA','SRS','GA TRK','GA','3'],['MAN GA SOFT','SRS','GA TRK'],['MAN TOGA','SRS','GA TRK'],True,True],f'normal and soft go-around, TOGA reversion and active route: {r}'
     assert await pg.evaluate("(()=>{for(let i=0;i<4;i++)step(0.5);return FL.lat})()")=='NAV','NAV on the missed approach above 100 ft'
     rows=await pg.evaluate("fplnRows(window.__S().active).filter(r=>r.ix>=FL.fromIx).map(r=>r.id||r.k).slice(0,7).join(' ')")
     assert rows=='T-P TBK MUPVA HOLD R disc D179O MUPVA',f'missed approach active, approach strung again: {rows}'
@@ -494,11 +521,11 @@ async def run(url,b):
     r=await pg.evaluate("""(()=>{const p=newPlan('OEJN','OEMA');setRunway(p,'16C');p.appr='RNP36';p.via='MA428';p.star='BOVE1F';buildArr(p);
       const ids=p.legs.filter(l=>l.seg==='arr'||l.k==='dest').map(l=>l.id).join(' ');
       const S0=S.active;S.active=p;const fl={lat:FL.lat,ver:FL.ver,arm:FL.verArm,la:FL.latArm,st:FL.stage};FL.stage='AIR';FL.lat='LOC';FL.ver='G/S';FL.verArm=[];FL.latArm=null;
-      const ap=FCU.ap1;FCU.ap1=true;setFma();const fma=FL.fma.c2&&FL.fma.c2[0]&&FL.fma.c2[0][0];
+      const ap=FCU.ap1;FCU.ap1=true;setFma();const fma=[FL.fma.land,FL.fma.c2.length,FL.fma.c3.length];
       Object.assign(FL,{lat:fl.lat,ver:fl.ver,verArm:fl.arm,latArm:fl.la,stage:fl.st});FCU.ap1=ap;S.active=S0;
       return[ids,fma,Object.keys(STARS.OEMA).length,Object.keys(SIDS.OEMA).sort().join(),Object.keys(APPRS.OETB).join()]})()""")
     assert r[0]=='BOVET MA409 MA425 MA401 MA426 MA427 MA428 MUVDA MA510 OEMA',f'STAR BOVE1F + via MA428 + RNP36: {r[0]}'
-    assert r[1]=='FINAL APP',f'RNP approach FMA: {r[1]}'
+    assert r[1]==['FINAL APP',0,0],f'RNP approach FMA uses the shared vertical/lateral annunciation: {r[1]}'
     assert r[2]==32 and r[3]=='17,18,35,36' and r[4]=='ILS24,VOR24,VOR06,VOR13,VOR31-1,ILS31,VOR31-2',f'chart data: {r[2:]}'
     await P('PERF');await P('MENU');assert 'MCDU MENU' in await pg.evaluate("[...document.querySelectorAll('#scr .ln')].map(l=>l.textContent).join(' ')")
     await P('L1');assert await pg.evaluate("window.__S().page")=='PERFTO','MCDU MENU: FMGC returns to the last FMGC page'
