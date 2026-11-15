@@ -87,8 +87,10 @@ function project(P,pos,from,to){let best=null;const a=P.pts;
 
 /* ---------- final approach course (LOC) ---------- */
 function destRwy(){const p=S.active,d=p.legs[idxK(p,'dest')],a=DB.apt[d.id],r=a.rwy[d.rwy]||Object.values(a.rwy)[0]||{pos:a.pos,crs:0,len:2000};return{a,r,tdze:r.tdze??a.elev}}   /* NEW DEST without a runway yet: the first runway */
-function locGeo(pos){const d=destRwy(),c=d.r.crs+(d.a.var||0),q=enu(d.r.pos,pos),u=[Math.sin(c*D2R),Math.cos(c*D2R)];
-  const along=-(q[0]*u[0]+q[1]*u[1]),xtk=(u[0]*q[1]-u[1]*q[0])*-1;return{crs:c,along,xtk}}   /* along: NM before the threshold */
+function locGeo(pos){const d=destRwy(),g=c=>{const q=enu(d.r.pos,pos),u=[Math.sin(c*D2R),Math.cos(c*D2R)];return{crs:c,along:-(q[0]*u[0]+q[1]*u[1]),xtk:(u[0]*q[1]-u[1]*q[0])*-1}};   /* along: NM before the threshold */
+  const v=d.a.var||0,r=g(d.r.crs+v),p=S.active,ap=p&&p.appr&&!/^(ILS|LOC)/.test(p.appr)&&(APPRS[destId()]||{})[p.appr];
+  /* VOR/RNP final on its own course (an offset final, e.g. VOR 31 on 311 to runway 306) down to 1 NM, then the runway centreline */
+  return ap&&ap.crs!=null&&ap.crs!==d.r.crs&&r.along>1?g(ap.crs+v):r}
 function faf(){const p=S.active,di=idxK(p,'dest');for(let i=di-1;i>0;i--){const l=p.legs[i];if(l.k==='wpt'&&l.alt&&l.seg==='arr')return l.alt.v}return destRwy().tdze+1500}
 function gsAlt(dtg){return destRwy().tdze+50+318*Math.max(0,dtg)}
 /* profileAlt() and tdDist() (constrained descent path, T/D) are in vnav.js */

@@ -69,6 +69,13 @@ async def run(url,b):
       return[Object.keys(STARS.OERK).length,Object.values(SIDS.OERK).reduce((n,x)=>n+Object.keys(x).length,0),DB.nav.KSA.freq,
         p.legs.filter(l=>l.seg==='arr'||l.k==='dest').map(l=>l.id+(l.lbl==='ARC'?'~':'')).join(' '),+gc(DB.wpt.ORDEG,DB.nav.KSA.pos).toFixed(1)]})()""")
     assert rk2==[36,68,115.0,'KOBOX D079Q D047Q~ PEBAK~ ORDEG~ ALPUR TAVNU OERK',17.0],f'Riyadh STARs, SIDs and the KSA arcs: {rk2}'
+    n3=await pg.evaluate("""(()=>{const k=a=>Object.keys(APPRS[a]).sort().join();const p=newPlan('OERK','OEAH');setRunway(p,'15R');p.appr='ILS34Y';p.via='KIREN';buildArr(p);normalize(p);
+      return[k('OEAB'),k('OEGS'),k('OEAH'),Object.keys(SIDS.OEAB['31']).join(),DB.apt.OEAB.var,APPRS.OEGS.ILS15.nav+APPRS.OEGS.ILS15.freq,
+        p.legs.filter(l=>l.seg==='arr'||l.k==='dest').map(l=>l.id).join(' ')]})()""")
+    assert n3==['ILS13,VOR13,VOR31','ILS15,VOR15,VOR33','ILS34Y,ILS34Z,VOR16,VOR34','RWYHDG',3.15,'IGAS110.1','KIREN AH400 ODBAX FF34H OEAH'],f'Abha, Gassim, Al Ahsa: {n3}'
+    of=await pg.evaluate("""(()=>{const A0=S.active;const p=newPlan('OEJN','OEAB');p.appr='VOR31';p.via='D131U';buildArr(p);normalize(p);S.active=p;const a=locGeo(DB.wpt.ITGOS),b=locGeo(DB.wpt.D131A);
+      p.appr='ILS13';const c=locGeo(DB.wpt.VUSIT);S.active=A0;return[Math.round(a.crs-DB.apt.OEAB.var),+Math.abs(a.xtk).toFixed(1),Math.round(b.crs-DB.apt.OEAB.var),+Math.abs(c.xtk).toFixed(1)]})()""")
+    assert of==[311,0,306,0],f'offset VOR final on its own course to 1 NM, then the centreline: {of}'
     # VERT REV at the origin (1R: CLB SPD LIM) and at the destination (6R: DES SPD LIM)
     await k('R1');x=await scr();assert 'VERT REV AT OEJN' in x and 'CLB SPD LIM' in x and 'SPD CSTR' not in x,('VERT REV at the origin',x)
     await t('250/FL120');await k('L2');assert await pg.evaluate('JSON.stringify(window.__S().spdLim.clb)')=='{"spd":250,"alt":12000}','CLB SPD LIM entry'

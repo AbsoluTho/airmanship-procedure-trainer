@@ -24,4 +24,4 @@ const STARS={};
 const AWY={L677:['MIGDA','RIDEP','YEN','RAGNO','ORGIM','TUGRU','WEJ'],V54:['WEJ','LABUN','NETOL','DEMSU','TBK'],M872:['WEJ','KULKI','TULOK','BOVET']};
 
 /* Transition altitudes (ft). Check against the current AIP before relying on them. */
-const TA={OEJN:13000,OETB:13000,OEMA:13000};
+const TA={OEJN:13000,OETB:13000,OEMA:13000,OERK:13000,OEAB:13000,OEGS:13000,OEAH:13000};
