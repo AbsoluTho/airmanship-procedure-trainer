@@ -10,7 +10,7 @@ function drawPFD(g,W,H,powered){g.save();g.setTransform(1,0,0,1,0,0);g.fillStyle
   const sc=W/592,Hp=H/sc,oy=(Hp-573)/2;g.scale(sc,sc);g.translate(-41,-39+oy);
   g.fillStyle=PC.bg;g.fillRect(41,39-oy,592,Hp);
   const on=flying(),o=orig(),ap=o?DB.apt[o]:DB.apt.OEJN,ac=acState();
-  const altT=on?FL.alt:(S.active&&S.active.rwy?(ap.rwy[S.active.rwy].tdze??ap.elev):ap.elev),qAct=actualQnh(),alt=altT+(EFIS.std?(1013-qAct):(baroHpa()-qAct))*27.3;
+  const altT=on?FL.alt:(S.active&&S.active.rwy?(ap.rwy[S.active.rwy].tdze??ap.elev):ap.elev),alt=indicatedAltitude(altT);
   const ias=on?FL.ias:0,vs=on?FL.vs:0,pitch=on?FL.pitch:0,roll=on?FL.roll:0;
   const hdgM=((ac.hdg)%360+360)%360,agl=on?FL.alt-groundElev():0;
   const T=(t,x,y,col,px,al,w)=>{g.font=PF(px||20,w);g.fillStyle=PC[col]||col;g.textAlign=al||'left';g.textBaseline='middle';g.fillText(t,x,y)};

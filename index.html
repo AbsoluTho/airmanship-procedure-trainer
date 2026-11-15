@@ -66,6 +66,11 @@
         <div class="fl-row"><span class="fl-l">Engine failure</span>
           <button class="fb sm" type="button" data-fl="eng:1" aria-pressed="false" title="Fail engine 1 (in flight)">ENG 1</button><button class="fb sm" type="button" data-fl="eng:2" aria-pressed="false" title="Fail engine 2 (in flight)">ENG 2</button>
         </div>
+        <div class="fl-row" aria-label="Cockpit audio">
+          <button class="fb sm" type="button" id="cockpitSound" aria-pressed="false">COCKPIT SOUND</button>
+          <button class="fb sm" type="button" id="cabinCall" title="Simulate a cabin crew call to the cockpit" disabled>CABIN CALL</button>
+          <span class="fl-l" id="cockpitSoundStatus" role="status"></span>
+        </div>
       </div>
     <aside class="side">
       <div class="card">
@@ -139,17 +144,18 @@
 <script src="js/mcdu.js?v=37ac00fe"></script>
 <script src="js/mcdu2.js?v=7d7ee420"></script>
 <script src="js/perf.js?v=403c391c"></script>
-<script src="js/fcu.js?v=a421b4c1"></script>
-<script src="js/nd.js?v=d1b0ebbd"></script>
+<script src="js/fcu.js?v=84e7ad44"></script>
+<script src="js/nd.js?v=8e2233a0"></script>
 <script src="js/wx.js?v=23112ad9"></script>
-<script src="js/flight.js?v=24f108a7"></script>
+<script src="js/audio.js?v=70dbb64e"></script>
+<script src="js/flight.js?v=4e468ad5"></script>
 <script src="js/vnav.js?v=19964385"></script>
 <script src="js/mcdu3.js?v=107ed093"></script>
 <script src="js/mcdu4.js?v=c97f731f"></script>
 <script src="js/mcdu5.js?v=b613fb8a"></script>
 <script src="js/mcdu6.js?v=f71d0256"></script>
 <script src="js/setup.js?v=bcc55ea4"></script>
-<script src="js/pfd.js?v=a0d25f01"></script>
+<script src="js/pfd.js?v=743068d1"></script>
 <script src="js/ecam.js?v=ef45062b"></script>
 <script src="js/levers.js?v=2bce61ab"></script>
 <script src="js/engstart.js?v=d3290d82"></script>
