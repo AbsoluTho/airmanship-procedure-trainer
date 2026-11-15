@@ -48,4 +48,9 @@ function predict(){const p=S.active,i=I(),f=S.fuel;
     extra:{fuel:extra,time:extra/PM.hold(lw)*60},minFob:f.minFob??(altnF+finF)}}
 
 /* Characteristic speeds from the takeoff weight (rule-of-thumb approximations). */
-function charSpeeds(tow){return{F:Math.round(0.95*tow+84),S:Math.round(1.1*tow+120),O:Math.round(2*tow+85)}}
+/* F and S speeds: FlyByWire NXSpeeds tables (gross weight in t, 5 t steps from 40 to 80 t; GPL-3.0), used in every phase until
+   performance data is available; green dot 2 x weight + 85 (FBW _computeGD) */
+const FBW_F=[()=>131,()=>131,()=>131,m=>131+1.2*(m-50),m=>137+1.4*(m-55),m=>144+(m-60),m=>149+1.2*(m-65),m=>155+(m-70),m=>160+1.2*(m-75),()=>166];
+const FBW_S=[()=>152,m=>152+1.8*(m-40),m=>161+1.6*(m-45),m=>169+1.8*(m-50),m=>178+1.6*(m-55),m=>186+1.4*(m-60),m=>193+1.4*(m-65),m=>200+1.4*(m-70),m=>207+1.4*(m-75),()=>214];
+const fbwMassIdx=m=>Math.max(0,Math.min(9,Math.ceil((Math.min(80,m)-40)/5)));
+function charSpeeds(tow){const i=fbwMassIdx(tow);return{F:Math.round(FBW_F[i](tow)),S:Math.round(FBW_S[i](tow)),O:Math.round(2*tow+85)}}
