@@ -64,7 +64,11 @@ async def run(url,b):
         p.legs.filter(l=>l.seg==='arr'||l.k==='dest').map(l=>l.id).join(' '),+gc(DB.wpt.LOSAX,DB.nav.KFA.pos).toFixed(1)]})()""")
     assert dm==[14,11,32,'IMBF111.7','MIBRA LOSAX D170N CF34L SIDGO OEDF',14.0],f'Dammam procedures: {dm}'
     rk=await pg.evaluate("[Object.keys(APPRS.OERK).sort().join(),APPRS.OERK.ILS33LY.nav+APPRS.OERK.ILS33LY.freq,APPRS.OERK.RNP15R.missed[0].id]")
-    assert rk==['ILS15LY,ILS15RY,ILS33LY,ILS33RY,RNP15L,RNP15R,RNP33L,RNP33R','IFAT110.1','RK603'],f'Riyadh approaches: {rk}'
+    assert rk==['ILS15LY,ILS15LZ,ILS15RY,ILS15RZ,ILS33LY,ILS33LZ,ILS33RY,ILS33RZ,RNP15L,RNP15R,RNP33L,RNP33R,VOR15R,VOR33L','IFAT110.1','RK603'],f'Riyadh approaches: {rk}'
+    rk2=await pg.evaluate("""(()=>{const p=newPlan('OEDF','OERK');setRunway(p,'34R');p.appr='ILS15RZ';p.via='PEBAK';p.star='KOBO1C';buildArr(p);normalize(p);
+      return[Object.keys(STARS.OERK).length,Object.values(SIDS.OERK).reduce((n,x)=>n+Object.keys(x).length,0),DB.nav.KSA.freq,
+        p.legs.filter(l=>l.seg==='arr'||l.k==='dest').map(l=>l.id+(l.lbl==='ARC'?'~':'')).join(' '),+gc(DB.wpt.ORDEG,DB.nav.KSA.pos).toFixed(1)]})()""")
+    assert rk2==[36,68,115.0,'KOBOX D079Q D047Q~ PEBAK~ ORDEG~ ALPUR TAVNU OERK',17.0],f'Riyadh STARs, SIDs and the KSA arcs: {rk2}'
     # VERT REV at the origin (1R: CLB SPD LIM) and at the destination (6R: DES SPD LIM)
     await k('R1');x=await scr();assert 'VERT REV AT OEJN' in x and 'CLB SPD LIM' in x and 'SPD CSTR' not in x,('VERT REV at the origin',x)
     await t('250/FL120');await k('L2');assert await pg.evaluate('JSON.stringify(window.__S().spdLim.clb)')=='{"spd":250,"alt":12000}','CLB SPD LIM entry'
