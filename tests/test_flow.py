@@ -110,10 +110,15 @@ async def run(url,b):
       document.querySelector('[data-ofp-back]').click();document.querySelector('.tab[data-v="mcdu"]').click();
       WX.on=true;applyRoute('OERKOEMA1',CO_RTES.OERKOEMA1);out.alt=altRte().wpts.join(' ')+'/'+altRte().via.RBG+'/'+fplnRows(S.active).filter(r=>r.k==='altwpt').length;
       const w=windAt(DB.wpt.GIDUV,34000,30000,'CRZ'),c=crabOf(267+3,449,w);out.wind=[Math.round(w.dir),Math.round(w.spd),Math.round(c.gs),Math.round(trkOfHdg(c.hdg,449,w))];
-      out.calm=windAt(DB.wpt.GIDUV,34000,0,'CRZ').spd;out.up=wxUplink()&&[S.wind.clb.length,S.wind.crz.map(x=>x.alt/100).join(),S.wind.des[0].alt];
+      const o=DB.apt.OERK,d=DB.apt.OEMA,lo=windAt(o.pos,o.elev+500,500,'TAKEOFF'),ld=windAt(d.pos,d.elev+500,500,'APPR');
+      out.calm=[lo.spd>=3&&lo.spd<19,windAt(o.pos,o.elev+1499,1499,'TAKEOFF').spd===lo.spd,
+        windAt(o.pos,o.elev+1500,1500,'TAKEOFF').spd===lo.spd,
+        ld.spd>=3&&ld.spd<19,windAt(d.pos,d.elev+1499,1499,'APPR').spd===ld.spd,
+        windAt(d.pos,d.elev+1500,1500,'APPR').spd===ld.spd];
+      out.up=wxUplink()&&[S.wind.clb.length,S.wind.crz.map(x=>x.alt/100).join(),S.wind.des[0].alt];
       S.arrAlt=false;S.arr={list:'APPR',off:0};S.page='ARR';out.appr=P.ARR.items()[0].txt;P.ARR.slew(1);out.off=S.arr.off;
-      S.wind={clb:[],crz:[],des:[]};S.active=A0;S.init=I0;S.tmpy=null;S.coRte=null;S.page=pg0;S.arr=ar0;WX.flt=null;WX.on=false;render();return out})()""")
-    assert fp=={'list':'OERK - OEMA,OEMA - OERK','detail':[],'alt':'SISUD ASLAD RBG NOMDA/B544/4','wind':[278,32,417,270],'calm':0,'up':[5,'300,320,340,360',39000],'appr':'<ILS17','off':1,'sec':[True,'+','none',False,6],'all':''},f'FLIGHT PLANS tab and OFP winds: {fp}'
+      S.wind={clb:[],crz:[],des:[]};S.active=A0;S.init=I0;S.tmpy=null;S.coRte=null;S.page=pg0;S.arr=ar0;WX.flt=null;WX.on=false;WX.surface={};render();return out})()""")
+    assert fp=={'list':'OERK - OEMA,OEMA - OERK','detail':[],'alt':'SISUD ASLAD RBG NOMDA/B544/4','wind':[278,32,417,270],'calm':[True]*6,'up':[5,'300,320,340,360',39000],'appr':'<ILS17','off':1,'sec':[True,'+','none',False,6],'all':''},f'FLIGHT PLANS tab and OFP winds: {fp}'
     # v0.22: PROG TO a runway, airways through VORs on the ND, ALTN LAT REV and airways, ALTN route in PLAN only, random ZFWCG
     v22=await pg.evaluate("""(()=>{const A0=S.active,I0=clone(S.init),pg0=S.page,sp0=S.sp,pr0=S.prog.to,off0=S.fpOff,out={};
       S.page='PROG';S.sp='OEDF34R';P.PROG.lsk('R',4);out.prog=[S.prog.to,Math.round(gc(anyPos('OEDF34R'),DB.apt.OEDF.rwy['34R'].pos)*10)];S.sp='OEDF99';P.PROG.lsk('R',4);out.bad=S.prog.to;S.sp='';

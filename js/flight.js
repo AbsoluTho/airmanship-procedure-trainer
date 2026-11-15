@@ -126,7 +126,7 @@ function flightReady(){const a=S.active,i=I(),q=S.perf,f=S.fuel,miss=[];
 /* V speeds: the pilot's entries are used as entered (any order); a blank one is computed from the take-off weight */
 function vFill(){const q=S.perf,f=S.fuel,tow=(f.zfw||58)+(f.block||8)-(f.taxi??0.2),v2=q.v2||Math.round(150*Math.sqrt(tow/66.8));
   if(!q.v2)q.v2=v2;if(!q.vr)q.vr=Math.min(q.v2,v2-4);if(!q.v1)q.v1=Math.min(q.vr,v2-9)}
-function flightStart(){const miss=flightReady();if(miss.length)return miss;vFill();
+function flightStart(){const miss=flightReady();if(miss.length)return miss;vFill();WX.surface={};
   cockpitAudio.reset();
   const P=buildPath(),o=DB.apt[orig()],r=o.rwy[S.active.rwy],tr=r.crs+(o.var||0);
   Object.assign(FL,{active:true,running:true,t:0,utc0:Date.now(),path:P,s:0,seg:1,xtk:0,pos:r.pos,hdgT:tr,trkT:tr,roll:0,pitch:0,alt:r.tdze??o.elev,vs:0,ias:0,tas:0,gs:0,mach:0,
