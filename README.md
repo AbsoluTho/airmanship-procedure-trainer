@@ -19,6 +19,7 @@ Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator
   - Fix positions from KFA radial/DME, the extended centrelines and the chart tracks and distances; the same fix reached by different procedures agrees within 0.6 NM (36 cross-checks printed by the generator).
 - **v0.21.1**:
   - FLIGHT PLANS: every section of a flight (INIT A, INIT B, route to the destination, each alternate, winds) has a + / − button beside its title to show or hide it; + All and − All at the top. The choice is kept for every flight and between visits.
+  - Fix: five of the flights (FAD226, 309, 310, 429, 430) did not open on the FLIGHT PLANS tab: their contingency fuel is printed "CONT 5%" and was not read. Every flight is now opened by the test, and a figure missing on an OFP shows as a dash.
   - Two more OFPs: FAD385 OEJN - OETB (the route of the original exercise: MIGDA L677 WEJ V54 TBK, FL340, CI 20) and FAD386 OETB - OEJN (TBK V54 WEJ T510 RBG B544 NOMDA, NOMD1A, ILS 34L, FL330; company route OETBOEJN1). Ten flights in the list. Airways T510 and A424 added; B544 now runs ABH to SISUD (its two OFP parts joined at JDW).
   - The OEJN - OETB exercise now flies the winds of FAD385 (248°/68 kt to 240°/104 kt at FL340): turn the OFP winds off on the FLIGHT PLANS tab for still air.
 - **FLIGHT PLANS tab** (v0.21.0, after Cockpit 3D): the list of flights by ORIGIN - DESTINATION (OERK - OEMA, OEMA - OERK, OEJN - OEDF, OEDF - OEJN, OEJN - OEAB, OEAB - OEJN, OEJN - OEAH, OEAH - OEJN). A flight opens on:

@@ -7,12 +7,13 @@ try{OV.shut=JSON.parse(localStorage.getItem('airmanship.ofp.sections')||'{}')||{
 function ofpSec(key,title,body,wide){const shut=!!OV.shut[key];return'<div class="card sec'+(wide?' wide':'')+(shut?' shut':'')+'" data-sec="'+key+'"><h2><button type="button" class="sec-t" data-ofp-sec="'+key+'" aria-expanded="'+!shut+'" aria-label="'+(shut?'Show ':'Hide ')+title+'">'+(shut?'+':'−')+'</button><span data-ofp-sec="'+key+'">'+title+'</span></h2><div class="sec-b">'+body+'</div></div>'}
 const t1=kg=>(kg/1000).toFixed(1),hhmmO=m=>String(Math.floor(m/60)).padStart(2,'0')+String(m%60).padStart(2,'0'),w3=w=>w?String(w[0]).padStart(3,'0')+'/'+String(w[1]).padStart(3,'0'):'',
   escH=x=>String(x==null?'':x).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const Z={fuel:null,time:null},tz=x=>x==null?'—':t1(x),hz=x=>x==null?'—':hhmmO(x),kgz=x=>x==null?'':x+' kg';
 function ofpRte(o){const a=typeof AOC_OFP!=='undefined'&&AOC_OFP[o.flt],name=a&&a.rte,r=name&&CO_RTES[name];return r?{name,r}:null}
 function ofpLogTable(log,withFl){return'<div class="otw"><table class="ot"><thead><tr><th>AWY</th><th>WPT</th><th>TRK</th><th>NM</th>'+(withFl?'<th>FL</th>':'')+'<th>WIND</th></tr></thead><tbody>'+
   log.map(r=>'<tr'+(r.id[0]==='-'?' class="ps"':'')+'><td>'+escH(r.awy)+'</td><td><b>'+escH(r.id)+'</b></td><td>'+String(r.mt).padStart(3,'0')+'</td><td>'+r.dst+'</td>'+(withFl?'<td>'+escH(r.fl)+'</td>':'')+'<td>'+w3(r.wind)+'</td></tr>').join('')+'</tbody></table></div>'}
 function ofpList(){return'<div class="ofp-head"><h2>Flight plans</h2><p>Choose a flight. Each one is an OFP with its route, alternates, INIT data and winds.</p></div><div class="ofp-list">'+
   OFPS.map(o=>'<button type="button" class="ofp-item" data-ofp="'+o.flt+'"><span class="od">'+o.from+' - '+o.to+'</span><span class="meta">'+o.flt+' · FL'+o.fl+' · '+o.dist.ground+' NM · ALTN '+o.altn.map(a=>a.id).join(', ')+'</span></button>').join('')+'</div>'}
-function ofpDetail(o){const R=ofpRte(o),r=R&&R.r,f=o.fuel,m=o.mass,temp=Math.round(15-2*o.fl/10+o.isa),wc=o.wc.match(/(\d+) KTS (\w+)/),tw=(wc[2]==='HEAD'?'HD':'TL')+String(wc[1]).padStart(3,'0');
+function ofpDetail(o){const R=ofpRte(o),r=R&&R.r,f=Object.assign({},o.fuel),m=o.mass;['trip','cont','altn','final','extra','block','minTof'].forEach(k=>{if(!f[k])f[k]=Z});const temp=Math.round(15-2*o.fl/10+o.isa),wc=(o.wc||'').match(/(\d+) KTS (\w+)/),tw=wc?(wc[2]==='HEAD'?'HD':'TL')+String(wc[1]).padStart(3,'0'):'—';
   const kv=(k,v,n)=>'<li><span>'+k+'</span><b>'+v+'</b>'+(n?'<i>'+n+'</i>':'')+'</li>',flown=typeof wxOfp==='function'&&S.active&&wxOfp()===o&&WX.on;
   const mcduAlt=r&&r.altn,w=o.wind,tb=(T)=>'<table class="ot"><thead><tr>'+T.map(x=>'<th>FL'+x[0]+'</th>').join('')+'</tr></thead><tbody><tr>'+T.map(x=>'<td>'+w3(x.slice(1))+'</td>').join('')+'</tr></tbody></table>';
   const lvl=w.enr.length?'<details><summary>Winds at every waypoint and level</summary><div class="otw"><table class="ot"><tbody>'+w.enr.map(e=>'<tr><td><b>'+escH(e.id)+'</b></td>'+e.lv.map(l=>'<td>FL'+l[0]+' '+w3(l.slice(1))+'</td>').join('')+'</tr>').join('')+'</tbody></table></div></details>':'';
@@ -23,11 +24,11 @@ function ofpDetail(o){const R=ofpRte(o),r=R&&R.r,f=o.fuel,m=o.mass,temp=Math.rou
     kv('COST INDEX',o.ci)+kv('CRZ FL/TEMP','FL'+o.fl+' / '+temp,'ISA '+(o.isa>=0?'+':'')+o.isa)+kv('TROPO','36090','default')+
   '</ul><div class="note"><span class="tag">TIP</span><span>Enter the flight number, then INIT REQUEST: the uplink fills INIT A and the F-PLN, with the route to '+(mcduAlt||o.altn[0].id)+' as the ALTN F-PLN.</span></div>')+
   ofpSec('initb','INIT B','<ul class="okv">'+
-    kv('TAXI',t1(f.taxi),f.taxi+' kg')+kv('ZFW/ZFWCG',t1(m.zfm)+' / CG','ZFW '+m.zfm+' kg; the CG is on the loadsheet, not on the OFP')+kv('BLOCK',t1(f.block.fuel),f.block.fuel+' kg')+
-    kv('RTE RSV',t1(f.cont.fuel),'contingency '+f.cont.fuel+' kg')+kv('ALTN',t1(f.altn.fuel),'to '+f.altnId+', '+f.altn.fuel+' kg')+kv('FINAL/TIME',t1(f.final.fuel)+' / '+hhmmO(f.final.time),f.final.fuel+' kg')+
-    kv('TRIP WIND',tw,'average '+o.wc.toLowerCase())+
+    kv('TAXI',t1(f.taxi),f.taxi+' kg')+kv('ZFW/ZFWCG',t1(m.zfm)+' / CG','ZFW '+m.zfm+' kg; the CG is on the loadsheet, not on the OFP')+kv('BLOCK',tz(f.block.fuel),kgz(f.block.fuel))+
+    kv('RTE RSV',tz(f.cont.fuel),'contingency '+kgz(f.cont.fuel))+kv('ALTN',tz(f.altn.fuel),'to '+f.altnId+', '+kgz(f.altn.fuel))+kv('FINAL/TIME',tz(f.final.fuel)+' / '+hz(f.final.time),kgz(f.final.fuel))+
+    kv('TRIP WIND',tw,'average '+(o.wc||'').toLowerCase())+
   '</ul><h3>OFP figures to cross-check</h3><ul class="okv">'+
-    kv('TRIP/TIME',t1(f.trip.fuel)+' / '+hhmmO(f.trip.time),f.trip.fuel+' kg')+kv('TOW',t1(m.tom),m.tom+' kg')+kv('LW',t1(m.ldm),m.ldm+' kg')+kv('EXTRA/TIME',t1(f.extra.fuel)+' / '+hhmmO(f.extra.time),f.extra.fuel+' kg')+kv('MIN T/O FUEL',t1(f.minTof.fuel),f.minTof.fuel+' kg')+
+    kv('TRIP/TIME',tz(f.trip.fuel)+' / '+hz(f.trip.time),kgz(f.trip.fuel))+kv('TOW',t1(m.tom),m.tom+' kg')+kv('LW',t1(m.ldm),m.ldm+' kg')+kv('EXTRA/TIME',tz(f.extra.fuel)+' / '+hz(f.extra.time),kgz(f.extra.fuel))+kv('MIN T/O FUEL',tz(f.minTof.fuel),kgz(f.minTof.fuel))+
   '</ul>')+
   ofpSec('route','Route to '+o.to,'<ul class="okv">'+
     kv('ROUTE',escH(o.route))+(r?kv('DEPARTURE','RWY '+r.rwy+(r.sid?' · '+r.sid:' · no SID on the OFP'),o.proc.sid?'':'runway chosen for the company route')+kv('ARRIVAL',(r.star?r.star+' · ':'')+r.appr+(r.via?' via '+r.via:''),'OFP: '+[o.proc.star,o.proc.appr].filter(Boolean).join(' '))
@@ -41,7 +42,7 @@ function ofpDetail(o){const R=ofpRte(o),r=R&&R.r,f=o.fuel,m=o.mass,temp=Math.rou
     '<h3>Climb</h3><div class="otw">'+tb(w.clb)+'</div><h3>Descent</h3><div class="otw">'+tb(w.des)+'</div>'+lvl+
     '<div class="note"><span class="tag">NOTE</span><span>True direction / knots. The cruise wind at each waypoint is in the route table above. Below 1500 ft above the airfield the wind fades to calm on the runway.</span></div>',true)+
   '</div>'}
-function ofpRender(){const el=$('#ofpView');if(!el||typeof OFPS==='undefined')return;const o=OV.flt&&ofpOf(OV.flt);el.innerHTML=o?ofpDetail(o):ofpList()}
+function ofpRender(){const el=$('#ofpView');if(!el||typeof OFPS==='undefined')return;const o=OV.flt&&ofpOf(OV.flt);try{el.innerHTML=o?ofpDetail(o):ofpList()}catch(e){el.innerHTML='<div class="ofp-head"><button type="button" class="btn sm" data-ofp-back>← Flights</button><h2>'+(o?o.from+' - '+o.to:'')+'</h2><p>This flight plan could not be shown: '+escH(e.message)+'</p></div>'}}
 function ofpKeep(){try{localStorage.setItem('airmanship.ofp.sections',JSON.stringify(OV.shut))}catch(e){}}
 document.addEventListener('click',e=>{const b=e.target.closest('[data-ofp],[data-ofp-back],[data-ofp-wx],[data-ofp-sec],[data-ofp-all]');if(!b)return;
   if(b.dataset.ofpSec){const k=b.dataset.ofpSec,c=b.closest('.sec'),shut=!OV.shut[k];if(shut)OV.shut[k]=1;else delete OV.shut[k];ofpKeep();   /* no redraw: the page keeps its scroll position */

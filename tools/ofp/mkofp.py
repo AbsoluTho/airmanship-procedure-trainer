@@ -47,7 +47,7 @@ def parse(txt):
     f = lambda p: re.search(p, txt, re.M)
     def tf(p):
         m = f(p + r'\s*:\s+(\d+:\d+)\s+(\d+)'); return {'time': hm(m[1]), 'fuel': int(m[2])} if m else None
-    o['fuel'] = {'trip': tf(r'^TRIP'), 'cont': tf(r'^CONT \w+'), 'altn': tf(r'^ALT \(\w+\)'), 'altnId': g(r'^ALT \((\w+)\)'), 'final': tf(r'^FINAL RES'), 'add': tf(r'^ADD FUEL'),
+    o['fuel'] = {'trip': tf(r'^TRIP'), 'cont': tf(r'^CONT \S+'), 'altn': tf(r'^ALT \(\w+\)'), 'altnId': g(r'^ALT \((\w+)\)'), 'final': tf(r'^FINAL RES'), 'add': tf(r'^ADD FUEL'),
                  'minTof': tf(r'^MIN TOF'), 'taxi': int(g(r'^TAXI\s+:\s+(\d+)')), 'extra': tf(r'^EXTRA'), 'block': tf(r'^TOTAL FUEL')}
     o['mass'] = {k: int(g(p)) for k, p in [('dom', r'^DOM\s+:\s+(\d+)'), ('payload', r'^PAYLOAD\s+:\s+(\d+)'), ('zfm', r'^ZFM\s+:\s+(\d+)'), ('tof', r'^T/O FUEL\s+:\s+(\d+)'),
                                               ('tom', r'^TOM\s+:\s+(\d+)'), ('ldm', r'^LDG MASS\s*:\s+(\d+)')]}
