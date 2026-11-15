@@ -138,12 +138,12 @@ function fplnRows(p){let rows=p?p.legs.map((l,ix)=>Object.assign({},l,{ix})):[];
   rows.push({k:'end',t:'END OF F-PLN'});
   /* alternate F-PLN: destination, then direct to the alternate airport (shown in blue) */
   if(I().altn&&p){const d=p.legs[idxK(p,'dest')],R=altRte();rows.push({k:'altorig',id:d.id,rwy:d.rwy});
-    R.wpts.forEach((id,i)=>rows.push({k:'altwpt',id,i}));if(!R.dct)rows.push({k:'altdisc'});
+    R.wpts.forEach((id,i)=>rows.push({k:'altwpt',id,i,via:(R.via||{})[id]||''}));if(!R.dct)rows.push({k:'altdisc'});
     rows.push({k:'altn',id:I().altn,rwy:I().altnRwy||null,via:R.wpts.length?'':'DCT'});rows.push({k:'end',t:'END OF ALTN F-PLN'})}
   else rows.push({k:'end',t:'NO ALTN F-PLN'});
   return rows}
 /* ALTN F-PLN: waypoints entered by the pilot, and a discontinuity before the ALTN airport until it is cleared (then DCT) */
-function altRte(){const i=I();if(!i.altR||i.altR.altn!==i.altn)i.altR={altn:i.altn,wpts:[],dct:false};return i.altR}
+function altRte(){const i=I();if(!i.altR||i.altR.altn!==i.altn)i.altR={altn:i.altn,wpts:[],dct:false,via:{}};if(!i.altR.via)i.altR.via={};return i.altR}
 const dash=t=>{const n=COLS-t.length,a=Math.floor(n/2);return'-'.repeat(a)+t+'-'.repeat(n-a)};
 function planCentre(p){const rows=fplnRows(p);for(let j=Math.min(S.fpOff+1,rows.length-1);j>=0;j--){const r=rows[j];
   const pos=(r.k==='altn')?legPos(r):(r.k&&r.k!=='end'&&r.k!=='disc')?legPos(r):null;if(pos)return{pos,id:r.id}}return null}
@@ -190,10 +190,15 @@ P.FPLN={render(){const p=cur(),rows=fplnRows(p),ds=p?dists(p):[];
     if(S.sp)return err('NOT ALLOWED');S.vr=idxK(p,'dest');return go('VREV')}   /* 6R: VERT REV at the destination (DES SPD LIM) */
   const r=fplnRows(p)[S.fpOff+n-1];if(!r)return;
   if(s==='R')return err('NOT IN PROTOTYPE');
-  if(r.k==='end'||r.k==='altorig')return err('NOT ALLOWED');
-  if(r.k==='altn'){if(S.sp==='CLR'){I().altn=null;I().altnRwy=null;return ok()}if(S.sp)return err('NOT ALLOWED');S.lr=-1;return go('LATREV')}
+  if(r.k==='end')return err('NOT ALLOWED');
+  /* ALTN F-PLN: a waypoint typed on any of its lines is inserted (after the destination, before a waypoint or the alternate);
+     CLR removes a waypoint or the discontinuity; a line key with an empty scratchpad opens the ALTN AIRWAYS page from that fix */
+  if(r.k==='altorig'){const R=altRte(),v=S.sp;if(!v){S.aaw={i:-1,rows:[]};return go('ALTAWY')}if(v==='CLR')return err('NOT ALLOWED');
+    if(!/^[A-Z0-9]{2,5}$/.test(v))return err('FORMAT ERROR');if(!fixReg(v))return err('NOT IN DATA BASE');R.wpts.splice(0,0,v);return ok()}
+  if(r.k==='altn'){const v=S.sp;if(v==='CLR'){I().altn=null;I().altnRwy=null;return ok()}
+    if(v){if(!/^[A-Z0-9]{2,5}$/.test(v))return err('FORMAT ERROR');if(!fixReg(v))return err('NOT IN DATA BASE');const R=altRte();R.wpts.push(v);R.dct=true;return ok()}S.lr=-1;return go('LATREV')}
   /* ALTN route: a waypoint typed on the discontinuity or on a waypoint is inserted there; CLR on the discontinuity joins DCT */
-  if(r.k==='altdisc'||r.k==='altwpt'){const R=altRte(),v=S.sp;if(!v)return err('NOT ALLOWED');
+  if(r.k==='altdisc'||r.k==='altwpt'){const R=altRte(),v=S.sp;if(!v){if(r.k==='altdisc')return err('NOT ALLOWED');S.aaw={i:r.i,rows:[]};return go('ALTAWY')}
     if(v==='CLR'){if(r.k==='altdisc')R.dct=true;else R.wpts.splice(r.i,1);return ok()}
     if(!fixReg(v))return err('NOT IN DATA BASE');
     R.wpts.splice(r.k==='altdisc'?R.wpts.length:r.i,0,v);return ok()}
@@ -251,15 +256,15 @@ P.DEP={items(){const p=cur(),o=p.legs[0],ap=DB.apt[o.id];
     else if(S.dep.list==='SID'){if(x.id==='NOSID'){setNoSid(edit());return}setSid(edit(),x.id);S.dep={list:'TRANS',off:0}}
     else{edit().trans='NONE'}return}
   return err('NOT ALLOWED')},
- slew(d){const n=this.items().length;S.dep.off=Math.max(0,Math.min(Math.max(0,n-4),S.dep.off-d))}};
+ slew(d){const n=this.items().length;S.dep.off=Math.max(0,Math.min(Math.max(0,n-1),S.dep.off+d))}};
 
 /* ENABLE ALTN (FlyByWire A32NX): the route after this waypoint is replaced by a direct leg to the alternate, which becomes the destination */
 function enableAltn(ix){const p=S.tmpy||S.active,a=I().altn,R=altRte();p.legs=p.legs.slice(0,ix+1);R.wpts.forEach(id=>p.legs.push(W(id,{seg:'enr'})));p.legs.push({k:'dest',id:a,rwy:I().altnRwy||null});
   p.appr=null;p.via=null;p.star=null;I().to=a;I().altn=null;I().altnRwy=null;S.fpOff=0;ok()}
 const arrApt=()=>{const p=cur();return S.arrAlt?I().altn:p.legs[idxK(p,'dest')].id};
 P.ARR={items(){const p=cur(),aid=arrApt(),t=S.arrAlt?{}:(APPRS[aid]||{});
-  if(S.arr.list==='APPR'&&!Object.keys(t).length){const rw=Object.keys((DB.apt[aid]||{rwy:{}}).rwy);return rw.length?rw.map(r=>({id:'RWY'+r,rwy:r,txt:('<RWY'+r).padEnd(8)+'CRS'+String(DB.apt[aid].rwy[r].crs).padStart(3,'0')})):[{id:null,txt:'<NO APPR'}]}
-  if(S.arr.list==='APPR'){const k=Object.keys(t);return k.length?k.map(id=>({id,txt:('<'+id).padEnd(8)+(t[id]?'CRS'+String(t[id].crs).padStart(3,'0')+' '+(t[id].nav||t[id].vor||''):'')})):[{id:null,txt:'<NO APPR'}]}
+  if(S.arr.list==='APPR'&&!Object.keys(t).length){const rw=Object.keys((DB.apt[aid]||{rwy:{}}).rwy);return rw.length?rw.map(r=>({id:'RWY'+r,rwy:r,txt:'<RWY'+r})):[{id:null,txt:'<NO APPR'}]}
+  if(S.arr.list==='APPR'){const k=Object.keys(t);return k.length?k.map(id=>({id,txt:'<'+id}))   /* the approach name only */:[{id:null,txt:'<NO APPR'}]}
   if(S.arr.list==='VIA'){const ap=t[p.appr];return[{id:'NO VIA',txt:'<NO VIA'},...Object.keys(ap.vias).map(id=>({id,txt:'<'+id}))]}
   const ss=S.arrAlt?{}:(STARS[aid]||{}),ap=t[p.appr],rw=ap?ap.rwy:(p.appr&&/^RWY/.test(p.appr)?p.appr.slice(3):null);
   return[{id:'NO STAR',txt:'<NO STAR'},...Object.keys(ss).filter(id=>!rw||ss[id].rwys.includes(rw)).map(id=>({id,txt:'<'+id}))]},
@@ -286,7 +291,7 @@ P.ARR={items(){const p=cur(),aid=arrApt(),t=S.arrAlt?{}:(APPRS[aid]||{});
     else if(S.arr.list==='VIA'){const q=edit();q.via=x.id==='NO VIA'?null:x.id;buildArr(q);S.arr={list:'STAR',off:0}}
     else{const q=edit();q.star=x.id;buildArr(q)}return}
   return err('NOT ALLOWED')},
- slew(d){const n=this.items().length;S.arr.off=Math.max(0,Math.min(Math.max(0,n-3),S.arr.off-d))}};
+ slew(d){const n=this.items().length;S.arr.off=Math.max(0,Math.min(Math.max(0,n-1),S.arr.off+d))}};
 
 P.AWY={render(){const p=cur(),a=S.awy;
   const startId=a.rows.length?a.rows[0].fromId:p.legs[a.idx].id;

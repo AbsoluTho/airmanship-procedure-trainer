@@ -22,12 +22,12 @@ async def run(url,b):
     assert await pg.evaluate("msgShown().t")=='GPS PRIMARY','GPS PRIMARY at power-up'
     await k('CLR');assert await pg.evaluate("msgShown()")==None,'CLR clears GPS PRIMARY'
     await t('OEJN/OETB');await k('R1')
-    assert await pg.evaluate("window.__S().page")=='ROUTESEL','ROUTE selection after FROM/TO (company routes)';await k('L6')
+    assert await pg.evaluate("window.__S().page")=='ROUTELIST','CO RTES list after FROM/TO (company routes)';await k('L6')
     await t('OEMA');await k('L2');await t('TRN385');await k('L3');await t('20');await k('L5')
     await t('340/46');await k('L6')
     assert await pg.evaluate('window.__S().init.temp')==-46,'unsigned CRZ temp should be negative'
     await t('360');await k('R5');assert await pg.evaluate('window.__S().init.tropo')==36000,'3-digit TROPO'
-    await k('FPLN');await k('L1');await k('L1');await k('L2');await k('DOWN');await k('DOWN');await k('L5');await k('R6')
+    await k('FPLN');await k('L1');await k('L1');await k('L2');await k('UP');await k('UP');await k('L5');await k('R6')
     legs=await pg.evaluate('window.__S().active.legs.map(l=>l.id||"-")')
     await pg.evaluate(f'window.__S().fpOff={(await pg.evaluate("fplnRows(window.__S().active).map(r=>r.id||r.k)")).index("MIGDA")}');await k('L1');await k('R5')
     await t('L677');await k('L1');await t('V54');await k('L2');await t('TBK');await k('R2');await k('R6')
@@ -80,6 +80,17 @@ async def run(url,b):
       return[ids(p).filter(i=>['EGREP','KSA','MUSRI','KFA','DEMKA','HSA','ODBAX'].includes(i)).join(' '),p.legs.some(l=>l.k==='disc'&&p.legs.indexOf(l)<idxK(p,'dest')),q.star,ids(q).slice(-6).join(' '),
         Math.round(buildPath(q).sThr),AOC_OFP.FAD429.rte,Object.values(SIDS.OEDF).reduce((n,x)=>n+Object.keys(x).length,0),+gc(DB.wpt.RK901,[24.87667,46.785]).toFixed(1)]})()""")
     assert cr==['EGREP KSA MUSRI KFA DEMKA HSA ODBAX ODBAX',False,'ITSE1H','MA443 OBTOX CF35 FF35 D060P GERIR',469,'OEJNOEAH1',64,0],f'OFP company routes, Dammam SIDs, OFP positions: {cr}'
+    # FLIGHT PLANS tab, OFP winds, CO RTES list, ALTN F-PLN, short approach names, arrow scrolling
+    fp=await pg.evaluate("""(()=>{const A0=S.active,I0=clone(S.init),pg0=S.page,ar0=S.arr,out={};document.querySelector('.tab[data-v="ofp"]').click();
+      out.list=[...document.querySelectorAll('.ofp-item .od')].map(x=>x.textContent).slice(0,2).join();document.querySelector('[data-ofp="FAD225"]').click();
+      const t=document.querySelector('#ofpView').textContent;out.detail=['OERK - OEMA','OERKOEMA1','FL340 / -44','51.7 / CG','HD027','SISUD B544 NOMDA','PEGUR Z712 WEJ V54 TBK','325/017'].filter(x=>!t.includes(x));
+      document.querySelector('[data-ofp-back]').click();document.querySelector('.tab[data-v="mcdu"]').click();
+      applyRoute('OERKOEMA1',CO_RTES.OERKOEMA1);out.alt=altRte().wpts.join(' ')+'/'+altRte().via.RBG+'/'+fplnRows(S.active).filter(r=>r.k==='altwpt').length;
+      const w=windAt(DB.wpt.GIDUV,34000,30000,'CRZ'),c=crabOf(267+3,449,w);out.wind=[Math.round(w.dir),Math.round(w.spd),Math.round(c.gs),Math.round(trkOfHdg(c.hdg,449,w))];
+      out.calm=windAt(DB.wpt.GIDUV,34000,0,'CRZ').spd;out.up=wxUplink()&&[S.wind.clb.length,S.wind.crz.map(x=>x.alt/100).join(),S.wind.des[0].alt];
+      S.arrAlt=false;S.arr={list:'APPR',off:0};S.page='ARR';out.appr=P.ARR.items()[0].txt;P.ARR.slew(1);out.off=S.arr.off;
+      S.wind={clb:[],crz:[],des:[]};S.active=A0;S.init=I0;S.tmpy=null;S.coRte=null;S.page=pg0;S.arr=ar0;WX.flt=null;render();return out})()""")
+    assert fp=={'list':'OERK - OEMA,OEMA - OERK','detail':[],'alt':'SISUD ASLAD RBG NOMDA/B544/4','wind':[278,32,417,270],'calm':0,'up':[5,'300,320,340,360',39000],'appr':'<ILS17','off':1},f'FLIGHT PLANS tab and OFP winds: {fp}'
     # VERT REV at the origin (1R: CLB SPD LIM) and at the destination (6R: DES SPD LIM)
     await k('R1');x=await scr();assert 'VERT REV AT OEJN' in x and 'CLB SPD LIM' in x and 'SPD CSTR' not in x,('VERT REV at the origin',x)
     await t('250/FL120');await k('L2');assert await pg.evaluate('JSON.stringify(window.__S().spdLim.clb)')=='{"spd":250,"alt":12000}','CLB SPD LIM entry'

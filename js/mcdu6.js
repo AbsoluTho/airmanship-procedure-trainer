@@ -51,8 +51,11 @@ function buildRoute(r){const p=newPlan(r.from,r.to),ap=DB.apt[r.from];
 function routeOf(p){const r={from:p.legs[0].id,to:p.legs[idxK(p,'dest')].id,altn:I().altn||null,rwy:p.rwy||null,sid:p.sid||null,appr:p.appr||null,via:p.via||null,star:p.star||null,route:[]};
   for(const l of p.legs){if(l.k!=='wpt'||l.seg!=='enr')continue;const v=l.via||'DCT',last=r.route[r.route.length-1];if(last&&last[0]===v&&v!=='DCT')last[1]=l.id;else r.route.push([v,l.id])}
   return r}
-function applyRoute(name,r){const i=I();i.from=r.from;i.to=r.to;if(r.altn&&DB.apt[r.altn]){i.altn=r.altn;i.altnRwy=null}S.active=buildRoute(r);S.tmpy=null;S.fpOff=0;S.coRte=name}
-const routeLines=r=>{const out=[];if(r.sid)out.push([r.sid,r.route.length?'':'']);r.route.forEach(([v,t])=>out.push([v,t]));if(r.appr)out.push([r.appr,r.via?'VIA '+r.via:'']);return out};
+function applyRoute(name,r){const i=I();i.from=r.from;i.to=r.to;if(r.altn&&DB.apt[r.altn]){i.altn=r.altn;i.altnRwy=null;i.altR=null;altRouteOfp(r)}S.active=buildRoute(r);S.tmpy=null;S.fpOff=0;S.coRte=name}
+/* the route to the alternate printed on the OFP of this city pair becomes the ALTN F-PLN */
+function altRouteOfp(r){const o=typeof ofpFor==='function'&&ofpFor(r.from,r.to),a=o&&o.altn.find(x=>x.id===r.altn);if(!a)return;const R=altRte();
+  a.log.slice(0,-1).forEach(x=>{if(fixReg(x.id)){R.wpts.push(x.id);R.via[x.id]=/^[A-Z]\d+$/.test(x.awy)?x.awy:''}});R.dct=true}
+const routeLines=r=>{const out=[];if(r.sid)out.push([r.sid,r.route.length?'':'']);r.route.forEach(([v,t])=>out.push([v,t]));if(r.star)out.push([r.star,'']);if(r.appr)out.push([r.appr,r.via?'VIA '+r.via:'']);if(r.altn)out.push(['ALTN',r.altn]);return out};
 
 /* ---------- INIT A: CO RTE, ROUTE selection after FROM/TO, INIT REQUEST ---------- */
 {const r0=P.INIT.render;P.INIT.render=function(){r0.call(this);const i=I();
@@ -68,16 +71,43 @@ const routeLines=r=>{const out=[];if(r.sid)out.push([r.sid,r.route.length?'':'']
       applyRoute(o.rte,r);const i=I();if(o.ci!=null)i.ci=o.ci;if(o.crz){i.crz=o.crz;i.temp=o.temp??null}if(o.tropo)i.tropo=o.tropo;msg2('AOC ACT F-PLN UPLINK');render()},REQ_MS);return}
   const from0=I().from+'/'+I().to;l0.call(this,s,n);
   if(k==='R1'&&I().from&&I().from+'/'+I().to!==from0){S.coRte=null;const list=Object.keys(allRtes()).filter(x=>allRtes()[x].from===I().from&&allRtes()[x].to===I().to);
-    if(list.length){S.rsel={list,i:0};go('ROUTESEL')}}}}
+    if(list.length){S.rsel={list,i:0,off:0,ro:0};go('ROUTELIST')}}}}
 let REQ_MS=2000;   /* AOC answer delay */
-P.ROUTESEL={render(){const L=S.rsel.list,name=L[S.rsel.i],r=allRtes()[name];
+/* CO RTES: the company routes of the city pair by name; a line key opens the route, where INSERT puts it in the F-PLN */
+P.ROUTELIST={render(){const L=S.rsel.list,r0=allRtes()[L[0]];
+  cput(1,'CO RTES');put(2,1,'FROM/TO','w','S');put(3,0,r0.from+'/'+r0.to,'g');rput(3,L.length+(L.length>1?' ROUTES':' ROUTE'),'w','S');
+  for(let n=0;n<4;n++){const name=L[S.rsel.off+n];if(!name)break;put(5+2*n,0,'<'+name,'b')}
+  if(L.length>4)rput(12,'↑↓','w','S');put(13,0,'<RETURN')},
+ lsk(s,n){if(s+n==='L6')return go('INIT');if(s==='L'&&n>=2&&n<=5){const j=S.rsel.off+n-2;if(!S.rsel.list[j])return;S.rsel.i=j;S.rsel.ro=0;return go('ROUTESEL')}return err('NOT ALLOWED')},
+ slew(d){const n=S.rsel.list.length;S.rsel.off=Math.max(0,Math.min(Math.max(0,n-1),S.rsel.off+d))}};
+P.ROUTESEL={render(){const L=S.rsel.list,name=L[S.rsel.i],r=allRtes()[name],R=routeLines(r),o=S.rsel.ro||0;
   put(1,5,'ROUTE');put(1,12,(S.rsel.i+1)+'/'+L.length,'w','S');if(L.length>1)put(1,22,'←→','w','S');
   put(2,1,'CO RTE','w','S');rput(2,'FROM/TO  ','w','S');put(3,0,name,'b');rput(3,r.from+'/'+r.to,'b');
-  routeLines(r).slice(0,8).forEach(([a,b],j)=>{put(4+j,1,a,'g');if(b)put(4+j,10,b,'g')});
+  R.slice(o,o+8).forEach(([a,b],j)=>{put(4+j,1,a,'g');if(b)put(4+j,10,b,'g')});if(R.length>8)rput(12,'↑↓','w','S');
   put(13,0,'<RETURN');rput(13,'INSERT*','a')},
- arrow(d){const n=S.rsel.list.length;S.rsel.i=(S.rsel.i+(d>0?1:-1)+n)%n},
- slew(d){this.arrow(-d)},
- lsk(s,n){if(s+n==='L6')return go('INIT');if(s+n==='R6'){const name=S.rsel.list[S.rsel.i];applyRoute(name,allRtes()[name]);return go('INIT')}return err('NOT ALLOWED')}};
+ arrow(d){const n=S.rsel.list.length;S.rsel.i=(S.rsel.i+(d>0?1:-1)+n)%n;S.rsel.ro=0},
+ slew(d){const n=routeLines(allRtes()[S.rsel.list[S.rsel.i]]).length;S.rsel.ro=Math.max(0,Math.min(Math.max(0,n-8),(S.rsel.ro||0)+d))},
+ lsk(s,n){if(s+n==='L6')return go('ROUTELIST');if(s+n==='R6'){const name=S.rsel.list[S.rsel.i];applyRoute(name,allRtes()[name]);return go('INIT')}return err('NOT ALLOWED')}};
+
+/* ALTN AIRWAYS: the route to the alternate by airway (VIA) and waypoint (TO), from the fix chosen on the ALTN F-PLN.
+   It goes straight into the ALTN F-PLN (shown in blue): there is no temporary F-PLN for the alternate. */
+P.ALTAWY={from(){const a=S.aaw,R=altRte();return a.i<0?destId():R.wpts[a.i]},
+ render(){const a=S.aaw;csegs(1,[['ALTN AIRWAYS','w'],[' FROM ','w','S'],[a.rows.length?a.rows[0].fromId:this.from(),'b']]);
+  put(2,1,'VIA','w','S');rput(2,'TO','w','S',22);const R=a.rows;
+  for(let r=0;r<5;r++){const ln=3+2*r;
+    if(r<R.length){put(ln,1,R[r].via,'b');if(R[r].to)rput(ln,R[r].to,'b','L',23);else rput(ln,'[     ]','b')}
+    else{put(ln,0,'[    ]','b');if(!R.length||R[R.length-1].to)rput(ln,'[     ]','b');break}}
+  put(13,0,'<RETURN')},
+ ins(seq,via){const a=S.aaw,R=altRte();seq.forEach(id=>{fixReg(id);const k=R.wpts.indexOf(id);if(k>a.i){R.wpts.splice(a.i+1,k-a.i);}   /* joins a fix already ahead in the route */
+    R.wpts.splice(a.i+1,0,id);R.via[id]=via||'';a.i++});R.dct=true},
+ lsk(s,n){const a=S.aaw,k=s+n,R=a.rows,v=S.sp;if(k==='L6')return go('FPLN');if(!v||n>5)return;
+  const last=R[R.length-1],pend=last&&!last.to,fromId=this.from();
+  if(s==='L'){if(n-1!==R.length||pend)return err('NOT ALLOWED');if(!AWY[v])return err('NOT IN DATA BASE');if(!AWY[v].includes(fromId))return err('AWY/WPT MISMATCH');R.push({via:v,to:null,fromId});return ok()}
+  if(!/^[A-Z0-9]{2,5}$/.test(v))return err('FORMAT ERROR');if(!fixReg(v))return err('NOT IN DATA BASE');if(v===fromId)return err('NOT ALLOWED');
+  if(pend&&n-1===R.length-1){const L=AWY[last.via];if(!L.includes(v))return err('AWY/WPT MISMATCH');const i=L.indexOf(fromId),j=L.indexOf(v);
+    this.ins(i<j?L.slice(i+1,j+1):L.slice(j,i).reverse(),last.via);last.to=v;return ok()}
+  if(!pend&&n-1===R.length){this.ins([v],'');R.push({via:'DCT',to:v,fromId});return ok()}
+  return err('NOT ALLOWED')}};
 
 /* ---------- pilot waypoints: LAT/LONG, PLACE/BRG/DIST, PLACE-BRG/PLACE-BRG ---------- */
 function parseLL(v){let m=v.match(/^([NS])(\d{2})(\d{2}(?:\.\d)?)\/([EW])(\d{3})(\d{2}(?:\.\d)?)$/);if(m)return[(m[1]==='S'?-1:1)*(+m[2]+m[3]/60),(m[4]==='W'?-1:1)*(+m[5]+m[6]/60)];
@@ -110,7 +140,7 @@ P.STOREDWPT={render(){const W=STORED.wpts;if(!W.length){S.page='NEWWPT';return P
   else if(w.type==='PBX'){put(5,0,fmtLL(w.pos),'g','S');put(8,0,'PLACE-BRG  /PLACE-BRG','w','S');put(9,0,w.src.p1.padStart(5)+'-'+String(w.src.b1).padStart(3,'0')+'° /'+w.src.p2.padStart(5)+'-'+String(w.src.b2).padStart(3,'0')+'°','g')}
   else put(5,0,fmtLL(w.pos),'g');
   rput(10,'NEW ','w','S');rput(11,'WAYPOINT>');if(S.delAll){rput(12,'CONFIRM ','a','S');rput(13,'DELETE ALL*','a')}else rput(13,'DELETE ALL→','b')},
- arrow(d){const n=STORED.wpts.length;if(n)S.swi=((S.swi||0)+(d>0?1:-1)+n)%n},slew(d){this.arrow(-d)},
+ arrow(d){const n=STORED.wpts.length;if(n)S.swi=((S.swi||0)+(d>0?1:-1)+n)%n},slew(d){this.arrow(d)},
  lsk(s,n){const k=s+n,v=S.sp;
   if(k==='L1'&&v==='CLR'){const w=STORED.wpts[S.swi];if(!w)return;if(S.active&&S.active.legs.some(l=>l.id===w.id))return err('NOT ALLOWED');STORED.wpts.splice(S.swi,1);delete DB.wpt[w.id];storeSave();ok();if(!STORED.wpts.length)go('DATA');return}
   if(k==='R5'){S.nw={};return go('NEWWPT')}
@@ -137,7 +167,7 @@ P.STOREDRTE={render(){const names=Object.keys(STORED.rtes);cput(1,'STORED ROUTES
     rput(12,'DELETE ','w','S');rput(13,'ROUTE*','b')}
   else cput(5,'NO STORED ROUTE','w','S');
   put(10,1,'STORE ACTIVE F-PLN AS','w','S');put(11,0,'[        ]','b');put(13,0,'<RETURN')},
- arrow(d){const n=Object.keys(STORED.rtes).length;if(n)S.sri=((S.sri||0)+(d>0?1:-1)+n)%n},slew(d){this.arrow(-d)},
+ arrow(d){const n=Object.keys(STORED.rtes).length;if(n)S.sri=((S.sri||0)+(d>0?1:-1)+n)%n},slew(d){this.arrow(d)},
  lsk(s,n){const k=s+n,v=S.sp;if(k==='L6')return go('DATA');
   if(k==='R6'){const names=Object.keys(STORED.rtes);if(!names.length)return err('NOT ALLOWED');delete STORED.rtes[names[S.sri]];storeSave();S.sri=0;return}
   if(k==='L5'){if(!v)return;if(!/^[A-Z0-9]{1,10}$/.test(v))return err('FORMAT ERROR');if(!S.active||idxK(S.active,'dest')<1)return err('NOT ALLOWED');if(CO_RTES[v])return err('NOT ALLOWED');

@@ -406,10 +406,10 @@ P.DIR={render(){cput(1,'DIR TO',S.tmpy&&S.dirTo?'y':'w');put(2,1,'DIR TO','w','S
   if(k==='R6'&&S.tmpy&&S.dirTo){const tp=S.tmpy.legs[dirTpIx(S.tmpy)];if(tp&&tp.radIn==null&&flying())Object.assign(tp,{pos:FL.pos.slice(),trk:FL.trkT,gs:FL.gs});   /* the turn starts where INSERT is pressed */
     if(S.dirAb)dirAbeam(true);
     const rin=S.dirRad!=null;S.active=S.tmpy;S.tmpy=null;S.dirTo=null;S.dirRad=null;S.dirAb=false;
-    if(rin&&flying()){const vr=DB.apt[orig()].var||0;FCU.hdgMgd=false;FCU.hdg=Math.round((FL.trkT-vr+360)%360)||360;FL.lat=FCU.trkFpa?'TRK':'HDG';FL.latArm='NAV'}   /* RADIAL IN: present heading, NAV armed */
+    if(rin&&flying()){const vr=DB.apt[orig()].var||0;FCU.hdgMgd=false;FCU.hdg=Math.round(((FCU.trkFpa?FL.trkT:FL.hdgT)-vr+360)%360)||360;FL.lat=FCU.trkFpa?'TRK':'HDG';FL.latArm='NAV'}   /* RADIAL IN: present heading, NAV armed */
     else{FCU.hdgMgd=true;if(flying()){FL.lat='NAV';FL.latArm=null}}ok();return go('FPLN')}
   return err('NOT ALLOWED')},
- slew(d){const n=dirList().length;S.dirOff=Math.max(0,Math.min(Math.max(0,n-dirRows()),(S.dirOff||0)-d))}};
+ slew(d){const n=dirList().length;S.dirOff=Math.max(0,Math.min(Math.max(0,n-1),(S.dirOff||0)+d))}};
 /* F-PLN waypoints shown on DIR TO: L3 to L6, or L3 to L5 while the temporary F-PLN shows ERASE/INSERT on L6 */
 const dirRows=()=>S.tmpy&&S.dirTo?3:4;
 /* ---------- keys ---------- */

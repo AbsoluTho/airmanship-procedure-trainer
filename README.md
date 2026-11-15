@@ -4,7 +4,7 @@ An unofficial A320 **procedure** trainer that runs in the browser (iPad first). 
 
 Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator manuals. The navigation data was typed from charts for training only and must never be used for navigation.
 
-## Status: Phase 3 prototype (v0.20.0)
+## Status: Phase 3 prototype (v0.21.0)
 
 - **MCDU** (Thales FMS2 layout, per FCOM DSC-22): keyboard and scratchpad, INIT A, F-PLN with TMPY (ERASE/INSERT), LAT REV, DEPARTURE, AIRWAYS (with airway-to-airway intersection), ARRIVAL, waypoint insertion, CLR of waypoints and discontinuities.
 - **Exercise** OEJN to OETB: RWY 16C MIGD2E, L677 WEJ, V54 TBK, ILS 31 via D179O, ALTN OEMA, FL340, CI 20, with automatic progress checks.
@@ -17,6 +17,18 @@ Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator
   - 11 approaches: ILS 16L (IMBF 111.7), 16R (IWSR 108.1), 34L (IWMR 108.9), 34R (IABF 110.7); RNP 16L, 16R, 34L, 34R; VOR 16R, 34L and 34R (KFA 112.3, the 34R final offset on 326°). Vias from the IAFs of the KFA 14 DME arc (LOPOD, RESAN, KEBAP, LOSAX, DASLA, KFA; DAXAR and KAVIV for the 16 runways) and from DF603, DF604 and RESAN for the RNP approaches; published missed approaches to the RESAN and LOSAX holds.
   - 32 RNAV SIDs: EMUSA, MIBRA, PUSRA, TAYMA 2E/2F/2G/2H and LADNA, METLA, ROTEL, RYDAN 1E/2E, 1F/2F, 1G/2G, 1H/2H (one set per runway).
   - Fix positions from KFA radial/DME, the extended centrelines and the chart tracks and distances; the same fix reached by different procedures agrees within 0.6 NM (36 cross-checks printed by the generator).
+- **FLIGHT PLANS tab** (v0.21.0, after Cockpit 3D): the list of flights by ORIGIN - DESTINATION (OERK - OEMA, OEMA - OERK, OEJN - OEDF, OEDF - OEJN, OEJN - OEAB, OEAB - OEJN, OEJN - OEAH, OEAH - OEJN). A flight opens on:
+  - INIT A: CO RTE (or FROM/TO), ALTN, FLT NBR, COST INDEX, CRZ FL/TEMP, TROPO.
+  - INIT B: TAXI, ZFW (the CG is on the loadsheet, not on the OFP), BLOCK, RTE RSV, ALTN, FINAL/TIME, TRIP WIND, and the OFP TRIP, TOW, LW, EXTRA and MIN T/O FUEL to cross-check.
+  - The route to the destination and to each alternate, with the waypoint table of the OFP (airway, track, distance, level, wind).
+  - The winds: climb and descent tables, and the five levels at every waypoint.
+  - Data in `js/data/ofp.js`, generated from the OFP PDFs by `tools/ofp/mkofp.py` (the PDFs are not in the repository; no names are kept).
+- **OFP winds flown** (v0.21.0, `js/wx.js`): the flight flies the wind of the OFP of its city pair: the climb table in climb, the table of the nearest waypoint in cruise (interpolated between levels), the descent table in descent. Ground speed is TAS with the head or tail wind, the heading carries the drift (track and heading differ on the PFD and ND), and HDG mode drifts with the wind. The ND shows the wind (true direction / speed) with its arrow. Below 1500 ft above the airfield the wind fades to calm on the runway (take-off and landing are flown without wind). No OFP for the city pair: no wind. The winds can be turned off on the FLIGHT PLANS tab. FAD225 at FL340: TAS 449, wind 278/32, GS 418 (OFP 413); flight time 77 min against 74 min without wind.
+- **WIND REQUEST** (v0.21.0): on the CLIMB, CRUISE and DESCENT WIND pages the request uplinks the OFP winds as the FMS forecast (WIND DATA UPLINK).
+- **ALTN F-PLN programmable** (v0.21.0): after END OF F-PLN, a waypoint typed on the destination line, on a waypoint, on the discontinuity or on the alternate is inserted there; CLR removes a waypoint or the discontinuity. A line key with an empty scratchpad opens ALTN AIRWAYS (VIA airway, TO waypoint) from that fix. A company route loads the route to the alternate printed on the OFP as the ALTN F-PLN (OERK - OEMA: SISUD ASLAD RBG NOMDA to OEJN). The alternate fuel follows the ALTN F-PLN when it has waypoints.
+- **CO RTES list** (v0.21.0): after FROM/TO the MCDU shows the company routes of the city pair by name; a line key opens the ROUTE page (SID, airways, STAR, approach, alternate) where INSERT puts it in the F-PLN and RETURN goes back to the list.
+- **Approach list** (v0.21.0): the approach name only (ILS15LY, RNP35, VOR31), without course and navaid ident; runways too.
+- **Up and down arrows** (v0.21.0): every list scrolls like the F-PLN: the up arrow moves the list up and shows what comes next. DEPARTURE, ARRIVAL, DIR TO, CO RTES, ROUTE, stored waypoints and stored routes.
 - **OFP flights** (v0.20.0): the eight flyadeal OFPs of 15 Nov 2026 are in the training database as company routes, with the runway, SID, airways, STAR and approach planned on the OFP. Enter the CO RTE on INIT A, or enter the flight number and press INIT REQUEST: the uplink fills FROM/TO, ALTN, COST INDEX, CRZ FL and temperature and the F-PLN. ZFW and BLOCK are typed on INIT B from the table (tonnes).
 
   | Flight | CO RTE | Route | CRZ | CI | ZFW | BLOCK | TRIP | ALTN |
