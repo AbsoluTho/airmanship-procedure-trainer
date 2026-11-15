@@ -12,6 +12,7 @@ const cockpitAudio = (() => {
     apDisconnect: 'audio/ap-disconnect.wav', warning: 'audio/master-warning.wav'
   };
   const priorities = {cabin: 0, above: 2, minimums: 3, retard: 4, apDisconnect: 5, warning: 6};
+  const audioVersion = 'fbw-20261116';
   const priority = name => priorities[name] ?? 1;
   const buffers = {};
   const called = new Set();
@@ -54,7 +55,9 @@ const cockpitAudio = (() => {
       const resumed = context.resume();
       if (!loading) {
         loading = Promise.all(Object.entries(files).map(async ([name, path]) => {
-          const response = await fetch(new URL(path, document.baseURI));
+          const url = new URL(path, document.baseURI);
+          if (url.protocol !== 'data:') url.searchParams.set('v', audioVersion);
+          const response = await fetch(url);
           if (!response.ok) throw new Error('Could not load ' + name);
           buffers[name] = await context.decodeAudioData(await response.arrayBuffer());
         }));

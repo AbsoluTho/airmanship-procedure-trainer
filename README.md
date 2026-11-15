@@ -197,7 +197,7 @@ On the MCDU tab, press **COCKPIT SOUND** to enable or mute the audio. **CABIN CA
 - **RETARD** plays once during the flare if the thrust levers are above idle, at 20 ft in manual flight or 10 ft with an autopilot engaged. Disconnecting the last engaged autopilot in flight and triggering an engine failure also play distinct alerts.
 - Pause and skip suppress approach audio during the interruption. At accelerated speeds, higher-priority alerts can replace radio-height calls so outdated calls don't play after the aircraft has passed them.
 
-The bundled WAVs use eSpeak NG 1.52.0's built-in English voice and synthesized chimes. These are simulator approximations. No aircraft or third-party simulator recordings are bundled. Regenerate them with `python tools/build_audio.py` and eSpeak NG on your PATH, or give the script the path to the executable. See [eSpeak's generated-audio terms](https://sourceforge.net/p/espeak/discussion/538920/thread/c6944a60/) and the [eSpeak NG source](https://github.com/espeak-ng/espeak-ng/releases/tag/1.52.0).
+The 19 bundled recordings come from [FlyByWire Simulations' A32NX Wwise sound sources](https://github.com/flybywiresim/a32nx-wwise). The audio is licensed separately from this application's GPL code under [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/), which permits noncommercial use with attribution and share-alike terms. See [audio/SOURCES.md](audio/SOURCES.md) for the exact source files and credits. The cabin button plays the cabin crew call bell; scripted cabin conversations are not yet implemented.
 
 ## Layout
 
