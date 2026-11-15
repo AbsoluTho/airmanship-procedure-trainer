@@ -4,7 +4,7 @@ An unofficial A320 **procedure** trainer that runs in the browser (iPad first). 
 
 Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator manuals. The navigation data was typed from charts for training only and must never be used for navigation.
 
-## Status: Phase 2 prototype (v0.16.2)
+## Status: Phase 3 prototype (v0.17.0)
 
 - **MCDU** (Thales FMS2 layout, per FCOM DSC-22): keyboard and scratchpad, INIT A, F-PLN with TMPY (ERASE/INSERT), LAT REV, DEPARTURE, AIRWAYS (with airway-to-airway intersection), ARRIVAL, waypoint insertion, CLR of waypoints and discontinuities.
 - **Exercise** OEJN to OETB: RWY 16C MIGD2E, L677 WEJ, V54 TBK, ILS 31 via D179O, ALTN OEMA, FL340, CI 20, with automatic progress checks.
@@ -12,6 +12,12 @@ Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator
 - **ND** (ROSE LS, ROSE VOR, ROSE NAV, ARC, PLAN; range 10 to 320 NM; CSTR, WPT, ARPT options; ROSE LS and ROSE VOR show the compass only for now): active F-PLN in green, TMPY in yellow dashed, missed approach in blue, alternate route in blue dashed, DME arcs and holds drawn. PLAN centres on the waypoint on the second line of the MCDU F-PLN page. Also live on both NDs in the 3D cockpit (EXT PWR on).
 - **INIT B**: TAXI, ZFW/ZFWCG, BLOCK, TRIP/TIME, RTE RSV, ALTN, FINAL, EXTRA, TOW/LW, TRIP WIND, MIN DEST FOB. **F-PLN** now shows TIME predictions and EFOB at destination once ZFW and BLOCK are entered.
 - **PERF TAKE OFF**: V1/VR/V2 (with V1/VR/V2 DISAGREE), F/S/O speeds, RWY, TO SHIFT, FLAPS/THS, FLEX, TRANS ALT, THR RED/ACC, ENG OUT ACC. Changing the takeoff runway clears the V speeds (CHECK TAKE OFF DATA).
+- **Dammam from the charts** (v0.17.0, `tools/navdb/charts/oedf.py`): King Fahd (OEDF), runways 16L/16R/34L/34R.
+  - 14 RNAV STARs: LOSAX 1J, MIBRA / RYDAN / PUSRA / SILBA / UMENA 2J, NARMI 1J and 1K (runways 34L/R, to DF603 or DF604); MIBRA / RYDAN / PUSRA / SILBA / UMENA 2L and NARMI 1L (runways 16L/R, to RESAN).
+  - 11 approaches: ILS 16L (IMBF 111.7), 16R (IWSR 108.1), 34L (IWMR 108.9), 34R (IABF 110.7); RNP 16L, 16R, 34L, 34R; VOR 16R, 34L and 34R (KFA 112.3, the 34R final offset on 326°). Vias from the IAFs of the KFA 14 DME arc (LOPOD, RESAN, KEBAP, LOSAX, DASLA, KFA; DAXAR and KAVIV for the 16 runways) and from DF603, DF604 and RESAN for the RNP approaches; published missed approaches to the RESAN and LOSAX holds.
+  - 32 RNAV SIDs: EMUSA, MIBRA, PUSRA, TAYMA 2E/2F/2G/2H and LADNA, METLA, ROTEL, RYDAN 1E/2E, 1F/2F, 1G/2G, 1H/2H (one set per runway).
+  - Fix positions from KFA radial/DME, the extended centrelines and the chart tracks and distances; the same fix reached by different procedures agrees within 0.6 NM (36 cross-checks printed by the generator).
+  - Not entered yet: the conventional VOR/DME SIDs (EMUSA & TAYMA 1A-1D, LADNA & METLA 2A-2D, PUSRA & ROTEL 1A-1D, MIBRA & RYDAN 1A-1D).
 - **v0.16.2**:
   - E/WD flaps: the slats/flaps indication follows the FLAPS lever at once, on the ground too (it showed the PERF TAKE OFF flaps before the flight); the T.O memo FLAPS T.O turns green with the lever at 1, 2 or 3.
   - DEST EFOB BELOW MIN (FlyByWire checkEfobBelowMin): shown only from the cruise phase to the go-around, after the EFOB has been below MIN DEST FOB for 2 minutes, compared at the 100 kg shown on FUEL PRED; once cleared with CLR it stays cleared for the flight (it came back at once before). Any system message cleared with CLR stays cleared while its condition lasts.
@@ -164,7 +170,7 @@ Plain JavaScript, no build step: open `index.html` through any static web server
 
 ## Data and references
 
-- **OurAirports** (public domain, https://ourairports.com/data/): 37 Saudi airports with runway thresholds, lengths and elevations, and 54 navaids (VOR, VORTAC, DME, NDB) with frequencies. Rebuild with `python3 tools/navdb/ourairports.py` (downloads the CSV files into `tools/navdb/ourairports/`, which is not committed). Airports typed from charts keep their chart elevation, variation and runway courses; their threshold positions now come from OurAirports. Any of these airports can be used in INIT A (FROM/TO, ALTN); only OEJN and OETB have procedures.
+- **OurAirports** (public domain, https://ourairports.com/data/): 37 Saudi airports with runway thresholds, lengths and elevations, and 54 navaids (VOR, VORTAC, DME, NDB) with frequencies. Rebuild with `python3 tools/navdb/ourairports.py` (downloads the CSV files into `tools/navdb/ourairports/`, which is not committed). Airports typed from charts keep their chart elevation, variation and runway courses; their threshold positions now come from OurAirports. Any of these airports can be used in INIT A (FROM/TO, ALTN); OEJN, OETB, OEMA and OEDF have procedures.
 - **FlyByWire A32NX** (GPL-3.0, https://github.com/flybywiresim/aircraft): the AirbusFCU font (`fonts/AirbusFCU.ttf`), FCU display formats and FMA mode names; the system display pages ENGINE, CRUISE, WHEEL, FUEL, DOOR/OXY, F/CTL, BLEED, CAB PRESS, ELEC, HYD, APU, COND and STATUS (`js/sdpages.js`, ported from their SD and SDv2 pages, with the gauge parts from their common gauges); reference for the LAT REV, HOLD AT, FIX INFO, STEP ALTS, RTA, SEC INIT/PERF, PROG (VDEV, EO CLR*), INIT FUEL PRED and PERF TAKE OFF page layouts, the F-PLN hold line, NEW DEST and the system message texts and for the ND ROSE and PLAN range labels and compass points. This project is GPL-3.0 as well.
 - **FAA CIFP** covers United States procedures only, so it is not used for the Saudi exercises. It could feed a future US exercise route through an ARINC 424 parser.
 
