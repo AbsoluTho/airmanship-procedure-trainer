@@ -1,5 +1,4 @@
 # OERK Riyadh / King Khalid. Jeppesen ILS Y and RNP Rwy 15L, 15R, 33L, 33R (RNAV transitions), RNAV STARs.
-# Not entered yet: ILS Z and VOR approaches, conventional STARs (1B, 1C) and the SIDs.
 AP = Apt('OERK', var=3.2)          # runway 147/327 magnetic on a true bearing of 150.2
 a = AP
 a.rcrs.update({'15L': 147, '15R': 147, '33L': 327, '33R': 327})
@@ -154,18 +153,115 @@ star('RIBI1F', N33, [W('RIBIM', F), W('SIVON', F, 250), W('RK532', '-12000'), W(
 star('NAGU1F', N33, [W('NAGUB', F), W('ALNEB', F, 250), W('RK516', '-12000')] + E516)
 
 # ================= conventional STARs (20-2H .. 20-2L): KSA radials to the DME arc IAFs =================
-for n, r, d in [('D018Z', 18, 30), ('D047Z', 47, 30), ('D018M', 18, 12.5), ('RULAK', 47, 12.5), ('D047Q', 47, 17), ('D079Q', 79, 17),
-                ('D292Z', 292, 30), ('D251Z', 251, 30), ('D292M', 292, 12.5), ('KURVO', 251, 12.5), ('KOBAR', 251, 17), ('D212Q', 212, 17), ('KSA35', 212, 35.3)]:
+for n, r, d in [('K30018', 18, 30), ('K30047', 47, 30), ('D018M', 18, 12.5), ('RULAK', 47, 12.5), ('D047Q', 47, 17), ('D079Q', 79, 17),
+                ('K30292', 292, 30), ('K30251', 251, 30), ('D292M', 292, 12.5), ('KURVO', 251, 12.5), ('KOBAR', 251, 17), ('D212Q', 212, 17), ('K35212', 212, 35.3)]:
     fix(n, rad('KSA', r, d))
-star('ESRA1B', N33, [W('ESRAT', '+12000'), W('D018Z', '+6000'), W('D018M', '+6000'), ARC('RULAK', K, '+6000'), ARC('TUGNA', K, '+6000')])
-star('REXO1B', N33, [W('REXOV', '+11500'), W('D047Z', '+6000'), W('RULAK', '+6000'), ARC('TUGNA', K, '+6000')])
+star('ESRA1B', N33, [W('ESRAT', '+12000'), W('K30018', '+6000'), W('D018M', '+6000'), ARC('RULAK', K, '+6000'), ARC('TUGNA', K, '+6000')])
+star('REXO1B', N33, [W('REXOV', '+11500'), W('K30047', '+6000'), W('RULAK', '+6000'), ARC('TUGNA', K, '+6000')])
 star('KOBO1B', N33, [W('KOBOX', F), W('TUGNA', '+6000')])
-star('ESRA1C', N15, [W('ESRAT', '+12000'), W('D018Z', '+6000'), W('PEBAK', '+6000')])
-star('REXO1C', N15, [W('REXOV', '+11500'), W('D047Z', '+6000'), W('D047Q', '+6000'), ARC('PEBAK', K, '+6000')])
+star('ESRA1C', N15, [W('ESRAT', '+12000'), W('K30018', '+6000'), W('PEBAK', '+6000')])
+star('REXO1C', N15, [W('REXOV', '+11500'), W('K30047', '+6000'), W('D047Q', '+6000'), ARC('PEBAK', K, '+6000')])
 star('KOBO1C', N15, [W('KOBOX', F), W('D079Q', '+6000'), ARC('D047Q', K, '+6000'), ARC('PEBAK', K, '+6000')])
-star('KUNE1B', N33, [W('KUNEK', '+11500'), W('D292Z', '+6000'), W('D292M', '+6000'), ARC('KURVO', K, '+6000'), ARC('MOGUB', K, '+6000')])
-star('KAVU1B', N33, [W('KAVUR', F), W('D251Z', '+6000'), W('KURVO', '+6000'), ARC('MOGUB', K, '+6000')])
-star('MOBA1B', N33, [W('MOBAG', F), W('KSA35', '+11000'), W('MOGUB', '+6000')])
+star('KUNE1B', N33, [W('KUNEK', '+11500'), W('K30292', '+6000'), W('D292M', '+6000'), ARC('KURVO', K, '+6000'), ARC('MOGUB', K, '+6000')])
+star('KAVU1B', N33, [W('KAVUR', F), W('K30251', '+6000'), W('KURVO', '+6000'), ARC('MOGUB', K, '+6000')])
+star('MOBA1B', N33, [W('MOBAG', F), W('K35212', '+11000'), W('MOGUB', '+6000')])
 star('KUNE1C', N15, [W('KUNEK', '+11500'), W('KITAM', '+6000')])
 star('KAVU1C', N15, [W('KAVUR', '+15000'), W('KOBAR', '+8000'), ARC('KITAM', K, '+6000')])
-star('MOBA1C', N15, [W('MOBAG', F), W('KSA35', '+11000'), W('D212Q', '+8000'), ARC('KOBAR', K, '+8000'), ARC('KITAM', K, '+6000')])
+star('MOBA1C', N15, [W('MOBAG', F), W('K35212', '+11000'), W('D212Q', '+8000'), ARC('KOBAR', K, '+8000'), ARC('KITAM', K, '+6000')])
+
+# ================= SIDs (20-3 .. 20-3J RNAV, 20-3L .. 20-3T conventional) =================
+# Exit fixes with a published KSA radial and DME anchor the RNAV chains (tracks and distances as published).
+for n, r, d in [('EGPIN', 62, 61.7), ('LONIB', 314, 97.6), ('ORLOK', 32, 72.4), ('DURMA', 234, 58.4), ('TOTEB', 184, 64.8), ('OBSEN', 150, 17)]:
+    fix(n, rad('KSA', r, d))
+def fwd(start, *steps):
+    cur = start
+    for n, t, d in steps:
+        q = frm(cur, t, d)
+        if n in a.fx or n in a.navs: chk(n, q)
+        else: fix(n, q)
+        cur = n
+# runways 15: east and north (20-3B, 20-3C)
+chain('EGPIN', ('RK941', 47, 19.1), ('RK920', 55, 21.8), ('RK912', 50, 18.3), ('RK908', 78, 4.9)); chain('RK920', ('RK901', 61, 18.6))
+fwd('RK920', ('OTALI', 122, 47.3)); fwd('RK920', ('RK929', 337, 8.8), ('RK942', 20, 12.5), ('RK950', 21, 8.2), ('ORNIP', 13, 18.7))
+fwd('RK929', ('RK943', 327, 14.0), ('RK957', 327, 14.3), ('RK979', 294, 36.5), ('LONIB', 294, 44.6)); fwd('RK957', ('RK978', 346, 21.2), ('TORKI', 330, 21.8))
+# runways 15: south and west (20-3F, 20-3G)
+chain('DURMA', ('RK967', 267, 10.2), ('RK935', 266, 32.1), ('RK928', 238, 7.0), ('RK923', 238, 7.4), ('RK908', 168, 14.2))
+chain('RK928', ('RK921', 238, 13.8), ('RK911', 163, 9.9), ('RK901', 149, 5.6))
+fwd('RK923', ('RK934', 191, 10.9), ('TOTEB', 196, 31.8)); fwd('RK921', ('RK939', 197, 18.4), ('TOTEB', 203, 29.2))
+fwd('RK921', ('RESAL', 158, 32.9), ('NAGUB', 145, 45.8), ('RAPMA', 93, 45.7)); fwd('RK923', ('RESAL', 146, 32.5))
+fwd('DURMA', ('KUNLO', 267, 43.8)); fwd('DURMA', ('UMASU', 241, 39.4)); fwd('RK967', ('MERVI', 217, 76.1))
+fwd('RK928', ('RK952', 298, 23.9), ('IVONU', 298, 38.4)); fwd('RK935', ('RK960', 304, 24.1), ('IVONU', 304, 35.0))
+# runways 33: east (20-3D, 20-3E)
+chain('EGPIN', ('RK841', 71, 46.8), ('RK832', 116, 8.7), ('RK821', 87, 10.2), ('RK814', 15, 7.0)); chain('RK841', ('RK812', 87, 9.9), ('RK802', 16, 6.1))
+fwd('RK841', ('RK874', 116, 33.3), ('OTALI', 133, 30.5)); fwd('OTALI', ('RK860', 154, 56.2), ('AMBAG', 210, 42.9))
+# runways 33: south and west (20-3H, 20-3J)
+chain('TOTEB', ('RK865', 183, 20.2), ('RK849', 147, 15.6), ('RK837', 147, 12.2), ('RK825', 171, 12.0), ('RK815', 237, 9.9), ('RK810', 236, 4.8), ('RK801', 236, 6.4))
+chain('RK825', ('RK824', 171, 4.9), ('RK816', 234, 7.9), ('RK813', 235, 9.4), ('RK802', 256, 5.7))
+fwd('RK815', ('RK831', 252, 15.8), ('RK844', 213, 13.4), ('RK870', 236, 25.8), ('KUNLO', 267, 35.7)); fwd('RK870', ('UMASU', 235, 32.1))
+fwd('RK810', ('RK816', 282, 6.8), ('IVONU', 272, 40.0)); fwd('RK813', ('RK826', 266, 11.8))
+# runways 33: north (20-3, 20-3A)
+fwd('RK814', ('RK822', 327, 7.0)); fwd('RK821', ('RK850', 317, 31.1), ('RK910', 316, 23.1), ('LONIB', 295, 28.2))
+fwd('RK821', ('RK835', 53, 13.8), ('ORNIP', 49, 36.5)); fwd('RK821', ('RK866', 345, 44.1), ('TORKI', 23, 16.7))
+fwd('RK812', ('RK820', 341, 8.3), ('RK835', 53, 7.1)); fwd('RK820', ('RK866', 337, 42.0)); fwd('RK802', ('RK821', 326, 11.5))
+for r, n, c, ch in [('33L', 'RK801', 316, None), ('33R', 'RK802', 337, None), ('15R', 'RK908', 161, None), ('15L', 'RK901', 137, None)]:
+    a.notes.append('%s %s: %.1f NM from the runway end on %03d (chart course %03d); ' % (r, n, gc(dep(r, 0), a.P(n)), round((brg(dep(r, 0), a.P(n)) - a.var) % 360), c))
+a.notes.append('RK801-RK814 %.1f NM (chart 10.1); MERVI %.1f NM from RK844 (chart 88.7); RAPMA %.1f NM from RK860 (chart 20.0); AMBAG %.1f NM from NAGUB (chart 26.3)' % (
+    gc(a.P('RK801'), a.P('RK814')), gc(a.P('RK844'), a.P('MERVI')), gc(a.P('RK860'), a.P('RAPMA')), gc(a.P('NAGUB'), a.P('AMBAG'))))
+
+def sid(rwy, id, legs): a.sids.setdefault(rwy, {})[id] = legs
+FL = lambda n: '+%d' % (n*100)
+# --- RNAV, runways 15R (B) and 15L (E)
+for rwy, x, first, sw in [('15R', 'B', [W('RK908', '+4800'), W('RK912')], [W('RK908', '+4800'), W('RK923', '+10000')]),
+                          ('15L', 'E', [W('RK901', '+4000')], [W('RK901', '+4000'), W('RK911'), W('RK921', '+10000')])]:
+    e = first + [W('RK920', '+10000')]; n = e + [W('RK929', '+13000')]
+    sid(rwy, 'EGPI1' + x, e + [W('RK941', '+13000'), W('EGPIN')])
+    sid(rwy, 'OTAL2' + x, e + [W('OTALI', FL(230))])
+    sid(rwy, 'ORNI1' + x, n + [W('RK942', FL(150)), W('RK950'), W('ORNIP')])
+    sid(rwy, 'LONI1' + x, n + [W('RK943'), W('RK957', FL(160)), W('RK979', FL(220)), W('LONIB')])
+    sid(rwy, 'TORK2' + x, n + [W('RK943'), W('RK957', FL(160)), W('RK978', '-18000'), W('TORKI', '-18000')])
+    w = sw + [W('RK928', '+13000')] + ([W('RK935')] if x == 'B' else [])
+    sid(rwy, 'AMBA1' + x, sw + [W('RESAL'), W('NAGUB'), W('AMBAG')])
+    sid(rwy, 'RAPM1' + x, sw + [W('RESAL'), W('NAGUB'), W('RAPMA')])
+    sid(rwy, 'TOTE1' + x, sw + [W('RK934' if x == 'B' else 'RK939', '+13000'), W('TOTEB')])
+    sid(rwy, 'IVON2' + x, w + [W('RK960' if x == 'B' else 'RK952', FL(160)), W('IVONU')])
+    k = sw + [W('RK928', '+13000'), W('RK935'), W('RK967', FL(190))]
+    sid(rwy, 'KUNL1' + x, k + [W('DURMA'), W('KUNLO')]); sid(rwy, 'UMAS1' + x, k + [W('DURMA'), W('UMASU')]); sid(rwy, 'MERV2' + x, k + [W('MERVI')])
+# --- RNAV, runway 33L (C)
+c = [W('RK801', '+3500'), W('RK814', '-7000')]; e = c + [W('RK821', '+9000'), W('RK832'), W('RK841', '+12000')]
+o = e + [W('RK874'), W('OTALI', FL(230))]
+sid('33L', 'EGPI1C', e + [W('EGPIN')]); sid('33L', 'OTAL2C', o); sid('33L', 'AMBA2C', o + [W('RK860'), W('AMBAG')]); sid('33L', 'RAPM2C', o + [W('RK860'), W('RAPMA')])
+sid('33L', 'IVON2C', [W('RK801', '+3500'), W('RK810', '+5500'), W('RK816', '-7000'), W('IVONU')])
+sid('33L', 'LONI1C', c + [W('RK822', '-9000'), W('RK850'), W('RK910'), W('LONIB')])
+sid('33L', 'ORNI1C', c + [W('RK821', '+9000'), W('RK835', '+13000'), W('ORNIP')])
+sid('33L', 'TORK2C', c + [W('RK821', '+9000'), W('RK866', '-18000'), W('TORKI', '-18000')])
+s_ = [W('RK801', '+3500'), W('RK810', '+5500'), W('RK815', '-7000')]; k = s_ + [W('RK831', '+12000'), W('RK844')]
+T = [W('RK825', '+10000'), W('RK837', '+13000'), W('RK849'), W('RK865'), W('TOTEB')]
+sid('33L', 'KUNL2C', k + [W('RK870'), W('KUNLO')]); sid('33L', 'UMAS2C', k + [W('RK870'), W('UMASU')]); sid('33L', 'MERV2C', k + [W('MERVI')])
+sid('33L', 'TOTE1C', s_ + T)
+# --- RNAV, runway 33R (D)
+e = [W('RK802', '+5000'), W('RK812'), W('RK841', '+11000')]; o = e + [W('RK874'), W('OTALI', FL(230))]
+sid('33R', 'EGPI1D', e + [W('EGPIN')]); sid('33R', 'OTAL2D', o); sid('33R', 'AMBA2D', o + [W('RK860'), W('AMBAG')]); sid('33R', 'RAPM2D', o + [W('RK860'), W('RAPMA')])
+sid('33R', 'IVON2D', [W('RK802', '+5000'), W('RK813', '+7000'), W('RK826', '-9000'), W('IVONU')])
+sid('33R', 'LONI1D', [W('RK802', '+5000'), W('RK821', '+9000'), W('RK850'), W('RK910'), W('LONIB')])
+sid('33R', 'ORNI1D', [W('RK802', '+5000'), W('RK812'), W('RK820'), W('RK835', '+13000'), W('ORNIP')])
+sid('33R', 'TORK2D', [W('RK802', '+5000'), W('RK812'), W('RK820'), W('RK866', '-18000'), W('TORKI', '-18000')])
+s_ = [W('RK802', '+5000'), W('RK813', '+7000'), W('RK816', '-9000'), W('RK824')]; k = s_ + [W('RK831', '+12000'), W('RK844')]
+sid('33R', 'KUNL2D', k + [W('RK870'), W('KUNLO')]); sid('33R', 'UMAS2D', k + [W('RK870'), W('UMASU')]); sid('33R', 'MERV2D', k + [W('MERVI')])
+sid('33R', 'TOTE1D', s_ + T)
+# --- conventional: runway heading to a KSA DME, then DME arcs and radials
+for n, r, d in [('D217G', 217, 7), ('D079G', 79, 7), ('D049G', 49, 7), ('D297G', 297, 7), ('K27150', 150, 27), ('K27179', 179, 27),
+                ('K27327', 327, 27), ('K27239', 239, 27), ('K27188', 188, 27), ('K27057', 57, 27), ('K27027', 27, 27), ('K40327', 327, 40), ('K40317', 317, 40)]:
+    fix(n, rad('KSA', r, d))
+fix('KSA7R', a.rwyd('15R', 'KSA', 7.0)); fix('KSA7L', a.rwyd('15L', 'KSA', 7.0)); fix('KSA4L', a.rwyd('33L', 'KSA', 4.0)); fix('KSA4R', a.rwyd('33R', 'KSA', 4.0))
+for rwy, x, f in [('15R', 'J', 'KSA7R'), ('15L', 'M', 'KSA7L')]:
+    sid(rwy, 'DURM1' + x, [W(f), ARC('D217G', K), W('DURMA', FL(170))])
+    sid(rwy, 'TOTE1' + x, [W(f), W('OBSEN', '+8000'), W('K27150'), ARC('K27179', K), W('TOTEB', FL(180))])
+    sid(rwy, 'EGPI1' + x, [W(f), ARC('D079G', K), W('EGPIN', FL(170))])
+    sid(rwy, 'ORLO1' + x, [W(f), ARC('D079G', K), ARC('D049G', K), W('ORLOK', FL(160))])
+    sid(rwy, 'LONI1' + x, [W(f), ARC('D217G', K), ARC('D297G', K), W('LONIB', FL(160))])
+for rwy, x, f in [('33L', 'K', 'KSA4L'), ('33R', 'L', 'KSA4R')]:
+    sid(rwy, 'DURM1' + x, [W(f), W('K27327'), ARC('K27239', K), W('DURMA', FL(170))])
+    sid(rwy, 'TOTE1' + x, [W(f), W('K27327'), ARC('K27239', K), ARC('K27188', K), W('TOTEB', FL(180))])
+    sid(rwy, 'EGPI1' + x, [W(f), W('K27327'), ARC('K27027', K), ARC('K27057', K), W('EGPIN', FL(170))])
+    sid(rwy, 'ORLO1' + x, [W(f), W('K27327'), ARC('K27027', K), W('ORLOK', FL(160))])
+    sid(rwy, 'LONI1' + x, [W(f), W('K40327'), ARC('K40317', K), W('LONIB', FL(160))])
