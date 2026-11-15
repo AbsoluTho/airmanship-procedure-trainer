@@ -4,7 +4,7 @@ An unofficial A320 **procedure** trainer that runs in the browser (iPad first). 
 
 Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator manuals. The navigation data was typed from charts for training only and must never be used for navigation.
 
-## Status: Phase 3 prototype (v0.19.0)
+## Status: Phase 3 prototype (v0.20.0)
 
 - **MCDU** (Thales FMS2 layout, per FCOM DSC-22): keyboard and scratchpad, INIT A, F-PLN with TMPY (ERASE/INSERT), LAT REV, DEPARTURE, AIRWAYS (with airway-to-airway intersection), ARRIVAL, waypoint insertion, CLR of waypoints and discontinuities.
 - **Exercise** OEJN to OETB: RWY 16C MIGD2E, L677 WEJ, V54 TBK, ILS 31 via D179O, ALTN OEMA, FL340, CI 20, with automatic progress checks.
@@ -17,7 +17,24 @@ Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator
   - 11 approaches: ILS 16L (IMBF 111.7), 16R (IWSR 108.1), 34L (IWMR 108.9), 34R (IABF 110.7); RNP 16L, 16R, 34L, 34R; VOR 16R, 34L and 34R (KFA 112.3, the 34R final offset on 326°). Vias from the IAFs of the KFA 14 DME arc (LOPOD, RESAN, KEBAP, LOSAX, DASLA, KFA; DAXAR and KAVIV for the 16 runways) and from DF603, DF604 and RESAN for the RNP approaches; published missed approaches to the RESAN and LOSAX holds.
   - 32 RNAV SIDs: EMUSA, MIBRA, PUSRA, TAYMA 2E/2F/2G/2H and LADNA, METLA, ROTEL, RYDAN 1E/2E, 1F/2F, 1G/2G, 1H/2H (one set per runway).
   - Fix positions from KFA radial/DME, the extended centrelines and the chart tracks and distances; the same fix reached by different procedures agrees within 0.6 NM (36 cross-checks printed by the generator).
-  - Not entered yet: the conventional VOR/DME SIDs (EMUSA & TAYMA 1A-1D, LADNA & METLA 2A-2D, PUSRA & ROTEL 1A-1D, MIBRA & RYDAN 1A-1D).
+- **OFP flights** (v0.20.0): the eight flyadeal OFPs of 15 Nov 2026 are in the training database as company routes, with the runway, SID, airways, STAR and approach planned on the OFP. Enter the CO RTE on INIT A, or enter the flight number and press INIT REQUEST: the uplink fills FROM/TO, ALTN, COST INDEX, CRZ FL and temperature and the F-PLN. ZFW and BLOCK are typed on INIT B from the table (tonnes).
+
+  | Flight | CO RTE | Route | CRZ | CI | ZFW | BLOCK | TRIP | ALTN |
+  |---|---|---|---|---|---|---|---|---|
+  | FAD225 | OERKOEMA1 | IVONU Y216 ITSEP | FL340 | CI 15 | 51.7 | 7.5 | 2.8 | OEJN |
+  | FAD226 | OEMAOERK1 | MEDRO M872 ORDEM | FL350 | CI 15 | 60.3 | 9.1 | 3.4 | OEMA |
+  | FAD309 | OEJNOEDF1 | EGREP B417 GAS L604 UMENA | FL350 | CI 15 | 56.0 | 8.9 | 3.9 | OEGS |
+  | FAD310 | OEDFOEJN1 | DCT KFA H732 OTISU N112 GETOT Q212 KSA/N0448F320 G782 VEMEM | FL240 | CI 15 | 57.8 | 9.2 | 4.3 | OEMA |
+  | FAD341 | OEJNOEAB1 | EGPOB V31 BHA V40 ABH | FL170 | CI 15 | 50.0 | 9.4 | 2.8 | OEMA |
+  | FAD342 | OEABOEJN1 | DCT ABH B544 BOSUT | FL240 | CI 15 | 48.8 | 6.3 | 2.4 | OEMA |
+  | FAD429 | OEJNOEAH1 | EGREP T532 KSA H976 MUSRI L604 KFA N687 DEMKA DCT HSA | FL370 | CI 15 | 59.5 | 12.0 | 4.5 | OEMA |
+  | FAD430 | OEAHOEJN1 | DCT HSA DCT DEMKA N687 KFA A776 OTISU N112 GETOT Q212 KSA | FL380 | CI 15 | 59.5 | 10.6 | 4.9 | OEMA |
+
+  - OEDF to OEJN (FAD310) is planned FL240 with a step to FL320 at KSA: enter it on STEP ALTS. Where the OFP has no SID (OEDF, OEAB, OEAH departures) the runway in the route is a choice: change it on DEPARTURE.
+  - Airways from the OFPs: Y216, M872, B417, L604, T532, H976, N687, H732, A776, N112, Q212, G782, V31, V40, B544 (the segments printed on the OFPs only). 71 en-route waypoints added. A company or stored route can now hold a STAR and go through navaids.
+  - **OFP positions for the chart fixes** (`tools/navdb/ofpfix.py`): the OFPs print the coordinates of 137 fixes, 109 of them already in the app from chart geometry. The OFP position now replaces the computed one and the fixes chained from it follow. Chart geometry had been within 0.2 NM on average (Riyadh 0.1, Jeddah 0.2, Madinah 0.6; worst MEDRO 3.0, MA800 2.4, EGREP 2.2, JN229 1.4). KSA VOR is at its OFP position (0.06 NM from the chart-derived one). No crew names or other OFP data are stored, only positions, routes and the planning figures above.
+  - Route length in the app against the OFP ground distance (NM): FAD225 469 / 470, FAD226 522 / 524, FAD309 770 / 770, FAD310 734 / 739, FAD341 433 / 436, FAD342 369 / 362, FAD429 849 / 862, FAD430 826 / 829.
+- **Dammam conventional SIDs** (v0.20.0): EMUSA, TAYMA 1A/1B/1C/1D, LADNA, METLA 2A/2B/2C/2D, PUSRA, ROTEL 1A/1B/1C/1D, MIBRA, RYDAN 1A/1B/1C/1D (32 SIDs; Dammam now has 64). Runway heading to 2 or 7 DME KFA at 4000, then the KFA 7, 26 or 35 DME arc to the lead radial and the outbound radial (R-283 TAYMA, R-249 EMUSA, R-091/090 LADNA, R-028 METLA, R-069 ROTEL, R-325/324 PUSRA, R-234 MIBRA, R-182 RYDAN); MIBRA and RYDAN 1A/1B turn back overhead KFA. The exit fixes agree with their published KFA radial and DME within 0.5 NM.
 - **Abha, Gassim and Al Ahsa from the charts** (v0.19.0, `tools/navdb/charts/oeab.py`, `oegs.py`, `oeah.py`). None of the three has STARs or named SIDs: arrivals start at the approach IAFs, departures are `RWYHDG` (runway heading to the published altitude, then the flight planned route) or NO SID.
   - Abha (OEAB), runway 13/31: ILS 13 (IABH 109.9), VOR 13 (final 124°), VOR 31 (final 311°), ABH 112.9. IAFs on the ABH 17 DME arc (D356Q, D332Q, D288Q) and 16 DME arc (D180P), D131U, or overhead ABH; missed approaches back to the ABH hold at 12000 (13) or 11000 (31). RWYHDG to 9000 (13) or 10500 (31).
   - Gassim (OEGS), runway 15/33: ILS 15 (IGAS 110.1), VOR 15 (final 144°), VOR 33 (final 336°), GAS 117.1. IAFs on the GAS 15 DME arc (D352O, GOKDU, D059O, D298O, D272O, D257O, D133O, D219O), D167V, or overhead GAS with the level procedure turn at 10 DME; missed approaches on the 15 DME arc to the GOKDU hold. RWYHDG to 5000.

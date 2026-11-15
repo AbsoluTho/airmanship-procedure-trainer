@@ -38,7 +38,7 @@ appr('ILS33RY', '33R', 327, {'RK413': [W('RK413', '@4000', 190)], 'RK517': [W('R
 # ================= ILS Z and VOR approaches (21-1, 21-3, 21-5, 21-7, 23-1, 23-2): KSA DME arcs =================
 rad = a.rad
 # KSA VOR/DME 115.0 (OurAirports still has the old KIA): on the 15R centreline, 0.7 NM before the threshold (VOR 15R profile; RW33L is D2.9 on R-147)
-a.nav('KSA', ext('15R', 0.7), 115.0, 'Riyadh')
+a.nav('KSA', [24.98, 46.66833], 115.0, 'Riyadh')          # position from the OFPs; the chart geometry (15R centreline, 0.7 NM before the threshold) is within 0.1 NM
 def xr(p0, trk, vor, radial):
     """the point where magnetic track trk from p0 crosses the radial of the VOR"""
     best = None

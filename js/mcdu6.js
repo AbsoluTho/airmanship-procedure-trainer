@@ -10,9 +10,26 @@
 /* ---------- company routes (training database) ---------- */
 const CO_RTES={
   OEJNOETB1:{from:'OEJN',to:'OETB',altn:'OEMA',rwy:'16C',sid:'MIGD2E',route:[['L677','WEJ'],['V54','TBK']],appr:'ILS24',via:'D179O'},
-  OEJNOETB2:{from:'OEJN',to:'OETB',altn:'OEMA',rwy:'16C',sid:'MIGD2E',route:[['L677','WEJ'],['V54','TBK']],appr:'ILS24',via:'D043O'}};
+  OEJNOETB2:{from:'OEJN',to:'OETB',altn:'OEMA',rwy:'16C',sid:'MIGD2E',route:[['L677','WEJ'],['V54','TBK']],appr:'ILS24',via:'D043O'},
+  /* routes of the flyadeal OFPs of 15 Nov 2026 (runway, SID, STAR and approach as planned on the OFP; where the OFP has no SID, the runway is a choice) */
+  OERKOEMA1:{from:'OERK',to:'OEMA',altn:'OEJN',rwy:'15L',sid:'IVON2E',route:[['Y216','ITSEP']],star:'ITSE1H',appr:'ILS35',via:'MA443'},
+  OEMAOERK1:{from:'OEMA',to:'OERK',altn:'OEJN',rwy:'35',sid:'MEDR1K',route:[['M872','ORDEM']],star:'ORDE1A',appr:'ILS15LY',via:'RK621'},
+  OEJNOEDF1:{from:'OEJN',to:'OEDF',altn:'OEGS',rwy:'16R',sid:'EGRE2F',route:[['B417','GAS'],['L604','UMENA']],star:'UMEN2L',appr:'ILS16L',via:'RESAN'},
+  OEDFOEJN1:{from:'OEDF',to:'OEJN',altn:'OEMA',rwy:'34L',route:[['DCT','KFA'],['H732','OTISU'],['N112','GETOT'],['Q212','KSA'],['G782','VEMEM']],star:'VEME1A',appr:'ILS34L',via:'ITUXI'},
+  OEJNOEAB1:{from:'OEJN',to:'OEAB',altn:'OEMA',rwy:'34C',sid:'EGPO2W',route:[['V31','BHA'],['V40','ABH']],appr:'ILS13',via:'ABH'},
+  OEABOEJN1:{from:'OEAB',to:'OEJN',altn:'OEMA',rwy:'13',sid:'RWYHDG',route:[['DCT','ABH'],['B544','BOSUT']],star:'BOSU2R',appr:'ILS16RY',via:'SOGER'},
+  OEJNOEAH1:{from:'OEJN',to:'OEAH',altn:'OEMA',rwy:'16R',sid:'EGRE2F',route:[['T532','KSA'],['H976','MUSRI'],['L604','KFA'],['N687','DEMKA'],['DCT','HSA']],appr:'ILS34Y',via:'HSA'},
+  OEAHOEJN1:{from:'OEAH',to:'OEJN',altn:'OEMA',rwy:'34',sid:'RWYHDG',route:[['DCT','HSA'],['DCT','DEMKA'],['N687','KFA'],['A776','OTISU'],['N112','GETOT'],['Q212','KSA'],['G782','VEMEM']],star:'VEME1A',appr:'ILS34L',via:'ITUXI'}};
 /* AOC answers to INIT REQUEST, by flight number (company route and INIT A data) */
-const AOC_OFP={TRN385:{rte:'OEJNOETB1',ci:20,crz:340,temp:-46,tropo:36000}};
+const AOC_OFP={TRN385:{rte:'OEJNOETB1',ci:20,crz:340,temp:-46,tropo:36000},
+  FAD225:{rte:'OERKOEMA1',ci:15,crz:340,temp:-44,tropo:36090},
+  FAD226:{rte:'OEMAOERK1',ci:15,crz:350,temp:-47,tropo:36090},
+  FAD309:{rte:'OEJNOEDF1',ci:15,crz:350,temp:-46,tropo:36090},
+  FAD310:{rte:'OEDFOEJN1',ci:15,crz:240,temp:-20,tropo:36090},
+  FAD341:{rte:'OEJNOEAB1',ci:15,crz:170,temp:-5,tropo:36090},
+  FAD342:{rte:'OEABOEJN1',ci:15,crz:240,temp:-21,tropo:36090},
+  FAD429:{rte:'OEJNOEAH1',ci:15,crz:370,temp:-54,tropo:36090},
+  FAD430:{rte:'OEAHOEJN1',ci:15,crz:380,temp:-57,tropo:36090}};
 
 /* ---------- pilot data kept in this browser: stored waypoints and stored routes ---------- */
 const STORE_KEY='airmanship.stored.v1';
@@ -26,12 +43,12 @@ const allRtes=()=>Object.assign({},CO_RTES,STORED.rtes);
 function buildRoute(r){const p=newPlan(r.from,r.to),ap=DB.apt[r.from];
   if(r.rwy&&ap.rwy[r.rwy]){setRunway(p,r.rwy);if(r.sid&&((SIDS[r.from]||{})[r.rwy]||{})[r.sid])setSid(p,r.sid)}
   let fi=p.legs.findIndex(l=>l.k==='disc')-1;if(fi<0)fi=0;
-  for(const[via,to]of r.route||[]){if(!DB.wpt[to])continue;const from=p.legs[fi].id,aw=via&&via!=='DCT'&&AWY[via];
+  for(const[via,to]of r.route||[]){if(!fixReg(to))continue;(via&&AWY[via]||[]).forEach(fixReg);const from=p.legs[fi].id,aw=via&&via!=='DCT'&&AWY[via];
     fi=aw&&AWY[via].includes(from)&&AWY[via].includes(to)?insertAwy(p,fi,via,to):insertAwy(p,fi,null,to)}
-  if(r.appr&&(APPRS[r.to]||{})[r.appr]){p.appr=r.appr;p.via=r.via||null;buildArr(p)}
+  if(r.appr&&(APPRS[r.to]||{})[r.appr]){p.appr=r.appr;p.via=r.via||null;p.star=r.star&&(STARS[r.to]||{})[r.star]?r.star:null;buildArr(p)}
   const di=idxK(p,'dest');p.legs=p.legs.filter((l,i)=>!(l.k==='disc'&&i<di));normalize(p);return p}
 /* active F-PLN to a route (runway, SID, airways and waypoints, approach) for STORED ROUTES */
-function routeOf(p){const r={from:p.legs[0].id,to:p.legs[idxK(p,'dest')].id,altn:I().altn||null,rwy:p.rwy||null,sid:p.sid||null,appr:p.appr||null,via:p.via||null,route:[]};
+function routeOf(p){const r={from:p.legs[0].id,to:p.legs[idxK(p,'dest')].id,altn:I().altn||null,rwy:p.rwy||null,sid:p.sid||null,appr:p.appr||null,via:p.via||null,star:p.star||null,route:[]};
   for(const l of p.legs){if(l.k!=='wpt'||l.seg!=='enr')continue;const v=l.via||'DCT',last=r.route[r.route.length-1];if(last&&last[0]===v&&v!=='DCT')last[1]=l.id;else r.route.push([v,l.id])}
   return r}
 function applyRoute(name,r){const i=I();i.from=r.from;i.to=r.to;if(r.altn&&DB.apt[r.altn]){i.altn=r.altn;i.altnRwy=null}S.active=buildRoute(r);S.tmpy=null;S.fpOff=0;S.coRte=name}

@@ -62,7 +62,7 @@ async def run(url,b):
     dm=await pg.evaluate("""(()=>{const p=newPlan('OERK','OEDF');setRunway(p,'33R');p.appr='ILS34L';p.via='LOSAX';p.star='MIBR2J';buildArr(p);normalize(p);
       return[Object.keys(STARS.OEDF).length,Object.keys(APPRS.OEDF).length,Object.values(SIDS.OEDF).reduce((n,x)=>n+Object.keys(x).length,0),APPRS.OEDF.ILS16L.nav+APPRS.OEDF.ILS16L.freq,
         p.legs.filter(l=>l.seg==='arr'||l.k==='dest').map(l=>l.id).join(' '),+gc(DB.wpt.LOSAX,DB.nav.KFA.pos).toFixed(1)]})()""")
-    assert dm==[14,11,32,'IMBF111.7','MIBRA LOSAX D170N CF34L SIDGO OEDF',14.0],f'Dammam procedures: {dm}'
+    assert dm==[14,11,64,'IMBF111.7','MIBRA LOSAX D170N CF34L SIDGO OEDF',14.0],f'Dammam procedures: {dm}'
     rk=await pg.evaluate("[Object.keys(APPRS.OERK).sort().join(),APPRS.OERK.ILS33LY.nav+APPRS.OERK.ILS33LY.freq,APPRS.OERK.RNP15R.missed[0].id]")
     assert rk==['ILS15LY,ILS15LZ,ILS15RY,ILS15RZ,ILS33LY,ILS33LZ,ILS33RY,ILS33RZ,RNP15L,RNP15R,RNP33L,RNP33R,VOR15R,VOR33L','IFAT110.1','RK603'],f'Riyadh approaches: {rk}'
     rk2=await pg.evaluate("""(()=>{const p=newPlan('OEDF','OERK');setRunway(p,'34R');p.appr='ILS15RZ';p.via='PEBAK';p.star='KOBO1C';buildArr(p);normalize(p);
@@ -76,6 +76,10 @@ async def run(url,b):
     of=await pg.evaluate("""(()=>{const A0=S.active;const p=newPlan('OEJN','OEAB');p.appr='VOR31';p.via='D131U';buildArr(p);normalize(p);S.active=p;const a=locGeo(DB.wpt.ITGOS),b=locGeo(DB.wpt.D131A);
       p.appr='ILS13';const c=locGeo(DB.wpt.VUSIT);S.active=A0;return[Math.round(a.crs-DB.apt.OEAB.var),+Math.abs(a.xtk).toFixed(1),Math.round(b.crs-DB.apt.OEAB.var),+Math.abs(c.xtk).toFixed(1)]})()""")
     assert of==[311,0,306,0],f'offset VOR final on its own course to 1 NM, then the centreline: {of}'
+    cr=await pg.evaluate("""(()=>{const p=buildRoute(CO_RTES.OEJNOEAH1),q=buildRoute(CO_RTES.OERKOEMA1),ids=x=>x.legs.filter(l=>l.k==='wpt').map(l=>l.id);
+      return[ids(p).filter(i=>['EGREP','KSA','MUSRI','KFA','DEMKA','HSA','ODBAX'].includes(i)).join(' '),p.legs.some(l=>l.k==='disc'&&p.legs.indexOf(l)<idxK(p,'dest')),q.star,ids(q).slice(-6).join(' '),
+        Math.round(buildPath(q).sThr),AOC_OFP.FAD429.rte,Object.values(SIDS.OEDF).reduce((n,x)=>n+Object.keys(x).length,0),+gc(DB.wpt.RK901,[24.87667,46.785]).toFixed(1)]})()""")
+    assert cr==['EGREP KSA MUSRI KFA DEMKA HSA ODBAX ODBAX',False,'ITSE1H','MA443 OBTOX CF35 FF35 D060P GERIR',469,'OEJNOEAH1',64,0],f'OFP company routes, Dammam SIDs, OFP positions: {cr}'
     # VERT REV at the origin (1R: CLB SPD LIM) and at the destination (6R: DES SPD LIM)
     await k('R1');x=await scr();assert 'VERT REV AT OEJN' in x and 'CLB SPD LIM' in x and 'SPD CSTR' not in x,('VERT REV at the origin',x)
     await t('250/FL120');await k('L2');assert await pg.evaluate('JSON.stringify(window.__S().spdLim.clb)')=='{"spd":250,"alt":12000}','CLB SPD LIM entry'
