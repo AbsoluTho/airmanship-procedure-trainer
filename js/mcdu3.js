@@ -76,13 +76,20 @@ function offsetPts(pts,p){const o=p.ofst;if(!o||pts.length<2)return;let s=0;pts.
 /* ---------- system messages (type II) ---------- */
 function msgCond(t,amber,cond){let c=false;try{c=!!cond()}catch(e){c=false}
   if(c){if(!S.msgOff[t])msg2(t,amber,()=>{try{return!cond()}catch(e){return true}})}else S.msgOff[t]=false}
-function destEfob(){const pr=predict();if(!pr)return null;if(flying()&&FL.path)return{efob:FL.fob-pr.trip.fuel*Math.max(0,FL.path.sThr-FL.s)/FL.path.sThr,min:pr.minFob};
-  return{efob:S.fuel.block-pr.taxi-pr.trip.fuel,min:pr.minFob}}
+function destEfob(){const pr=predict();if(!pr)return null;return{efob:efobAt(pr,pr.D),min:pr.minFob}}
+/* DEST EFOB BELOW MIN (FlyByWire checkEfobBelowMin): EFOB and MIN DEST FOB compared at the 100 kg shown on FUEL PRED, the EFOB below the
+   minimum for 2 minutes, from the cruise phase to the go-around (not on the ground, not in the climb); once cleared it stays cleared for the flight */
+let efobLowT=null,efobShow=false;
+function efobMsg(){const T='DEST EFOB BELOW MIN';if(!flying()){efobLowT=null;efobShow=false;S.msgOff[T]=false;return}
+  const e=destEfob(),low=!!e&&Math.round(e.efob*10)<Math.round(e.min*10);
+  if(!low)efobLowT=null;else if(efobLowT==null)efobLowT=FL.t;
+  efobShow=low&&FL.t-efobLowT>=120&&['CRZ','DES','APPR','GA'].includes(S.phase);
+  if(efobShow&&!S.msgOff[T])msg2(T,true,()=>!efobShow)}
 function msgTick(){if(!S.msgOff)S.msgOff={};
   /* INIT A shows the destination of the active F-PLN (after NEW DEST or ENABLE ALTN) */
   if(S.active){const d=S.active.legs[idxK(S.active,'dest')];if(d&&d.id!==I().to)I().to=d.id}
   msgCond('ENTER DEST DATA',true,()=>flying()&&!FL.ground&&FL.path&&FL.path.sThr-FL.s<180&&(S.p2.qnh==null||S.p2.temp==null||S.p2.wdir==null));
-  msgCond('DEST EFOB BELOW MIN',true,()=>{const e=destEfob();return!!(e&&e.efob<e.min-0.05)});
+  efobMsg();
   msgCond('SET HOLD SPEED',false,()=>flying()&&FL.hsActive!=null&&!FCU.spdMgd&&FCU.spd!=null)}
 
 /* ---------- NEW DEST: the route after the revised waypoint is deleted, a discontinuity, then the new destination (FlyByWire newDest) ---------- */

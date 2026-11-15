@@ -102,7 +102,7 @@ function drawPFD(g,W,H,powered){g.save();g.setTransform(1,0,0,1,0,0);g.fillStyle
   const sel=!FCU.spdMgd&&FCU.spd!=null&&!(on&&(FL.stage==='ROLL'||FL.ver==='SRS')),tc=sel?'b':'m';
   const tgt=sel?Math.round(FCU.mach?iasOf(FCU.spd*sos(alt),alt):FCU.spd):on?Math.round(['LINEUP','ROLL'].includes(FL.stage)?S.perf.v2:(FL.ver==='SRS'&&S.phase!=='GA'?S.perf.v2:FL.ver==='SRS'?FL.gaSpd||S.perf.v2+10:(FL.spdT??FL.ias))):(S.perf.v2||null);
   /* above the tape: SPEED or MACH and the target in that unit (magenta managed, cyan selected) */
-  const isM=on&&!FL.ground&&FL.ver!=='SRS'&&!!FL.spdIsMach,mTgt=isM?(sel?FCU.spd:FL.ver==='EXP DES'?0.80:mgd.crzM()):null;
+  const isM=on&&!FL.ground&&FL.ver!=='SRS'&&!!FL.spdIsMach,mTgt=isM?(sel?FCU.spd:FL.ver==='EXP DES'?0.80:S.phase==='DES'?mgd.desM():mgd.crzM()):null;
   if(on&&!FL.ground&&tgt){T(isM?'MACH':'SPEED',87,140,'w',19,'center');T(isM?'.'+String(Math.round(mTgt*100)).padStart(2,'0'):String(tgt),87,166,tc,23,'center')}
   if(tgt){const y=sy(tgt);if(y<182){if(!(on&&!FL.ground))T(String(tgt),120,170,tc,20,'center')}else if(y>497)T(String(tgt),120,510,tc,20,'center');
     else{g.fillStyle=PC[tc];g.beginPath();g.moveTo(121,y);g.lineTo(135,y-8);g.lineTo(135,y+8);g.closePath();g.fill()}}

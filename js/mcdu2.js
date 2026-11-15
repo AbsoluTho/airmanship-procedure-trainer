@@ -32,7 +32,8 @@ function destElev(){const d=destId();if(!d)return 0;const p=S.active,dl=p.legs[i
 function bottomPhase(prev,next){if(prev){put(12,1,'PREV','w','S');put(13,0,'<PHASE')}if(next){rput(12,'NEXT ','w','S');rput(13,'PHASE>')}}
 function pFmt(v){return v==null?null:v}
 /* managed speeds from the cost index (approximation) */
-const mgd={clb:()=>Math.min(310,Math.round(280+(I().ci||0)*0.5)),crzM:()=>Math.min(0.80,0.76+(I().ci||0)*0.0008),des:()=>Math.min(320,Math.round(280+(I().ci||0)*0.6))};
+const mgd={clb:()=>Math.min(310,Math.round(280+(I().ci||0)*0.5)),crzM:()=>Math.min(0.80,0.76+(I().ci||0)*0.0008),des:()=>S.p2.desSpd??Math.min(320,Math.round(280+(I().ci||0)*0.6)),
+  desM:()=>S.p2.desM??mgd.crzM()};   /* descent Mach/speed: the pilot's PERF DES entry, else ECON */
 const mach=m=>'.'+Math.round(m*100);
 
 /* ---------- INIT A links (IRS INIT>, WIND>) ---------- */
@@ -110,8 +111,9 @@ function parseAlt(t){const m=t.match(/^([+-])?(FL)?(\d{1,5})$/);if(!m)return nul
 function legSeg(l){return l.seg==='arr'||l.seg==='map'||l.k==='dest'?'des':'clb'}
 function spdLim(ph){return S.spdLim[ph]||{spd:250,alt:10000,def:true}}
 function vrevFromFpln(r){const p=cur(),v=S.sp,l=p.legs[r.ix];
-  if(l.k!=='wpt')return err('NOT ALLOWED');
+  if(l.k!=='wpt'&&l.k!=='orig'&&l.k!=='dest')return err('NOT ALLOWED');
   if(!v){S.vr=r.ix;return go('VREV')}
+  if(l.k!=='wpt')return err('NOT ALLOWED');   /* origin and destination: VERT REV only (CLB / DES SPD LIM) */
   if(v==='CLR'){delete l.spd;delete l.alt;return ok()}
   const m=v.match(/^(\d{3})?(?:\/(.+))?$/);if(!m||(!m[1]&&!m[2]))return err('FORMAT ERROR');
   if(m[1]){const sp=+m[1];if(sp<100||sp>399)return err('ENTRY OUT OF RANGE')}
@@ -120,15 +122,16 @@ function vrevFromFpln(r){const p=cur(),v=S.sp,l=p.legs[r.ix];
 P.VREV={render(){const p=cur(),l=p.legs[S.vr];if(!l){S.page='FPLN';return P.FPLN.render()}
   csegs(1,[['VERT REV ','w'],['AT','w','S'],[' '+l.id,'g']]);
   const ph=legSeg(l),sl=spdLim(ph);put(4,0,ph==='clb'?'CLB SPD LIM':'DES SPD LIM','w','S');
-  put(5,0,sl.spd+'/'+sl.alt,'b',sl.def?'S':'L');rput(5,'RTA>');
-  put(6,1,'SPD CSTR','w','S');rput(6,'ALT CSTR','w','S');
-  put(7,0,l.spd?String(l.spd):'[ ]','b');rput(7,l.alt?fAlt(l.alt):'[   ]','b');
+  put(5,0,sl.spd+'/'+sl.alt,'m',sl.def?'S':'L');rput(5,'RTA>');   /* magenta, large once entered by the pilot (FlyByWire) */
+  if(l.k==='wpt'){put(6,1,'SPD CSTR','w','S');rput(6,'ALT CSTR','w','S');
+    put(7,0,l.spd?String(l.spd):'[ ]','b');rput(7,l.alt?fAlt(l.alt):'[   ]','b')}
   put(11,0,'<WIND/TEMP');put(13,0,'<RETURN')},
  lsk(s,n){const p=cur(),l=p.legs[S.vr],v=S.sp,k=s+n;
   if(k==='L6')return go('FPLN');if(k==='L5'){S.windFrom='VREV';return go(legSeg(l)==='des'?'DESW':l.seg==='enr'?'CRZW':'CLBW')}
   if(k==='R2')return err('NOT IN PROTOTYPE');if(!v)return;
-  if(k==='L2'){const ph=legSeg(l);if(v==='CLR'){S.spdLim[ph]=null;return ok()}const m=v.match(/^(\d{3})\/(\d{3,5})$/);if(!m)return err('FORMAT ERROR');
-    const sp=+m[1],a=m[2].length<=3?+m[2]*100:+m[2];if(sp<100||sp>350||a>39000)return err('ENTRY OUT OF RANGE');S.spdLim[ph]={spd:sp,alt:a};return ok()}
+  if(k==='L2'){const ph=legSeg(l);if(v==='CLR'){S.spdLim[ph]=null;return ok()}const m=v.match(/^(\d{1,3})\/(?:(?:FL)?(\d{1,3})|(\d{4,5}))$/);if(!m)return err('FORMAT ERROR');   /* 250/10000, 250/FL100, 250/100 (FlyByWire) */
+    const sp=+m[1],a=Math.round((m[2]!=null?+m[2]*100:+m[3])/10)*10;if(sp<90||sp>350||a>45000)return err('ENTRY OUT OF RANGE');S.spdLim[ph]={spd:sp,alt:a};return ok()}
+  if(l.k!=='wpt')return err('NOT ALLOWED');
   if(k==='L3'){if(v==='CLR'){delete l.spd;return ok()}if(!/^\d{3}$/.test(v))return err('FORMAT ERROR');if(+v<100||+v>399)return err('ENTRY OUT OF RANGE');l.spd=+v;return ok()}
   if(k==='R3'){if(v==='CLR'){delete l.alt;return ok()}const a=parseAlt(v);if(!a)return err('FORMAT ERROR');if(a==='R')return err('ENTRY OUT OF RANGE');l.alt=a;return ok()}
   return err('NOT ALLOWED')}};
@@ -156,7 +159,7 @@ P.PERFCLB={render(){const i=I(),q=S.p2,pr=predict();ttl('CLB',phaseIs('CLB'));
   if(s+n==='L2')return P.INIT.lsk.call(P.INIT,'L',5);return err('NOT ALLOWED')}};
 P.PERFCRZ={render(){const i=I(),q=S.p2,pr=predict();ttl('CRZ',phaseIs('CRZ'));
   put(2,0,'ACT MODE','w','S');rput(2,'DEST EFOB','w','S');cat(2,'TIME','w','S');put(3,0,q.crzSel?'SELECTED':'MANAGED','g');
-  if(pr){rput(3,f1(S.fuel.block-pr.taxi-pr.trip.fuel),'g');cat(3,hhmm(pr.trip.time),'g')}else{rput(3,'--.-','w');cat(3,'----','w')}
+  if(pr){rput(3,f1(efobAt(pr,pr.D)),'g');cat(3,hhmm(pr.trip.time),'g')}else{rput(3,'--.-','w');cat(3,'----','w')}
   put(4,0,'CI','w','S');put(5,0,i.ci!=null?String(i.ci):'---',i.ci!=null?'b':'w');
   put(6,0,'MANAGED','w','S');put(7,0,mach(mgd.crzM()),'g','S');
   put(8,0,phaseIs('CRZ')?'SELECTED':'PRESEL','w','S');put(9,0,q.crzSel?(q.crzSel<1?mach(q.crzSel):String(q.crzSel)):'[ ]','b');
@@ -171,11 +174,20 @@ P.PERFCRZ={render(){const i=I(),q=S.p2,pr=predict();ttl('CRZ',phaseIs('CRZ'));
   return err('NOT ALLOWED')}};
 P.PERFDES={render(){const i=I(),pr=predict();ttl('DES',phaseIs('DES'));
   put(2,0,'ACT MODE','w','S');rput(2,'DEST EFOB','w','S');cat(2,'TIME','w','S');put(3,0,'MANAGED','g');
-  if(pr){rput(3,f1(S.fuel.block-pr.taxi-pr.trip.fuel),'g');cat(3,hhmm(pr.trip.time),'g')}else{rput(3,'--.-','w');cat(3,'----','w')}
+  if(pr){rput(3,f1(efobAt(pr,pr.D)),'g');cat(3,hhmm(pr.trip.time),'g')}else{rput(3,'--.-','w');cat(3,'----','w')}
   put(4,0,'CI','w','S');put(5,0,i.ci!=null?String(i.ci):'---',i.ci!=null?'b':'w');
-  put(6,0,'MANAGED','w','S');cat(6,'DIST','w','S');rput(6,'TIME','w','S');put(7,0,mach(mgd.crzM())+'/'+mgd.des(),'g','S');cat(7,'---','w');rput(7,'----','w');
+  put(6,0,'MANAGED','w','S');cat(6,'DIST','w','S');rput(6,'TIME','w','S');segs(7,0,[[mach(mgd.desM()),'b',S.p2.desM!=null?'L':'S'],['/'+mgd.des(),'b',S.p2.desSpd!=null?'L':'S']]);cat(7,'---','w');rput(7,'----','w');   /* cyan; large once entered by the pilot */
   if(!apprArmRow())bottomPhase(true,true);else rput(12,'NEXT ','w','S'),rput(13,'PHASE>')},
- lsk(s,n){if(apprArmLsk(s,n))return;if(perfNav(s,n,'PERFCRZ','PERFAPPR'))return;return err('NOT ALLOWED')}};
+ lsk(s,n){if(apprArmLsk(s,n))return;if(perfNav(s,n,'PERFCRZ','PERFAPPR'))return;const q=S.p2,v=S.sp;
+  if(s+n==='L2')return P.INIT.lsk.call(P.INIT,'L',5);
+  /* MANAGED descent speed (FlyByWire trySetManagedDescentSpeed): .77/280, .77, /280 or 280 (a speed alone sets M.80); CLR returns to ECON */
+  if(s+n==='L3'){if(!v)return;if(v==='CLR'){q.desM=null;q.desSpd=null;return ok()}
+    const m=v.match(/^(\.\d{1,2})?\/(\d{3})?$/),M=x=>{const y=Math.round(parseFloat(x)*1000)/1000;return y<0.15||y>0.82?null:y},K=x=>+x<100||+x>350?null:+x;
+    if(m&&(m[1]||m[2])){const a=m[1]?M(m[1]):undefined,b=m[2]?K(m[2]):undefined;if(a===null||b===null)return err('ENTRY OUT OF RANGE');if(b!==undefined)q.desSpd=b;if(a!==undefined)q.desM=a;return ok()}
+    if(/^\.\d{1,2}$/.test(v)){const a=M(v);if(a===null)return err('ENTRY OUT OF RANGE');q.desM=a;return ok()}
+    if(/^\d{1,3}$/.test(v)){const b=K(v);if(b===null)return err('ENTRY OUT OF RANGE');q.desSpd=b;q.desM=0.8;return ok()}
+    return err('FORMAT ERROR')}
+  return err('NOT ALLOWED')}};
 function vls(lw,conf3){return Math.round(0.95*lw+74+(conf3?4:0))}
 P.PERFAPPR={render(){const q=S.p2,pr=predict(),d=destId(),lw=pr?pr.lw:null,cs=lw?charSpeeds(lw):null;ttl('APPR',phaseIs('APPR'));
   const req=['DES','APPR'].includes(S.phase);   /* QNH and TEMP become amber boxes once DES is active */
@@ -244,7 +256,7 @@ P.SECIDX={render(){cput(1,'SEC INDEX');put(3,0,'{COPY ACTIVE','b');rput(3,'INIT>
 P.FUELPRED={render(){const f=S.fuel,pr=predict(),d=destId(),al=I().altn,D='---.-',T='----';
   cput(1,'FUEL PRED');put(2,1,'AT','w','S');cat(2,'TIME','w','S');rput(2,'EFOB','w','S');
   put(3,0,d||'----',d?'g':'w');put(5,0,al||'----',al?'g':'w');
-  if(pr){const ef=f.block-pr.taxi-pr.trip.fuel;cat(3,hhmm(pr.trip.time),'g');rput(3,f1(ef),'g');
+  if(pr){const ef=efobAt(pr,pr.D);cat(3,hhmm(pr.trip.time),'g');rput(3,f1(ef),'g');
     if(al){cat(5,hhmm(pr.trip.time+pr.altn.time),'g');rput(5,f1(ef-pr.altn.fuel),'g')}}
   else{cat(3,T,'w');rput(3,D,'w')}
   put(6,0,'RTE RSV/%','w','S');rput(6,'ZFW/ZFWCG','w','S');
@@ -258,7 +270,8 @@ P.FUELPRED={render(){const f=S.fuel,pr=predict(),d=destId(),al=I().altn,D='---.-
   const gw=f.zfw!=null&&f.block!=null?f.zfw+f.block:null;rput(11,gw?f1(gw)+'/ '+f1(f.cg):D+'/ --.-',gw?'g':'w');
   put(12,0,'MIN DEST FOB','w','S');rput(12,'EXTRA/TIME','w','S');
   put(13,0,pr?f1(pr.minFob):D,pr?'b':'w',pr&&f.minFob==null?'S':'L');
-  rput(13,pr?f1(pr.extra.fuel)+'/'+hhmm(Math.abs(pr.extra.time)):D+'/'+T,pr?(pr.extra.fuel<0?'a':'g'):'w',pr?'S':'L')},
+  {const ex=pr?(flying()?efobAt(pr,pr.D)-pr.minFob:pr.extra.fuel):0,et=pr?(flying()?ex/PM.hold(pr.lw)*60:pr.extra.time):0;   /* in flight: EFOB less MIN DEST FOB */
+   rput(13,pr?f1(ex)+'/'+hhmm(Math.abs(et)):D+'/'+T,pr?(ex<0?'a':'g'):'w',pr?'S':'L')}},
  lsk(s,n){const map={R3:['R',1],L3:['L',3],L4:['L',4],L5:['L',5],L6:['L',6]}[s+n];if(!map)return err('NOT ALLOWED');return P.INITB.lsk.call(P.INITB,map[0],map[1])}};
 
 /* ---------- PROG ---------- */
@@ -358,8 +371,10 @@ function directTo(id){if(!flying()||FL.ground)return err('NOT ALLOWED');
 /* DIR TO WITH ABEAM PTS (A320 FCOM): each waypoint bypassed by the DIR TO is projected on the direct leg; the abeam point is named AB and the
    first characters of the bypassed waypoint (PAXOS: ABPAX) and inserted between the T-P and the DIR TO waypoint (no constraints). Only the
    points that fall on the direct leg are kept. Selecting it cancels a RADIAL IN, and the reverse. */
+/* the turn point of the DIR TO being prepared: the last T-P (an earlier DIR TO or a go-around leaves its own T-P behind the aircraft) */
+const dirTpIx=q=>q.legs.reduce((a,l,i)=>l.k==='tp'?i:a,-1);
 function dirAbeam(on){const q=S.tmpy;if(!q||!S.dirTo)return;q.legs=q.legs.filter(l=>!l.ab);S.dirAb=!!on;
-  const ti=q.legs.findIndex(l=>l.k==='tp');if(ti<0||!on){normalize(q);return}
+  const ti=dirTpIx(q);if(ti<0||!on){normalize(q);return}
   if(q.legs[ti].radIn!=null){q.legs[ti]={k:'tp',id:'T-P',pos:FL.pos.slice(),trk:FL.trkT,gs:FL.gs,seg:'enr'};S.dirRad=null}
   const B=DB.wpt[S.dirTo]||legPos(q.legs[ti+1]||{});if(!B){normalize(q);return}
   const arc=dirArc(q,ti),A=arc.length?arc[arc.length-1]:q.legs[ti].pos,L=gc(A,B),c=brg(A,B);
@@ -372,7 +387,7 @@ function dirAbeam(on){const q=S.tmpy;if(!q||!S.dirTo)return;q.legs=q.legs.filter
 function dirRadSuggest(id){const p=S.active,ap=p&&p.appr&&(APPRS[destId()]||{})[p.appr];if(!ap)return null;
   const onFinal=ap.final.some(l=>l.id===id)||Object.values(ap.vias||{}).some(v=>v.length&&v[v.length-1].id===id&&ap.final[0]&&ap.final[0].id===id);
   return onFinal?((ap.crs+180)%360||360):null}
-function dirRadSet(rad){const q=S.tmpy;if(!q||!S.dirTo)return;if(S.dirAb){q.legs=q.legs.filter(l=>!l.ab);S.dirAb=false}const ti=q.legs.findIndex(l=>l.k==='tp');if(ti<0)return;const wp=DB.wpt[S.dirTo]||legPos(q.legs[ti+1]||{});if(!wp)return;
+function dirRadSet(rad){const q=S.tmpy;if(!q||!S.dirTo)return;if(S.dirAb){q.legs=q.legs.filter(l=>!l.ab);S.dirAb=false}const ti=dirTpIx(q);if(ti<0)return;const wp=DB.wpt[S.dirTo]||legPos(q.legs[ti+1]||{});if(!wp)return;
   const vr=(DB.apt[destId()]||{}).var||0,d=Math.max(gc(FL.pos,wp)+40,50);   /* radial drawn well beyond the aircraft, so an intercept heading meets it */
   q.legs[ti]=rad==null?{k:'tp',id:'T-P',pos:FL.pos.slice(),trk:FL.trkT,gs:FL.gs,seg:'enr'}:{k:'tp',id:'IN'+String(rad).padStart(3,'0'),pos:dst(wp,rad+vr,d),seg:'enr',radIn:rad};
   S.dirRad=rad;normalize(q)}
@@ -388,7 +403,7 @@ P.DIR={render(){cput(1,'DIR TO',S.tmpy&&S.dirTo?'y':'w');put(2,1,'DIR TO','w','S
   if(k==='R1'&&S.tmpy&&S.dirTo){const v=S.sp;if(!v){const sg=dirRadSuggest(S.dirTo);if(sg==null)return;dirRadSet(sg);return}
     if(v==='CLR'){dirRadSet(null);return ok()}if(!/^\d{1,3}$/.test(v)||+v>360)return err('FORMAT ERROR');dirRadSet(+v%360||360);return ok()}
   if(k==='L6'&&S.tmpy){S.tmpy=null;S.dirTo=null;S.dirRad=null;S.dirAb=false;return ok()}
-  if(k==='R6'&&S.tmpy&&S.dirTo){const tp=S.tmpy.legs.find(l=>l.k==='tp');if(tp&&tp.radIn==null&&flying())Object.assign(tp,{pos:FL.pos.slice(),trk:FL.trkT,gs:FL.gs});   /* the turn starts where INSERT is pressed */
+  if(k==='R6'&&S.tmpy&&S.dirTo){const tp=S.tmpy.legs[dirTpIx(S.tmpy)];if(tp&&tp.radIn==null&&flying())Object.assign(tp,{pos:FL.pos.slice(),trk:FL.trkT,gs:FL.gs});   /* the turn starts where INSERT is pressed */
     if(S.dirAb)dirAbeam(true);
     const rin=S.dirRad!=null;S.active=S.tmpy;S.tmpy=null;S.dirTo=null;S.dirRad=null;S.dirAb=false;
     if(rin&&flying()){const vr=DB.apt[orig()].var||0;FCU.hdgMgd=false;FCU.hdg=Math.round((FL.trkT-vr+360)%360)||360;FL.lat=FCU.trkFpa?'TRK':'HDG';FL.latArm='NAV'}   /* RADIAL IN: present heading, NAV armed */
@@ -414,6 +429,6 @@ const dirRows=()=>S.tmpy&&S.dirTo?3:4;
 /* F-PLN right keys: SPD/ALT entry or VERT REV */
 P.FPLN.arrow=function(){S.fplnB=!S.fplnB};   /* F-PLN A (TIME, SPD/ALT) ⇄ F-PLN B (EFOB, T.WIND) */
 {const lsk0=P.FPLN.lsk;P.FPLN.lsk=function(s,n){if(s==='R'&&n<6){const p=cur();if(!p)return err('NOT ALLOWED');const r=fplnRows(p)[S.fpOff+n-1];if(!r)return;
-  if(r.k!=='wpt')return err('NOT ALLOWED');return vrevFromFpln(r)}return lsk0.call(this,s,n)}}
+  if(r.k!=='wpt'&&r.k!=='orig'&&r.k!=='dest')return err('NOT ALLOWED');return vrevFromFpln(r)}return lsk0.call(this,s,n)}}
 /* phase control for the automatic flight of a later phase (and for tests) */
 window.__setPhase=p=>{if(PHASES.includes(p)){S.phase=p;S.apprArm=false;render()}};

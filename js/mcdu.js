@@ -169,8 +169,7 @@ P.FPLN={render(){const p=cur(),rows=fplnRows(p),ds=p?dists(p):[];
     put(ln,0,id.slice(0,7),col);if(tm)put(ln,8,tm,col);else put(ln,8,'----','w');
     /* F-PLN B (← →): EFOB and true wind at each waypoint in place of TIME and SPD/ALT */
     if(S.fplnB){put(ln,8,'    ','w');const D=pr&&pr.D,c=tcum&&tcum[r.ix];
-      if(D&&c!=null&&!alt_){const gone=flying()?Math.max(0,D-Math.max(0,FL.path.sThr-FL.s)):0,f0=flying()?FL.fob:S.fuel.block-pr.taxi,fr=Math.max(0,c-gone)/D;
-        put(ln,8,f1(Math.max(0,f0-pr.trip.fuel*fr)).padStart(4),col)}else put(ln,8,'--.-','w');
+      if(D&&c!=null&&!alt_)put(ln,8,f1(Math.max(0,efobAt(pr,c))).padStart(4),col);else put(ln,8,'--.-','w');
       const ph=r.seg==='dep'?'clb':(r.seg==='arr'||r.k==='dest')?'des':'crz',wl=(S.wind&&S.wind[ph])||[],w=wl[0];
       rput(ln,w?String(w.dir).padStart(3,'0')+'°/'+String(w.spd).padStart(3,'0'):'---°/---',w?col:'w');continue}
     if(r.k==='orig'){rput(ln,'---/'+String(DB.apt[r.id].elev).padStart(6),col)}
@@ -184,10 +183,11 @@ P.FPLN={render(){const p=cur(),rows=fplnRows(p),ds=p?dists(p):[];
     let tot=0;ds.forEach((x,ix)=>{if(ix<=di&&x)tot+=x});if(flying()&&p===S.active)tot=Math.max(0,FL.path.sThr-FL.s);   /* distance to the runway counts down in flight */
     put(12,1,'DEST','w','S');put(12,8,flying()?'UTC':'TIME','w','S');rput(12,'DIST','w','S',17);rput(12,'EFOB','w','S',24);
     put(13,0,(d.id+(d.rwy||'')).slice(0,7),'g');rput(13,String(Math.round(tot)),'g','L',17);
-    if(pr){put(13,8,flying()?utcStr(FL.utc0+pr.trip.time*60000):hhmm(pr.trip.time),'g');rput(13,f1(flying()?FL.fob-pr.trip.fuel*Math.max(0,FL.path.sThr-FL.s)/FL.path.sThr:S.fuel.block-pr.taxi-pr.trip.fuel),'g')}else{put(13,8,'----','w');rput(13,'----','w')}}},
+    if(pr){put(13,8,flying()?utcStr(FL.utc0+pr.trip.time*60000):hhmm(pr.trip.time),'g');rput(13,f1(efobAt(pr,pr.D)),'g')}else{put(13,8,'----','w');rput(13,'----','w')}}},
  lsk(s,n){const p=cur();if(!p)return err('NOT ALLOWED');
   if(n===6){if(S.tmpy){if(s==='L')S.tmpy=null;else{S.active=S.tmpy;S.tmpy=null}return ok()}
-    if(s==='L'){S.lr=idxK(p,'dest');return go('LATREV')}return err('NOT IN PROTOTYPE')}
+    if(s==='L'){S.lr=idxK(p,'dest');return go('LATREV')}
+    if(S.sp)return err('NOT ALLOWED');S.vr=idxK(p,'dest');return go('VREV')}   /* 6R: VERT REV at the destination (DES SPD LIM) */
   const r=fplnRows(p)[S.fpOff+n-1];if(!r)return;
   if(s==='R')return err('NOT IN PROTOTYPE');
   if(r.k==='end'||r.k==='altorig')return err('NOT ALLOWED');
@@ -423,7 +423,7 @@ function err(m){S.msg=m}
 function ok(){S.sp='';S.msg=null}
 function go(pg){S.page=pg;if(pg==='FPLN'){}}
 function typeCh(ch){if(S.msg)S.msg=null;if(S.sp==='CLR')S.sp='';if(S.sp.length<22)S.sp+=ch}
-function clrKey(){if(S.msg){S.msg=null;return}if(!S.sp&&S.msgs&&S.msgs.length){S.msgs.shift();return}if(S.sp==='CLR'){S.sp='';return}if(S.sp)S.sp=S.sp.slice(0,-1);else S.sp='CLR'}   /* CLR again clears CLR at once */
+function clrKey(){if(S.msg){S.msg=null;return}if(!S.sp&&S.msgs&&S.msgs.length){const m=S.msgs.shift();if(S.msgOff)S.msgOff[m.t]=true;return}   /* a cleared message stays cleared while its condition lasts */if(S.sp==='CLR'){S.sp='';return}if(S.sp)S.sp=S.sp.slice(0,-1);else S.sp='CLR'}   /* CLR again clears CLR at once */
 const TITLES={DIR:'DIR TO',PROG:'PROG',DATA:'DATA INDEX',RADNAV:'RADIO NAV',FUEL:'FUEL PRED',SECF:'SEC INDEX',ATC:'ATC MENU'};
 function press(k){
   if(k.length===1&&/[A-Z0-9./]/.test(k))typeCh(k);
