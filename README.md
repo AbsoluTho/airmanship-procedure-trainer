@@ -4,7 +4,7 @@ An unofficial A320 **procedure** trainer that runs in the browser (iPad first). 
 
 Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator manuals. The navigation data was typed from charts for training only and must never be used for navigation.
 
-## Status: Phase 2 prototype (v0.16.1)
+## Status: Phase 2 prototype (v0.16.2)
 
 - **MCDU** (Thales FMS2 layout, per FCOM DSC-22): keyboard and scratchpad, INIT A, F-PLN with TMPY (ERASE/INSERT), LAT REV, DEPARTURE, AIRWAYS (with airway-to-airway intersection), ARRIVAL, waypoint insertion, CLR of waypoints and discontinuities.
 - **Exercise** OEJN to OETB: RWY 16C MIGD2E, L677 WEJ, V54 TBK, ILS 31 via D179O, ALTN OEMA, FL340, CI 20, with automatic progress checks.
@@ -12,6 +12,12 @@ Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator
 - **ND** (ROSE LS, ROSE VOR, ROSE NAV, ARC, PLAN; range 10 to 320 NM; CSTR, WPT, ARPT options; ROSE LS and ROSE VOR show the compass only for now): active F-PLN in green, TMPY in yellow dashed, missed approach in blue, alternate route in blue dashed, DME arcs and holds drawn. PLAN centres on the waypoint on the second line of the MCDU F-PLN page. Also live on both NDs in the 3D cockpit (EXT PWR on).
 - **INIT B**: TAXI, ZFW/ZFWCG, BLOCK, TRIP/TIME, RTE RSV, ALTN, FINAL, EXTRA, TOW/LW, TRIP WIND, MIN DEST FOB. **F-PLN** now shows TIME predictions and EFOB at destination once ZFW and BLOCK are entered.
 - **PERF TAKE OFF**: V1/VR/V2 (with V1/VR/V2 DISAGREE), F/S/O speeds, RWY, TO SHIFT, FLAPS/THS, FLEX, TRANS ALT, THR RED/ACC, ENG OUT ACC. Changing the takeoff runway clears the V speeds (CHECK TAKE OFF DATA).
+- **v0.16.2**:
+  - E/WD flaps: the slats/flaps indication follows the FLAPS lever at once, on the ground too (it showed the PERF TAKE OFF flaps before the flight); the T.O memo FLAPS T.O turns green with the lever at 1, 2 or 3.
+  - DEST EFOB BELOW MIN (FlyByWire checkEfobBelowMin): shown only from the cruise phase to the go-around, after the EFOB has been below MIN DEST FOB for 2 minutes, compared at the 100 kg shown on FUEL PRED; once cleared with CLR it stays cleared for the flight (it came back at once before). Any system message cleared with CLR stays cleared while its condition lasts.
+  - EFOB in flight: the fuel on board less the burn predicted from the present position (climb, cruise and descent blocks) in place of a straight proportion of the trip fuel, on the F-PLN (DEST and F-PLN B), PERF CRZ, PERF DES and FUEL PRED; in flight EXTRA is the EFOB less MIN DEST FOB.
+  - PERF DES managed speed (FlyByWire): the MANAGED field (3L) takes `.77/280`, `.77`, `/280` or `280` (a speed alone sets M.80), CLR returns to the ECON speed; shown in cyan, large once entered. The managed descent, the magenta speed target and the Mach to speed change use it.
+  - VERT REV at the origin and the destination: on the F-PLN, 1R on the origin line opens VERT REV with CLB SPD LIM and 6R (destination line) opens it with DES SPD LIM, set at 2L (`250/10000`, `250/FL100`, `250/12600`; CLR returns to 250/10000). Shown in magenta, large once entered. The managed climb holds the limit speed below the limit altitude; the managed descent slows to it from 1000 ft above.
 - **v0.16.1**:
   - NAV capture (FBW LnavDriver): only the active leg can be captured; the capture zone grows with the intercept angle, from any side and at any angle (RADIAL IN from the left, base turns of 90° and more).
   - SEC activated in flight brings the SEC approach and landing PERF, speed limit and descent winds (fuel and take-off data stay as flown); the legs already flown stay flown, so the departure route is not drawn again on a return.

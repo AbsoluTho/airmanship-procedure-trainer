@@ -58,6 +58,23 @@ async def run(url,b):
     assert await pg.evaluate("window.__S().active.legs[1].id")=='(426)','first SID leg: 400 ft AAL on runway track'
     await pg.evaluate("window.__S().sp='/+3000'");await k('R3');assert await pg.evaluate('JSON.stringify(window.__S().active.legs[2].alt)')=='{"t":"+","v":3000}','ALT CSTR from F-PLN'
     await k('R3');assert 'VERT REV' in await scr();await k('L6')
+    # VERT REV at the origin (1R: CLB SPD LIM) and at the destination (6R: DES SPD LIM)
+    await k('R1');x=await scr();assert 'VERT REV AT OEJN' in x and 'CLB SPD LIM' in x and 'SPD CSTR' not in x,('VERT REV at the origin',x)
+    await t('250/FL120');await k('L2');assert await pg.evaluate('JSON.stringify(window.__S().spdLim.clb)')=='{"spd":250,"alt":12000}','CLB SPD LIM entry'
+    await k('CLR');await k('L2');assert await pg.evaluate('window.__S().spdLim.clb')==None;await k('L6')
+    await k('R6');x=await scr();assert 'VERT REV AT OETB' in x and 'DES SPD LIM' in x,('VERT REV at the destination',x)
+    await t('250/12600');await k('L2');assert await pg.evaluate('spdLim("des").alt')==12600,'DES SPD LIM entry'
+    await k('CLR');await k('L2');await k('L6')
+    # PERF DES managed speed entered by the pilot (FlyByWire trySetManagedDescentSpeed)
+    await k('PERF');await k('R6');assert 'CLB' in await scr();await k('R6');await k('R6')
+    await t('.77/280');await k('L3');assert await pg.evaluate('[mgd.desM(),mgd.des()]')==[0.77,280] and '.77/280' in await scr(),'PERF DES .77/280'
+    await t('/275');await k('L3');assert await pg.evaluate('[mgd.desM(),mgd.des()]')==[0.77,275],'PERF DES /275'
+    await t('300');await k('L3');assert await pg.evaluate('[mgd.desM(),mgd.des()]')==[0.8,300],'PERF DES speed alone sets M.80'
+    await t('.9');await k('L3');assert await pg.evaluate('window.__S().msg')=='ENTRY OUT OF RANGE';await k('CLR');await k('CLR');await k('CLR')
+    await k('CLR');await k('L3');assert await pg.evaluate('[window.__S().p2.desM,window.__S().p2.desSpd]')==[None,None],'CLR returns to the ECON descent speed'
+    # DEST EFOB: the profile burn to the destination is the trip fuel; no DEST EFOB BELOW MIN message on the ground (FlyByWire: cruise to go-around)
+    assert await pg.evaluate('(()=>{const pr=predict();return Math.abs(efobAt(pr,pr.D)-(S.fuel.block-pr.taxi-pr.trip.fuel))<1e-9&&pr.trip.burn(0)===0})()'),'EFOB at destination'
+    assert await pg.evaluate("(()=>{const b=S.fuel.block;S.fuel.block=5;msgTick();const h=hasMsg('DEST EFOB BELOW MIN'),low=destEfob().efob<destEfob().min;S.fuel.block=b;return low&&!h})()"),'no EFOB message before the cruise'
     await k('PERF');await k('R6');assert 'CLB' in await scr();await k('R6');await k('R6');await k('R6')
     assert 'QNH' in await scr(),'PERF APPR'
     await t('1013');await k('L1');await t('2750');await k('R2');assert await pg.evaluate('window.__S().p2.qnh')==1013

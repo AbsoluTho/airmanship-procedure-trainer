@@ -94,7 +94,8 @@ function drawEWD(c){const D=ecCtx(c,76,82,522,510),{g,T,L,R}=D,E=engStep(),q=S.p
   /* thrust limit */
   T(tl,515,97,'b',18);T(n1l.toFixed(1).slice(0,-1),556,117,'g',18,'right');T(n1l.toFixed(1).slice(-1),557,118,'g',14);T('%',566,117,'b',15);if(tl==='FLX')T(q.flex+'°C',575,137,'b',15,'right');
   /* slats and flaps */
-  const cf=on?FL.conf:(q.flaps===1?'1+F':String(q.flaps||0)),si={'0':0,'1':1,'1+F':1,'2':2,'3':2,'FULL':3}[cf]??0,fi={'0':0,'1':0,'1+F':1,'2':2,'3':3,'FULL':4}[cf]??0;
+  const cf=on?lvConf():['0','1+F','2','3','FULL'][LV.flaps],   /* the position of the FLAPS lever, at once: on the ground, lined up, paused or stopped too */
+    si={'0':0,'1':1,'1+F':1,'2':2,'3':2,'FULL':3}[cf]??0,fi={'0':0,'1':0,'1+F':1,'2':2,'3':3,'FULL':4}[cf]??0;
   const wx=440,wy=380;g.lineWidth=2;g.strokeStyle=EC_C.g;g.beginPath();g.moveTo(wx-18,wy+6);g.lineTo(wx-12,wy-4);g.lineTo(wx+14,wy-4);g.lineTo(wx+20,wy+6);g.closePath();g.stroke();
   L([[wx-26,wy+8],[wx-18,wy+6]],cf==='0'?'g':'w',2);L([[wx+20,wy+6],[wx+28,wy+8]],cf==='0'?'g':'w',2);
   if(cf!=='0'){for(let k=1;k<=3;k++){g.fillStyle=EC_C.w;g.beginPath();g.arc(wx-26-k*10,wy+8+k*6,2,0,7);g.fill()}for(let k=1;k<=4;k++){g.fillStyle=EC_C.w;g.beginPath();g.arc(wx+28+k*9,wy+8+k*6,2,0,7);g.fill()}
@@ -104,7 +105,7 @@ function drawEWD(c){const D=ecCtx(c,76,82,522,510),{g,T,L,R}=D,E=engStep(),q=S.p
   /* memo area */
   L([[76,423],[378,423]],'w',2);L([[427,423],[598,423]],'w',2);L([[402,432],[402,570]],'w',2);
   const agl=on?FL.alt-groundElev():0,x0=84,y0=438,dy=18.5;
-  if(!on){[['AUTO BRK','MAX',true],['SIGNS','ON',true],['CABIN','CHECK',true],['SPLRS','ARM',true],['FLAPS','T.O',!!q.flaps],['T.O CONFIG','TEST',EC.toCfg]].forEach(([a,b,d],k)=>{
+  if(!on){[['AUTO BRK','MAX',true],['SIGNS','ON',true],['CABIN','CHECK',true],['SPLRS','ARM',true],['FLAPS','T.O',LV.flaps>=1&&LV.flaps<=3],['T.O CONFIG','TEST',EC.toCfg]].forEach(([a,b,d],k)=>{
       if(k===0)T('T.O',x0,y0,'w',17);if(k===5&&d)T('T.O CONFIG NORMAL',x0+36,y0+k*dy,'g',17);else memo(D,x0+36,y0+k*dy,a,d&&b==='CHECK'?'READY':b,d,360)})}
   else if(S.phase==='APPR'&&agl<2000&&!FL.ground){const full=!S.p2.conf3;
     [['LDG GEAR','DN',FL.gear],['SIGNS','ON',true],['CABIN','READY',true],['SPLRS','ARM',true],['FLAPS',full?'FULL':'CONF 3',FL.conf===(full?'FULL':'3')]].forEach(([a,b,d],k)=>{if(k===0)T('LDG',x0,y0,'w',17);memo(D,x0+36,y0+k*dy,a,b,d,360)})}

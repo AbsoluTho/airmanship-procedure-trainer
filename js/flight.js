@@ -348,7 +348,7 @@ function step(dt){const ias0=FL.ias;if(FL.sig!==planSig()&&!FL.ground)flightRepl
         else if(FCU.mach&&FL.vs<-300&&iasOf(FCU.spd*sos(FL.alt),FL.alt)>=mgd.des()){FCU.mach=false;FCU.spd=mgd.des()}}
       let mm=false;
       if(!FCU.spdMgd&&FCU.spd!=null)spdT=FCU.mach?iasOf(FCU.spd*sos(FL.alt),FL.alt):FCU.spd;
-      else{const lim=spdLim('clb'),dl=spdLim('des'),mmo=iasOf(mgd.crzM()*sos(FL.alt),FL.alt);
+      else{const lim=spdLim('clb'),dl=spdLim('des'),mmo=iasOf((S.phase==='DES'?mgd.desM():mgd.crzM())*sos(FL.alt),FL.alt);
         /* managed: the target is the programmed speed until it equals the programmed Mach, then the Mach (and the reverse in the descent) */
         if(S.phase==='CLB'||S.phase==='TAKEOFF'){const v=FL.alt<lim.alt?lim.spd:mgd.clb();mm=FL.ver!=='EXP CLB'&&mmo<v;spdT=FL.ver==='EXP CLB'?sp.GD:Math.min(v,mmo)}
         else if(S.phase==='CRZ'){spdT=mmo;mm=true;const rm=typeof rtaMach==='function'?rtaMach(FL.alt):null;if(rm){spdT=iasOf(rm*sos(FL.alt),FL.alt);mm=true}}

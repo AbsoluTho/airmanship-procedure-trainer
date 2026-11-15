@@ -19,7 +19,14 @@ function profile(D,fl,ci,gw,wind){const c=PM.climb(fl),d=PM.desc(fl),w=PM.wf(gw)
   const tc=cd/vc*60,td=dd/vd*60,tz=crz/gs*60;
   const fuel=(c.f*k+d.f*k)*w+PM.ff(fl,ci)*w*tz/60+0.15;
   const at=x=>x<=cd?x/vc*60:x<=cd+crz?tc+(x-cd)/gs*60:tc+tz+Math.min(x-cd-crz,dd)/vd*60;
-  return{time:tc+tz+td+2,fuel,at}}
+  /* fuel burnt up to a distance from the origin: climb, cruise and descent blocks (the 0.15 t approach allowance goes with the descent) */
+  const fc=c.f*k*w,fz=PM.ff(fl,ci)*w*tz/60,fd=d.f*k*w+0.15;
+  const burn=x=>x<=cd?fc*(cd?Math.max(0,x)/cd:1):x<=cd+crz?fc+fz*(crz?(x-cd)/crz:1):fc+fz+fd*Math.min(1,dd?(x-cd-crz)/dd:1);
+  return{time:tc+tz+td+2,fuel,at,burn}}
+/* EFOB at a distance c from the origin. In flight: the fuel on board less the burn predicted from the present position to that point. */
+function efobAt(pr,c){c=Math.min(c,pr.D);
+  if(typeof flying==='function'&&flying()&&FL.path){const gone=Math.max(0,pr.D-Math.max(0,FL.path.sThr-FL.s));return FL.fob-Math.max(0,pr.trip.burn(c)-pr.trip.burn(Math.min(gone,c)))}
+  return S.fuel.block-pr.taxi-pr.trip.burn(c)}
 
 /* Cumulative distance from the origin for every leg (discontinuities bridged direct). */
 function cumDist(p){let prev=null,acc=0;return p.legs.map(l=>{
