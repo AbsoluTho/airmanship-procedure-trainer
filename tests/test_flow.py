@@ -282,6 +282,15 @@ async def run(url,b):
       const g=planGeo(S.active,'g',3),flown=g.lines.some(L=>L.ix!=null&&L.ix<=3)||g.wpts.some(w=>w.ix<3);
       Object.assign(FL,{active:f0[0],ground:f0[1],pos:f0[2],trkT:f0[3],gs:f0[4],fromIx:f0[5],stage:f0[6]});S.active=A0;S.tmpy=null;refreshAll=r0;fcuRefresh=c0;return[t,on,rad,a,flown]})()""")
     assert ab==['T-P ABPUS PAXOS',True,[False,False],'T-P ABPUS PAXOS',False],f'DIR TO WITH ABEAM PTS: ABPUS abeam PUSPO on the direct leg, cancelled by RADIAL IN; ND erases the flown route: {ab}'
+    # RADIAL IN with an earlier T-P in the F-PLN (a previous DIR TO or a go-around): the IN point replaces the T-P of this DIR TO, so the ND draws the radial, not a direct line
+    ri=await pg.evaluate("""(()=>{const A0=clone(S.active),f0=[FL.active,FL.ground,FL.pos,FL.trkT,FL.gs,FL.fromIx,FL.stage,FL.lat,FL.latArm,FCU.hdgMgd,FCU.hdg],r0=refreshAll,c0=fcuRefresh;refreshAll=()=>{};fcuRefresh=()=>{};
+      const p=newPlan('OETB','OEJN');setRunway(p,'13');p.legs.splice(2,1);const di=idxK(p,'dest');p.legs.splice(di,0,W('PUSPO',{seg:'enr'}));p.appr='ILS34RZ';p.via='SOLOG';buildArr(p);normalize(p);p.legs=p.legs.filter(l=>l.k!=='disc');S.active=p;
+      Object.assign(FL,{active:true,ground:false,stage:'AIR',pos:dst(DB.wpt.PUSPO,0,25),trkT:180,gs:300,fromIx:1});
+      directTo('PUSPO');P.DIR.lsk('R',6);FL.fromIx=S.active.legs.findIndex(l=>l.k==='tp');FL.pos=dst(DB.wpt.PUSPO,0,20);
+      directTo('PAXOS');S.sp='156';P.DIR.lsk('R',1);const q=S.tmpy,ids=q.legs.map(l=>l.id||l.k),i=ids.indexOf('PAXOS');
+      const L=planGeo(q,'y',FL.fromIx).lines.find(x=>x.ix===i),o=[ids.slice(i-2,i+1).join(' '),ids.filter(x=>x==='T-P').length,!!L&&gc(L.pts[0],q.legs[i-1].pos)<0.01&&gc(L.pts[0],FL.pos)>30];
+      Object.assign(FL,{active:f0[0],ground:f0[1],pos:f0[2],trkT:f0[3],gs:f0[4],fromIx:f0[5],stage:f0[6],lat:f0[7],latArm:f0[8]});FCU.hdgMgd=f0[9];FCU.hdg=f0[10];S.active=A0;S.tmpy=null;S.dirTo=null;S.dirRad=null;S.sp='';S.msg=null;refreshAll=r0;fcuRefresh=c0;return o})()""")
+    assert ri==['T-P IN156 PAXOS',1,True],f'RADIAL IN after an earlier DIR TO: the radial is drawn from the IN point to PAXOS: {ri}'
     pp=await pg.evaluate("""(()=>{const A0=clone(S.active),f0=[FL.active,FL.ground,FL.pos,FL.trkT,FL.fromIx,FL.alt,FL.stage,FL.path,FL.s],r0=refreshAll,c0=fcuRefresh;refreshAll=()=>{};fcuRefresh=()=>{};
       const p=newPlan('OETB','OEJN');setRunway(p,'13');p.legs.splice(2,1);const di=idxK(p,'dest');p.legs.splice(di,0,W('PUSPO',{seg:'enr'}));normalize(p);p.legs=p.legs.filter(l=>l.k!=='disc');S.active=p;S.tmpy=null;
       Object.assign(FL,{active:true,ground:false,stage:'AIR',pos:dst(DB.wpt.PUSPO,0,25),trkT:183,fromIx:1,alt:9000,path:buildPath(p),s:5});S.page='FPLN';S.fpOff=0;S.sp='';press('L1');render();
