@@ -1,7 +1,9 @@
 'use strict';
 /* FLIGHT PLANS tab: the OFPs of the training flights (js/data/ofp.js). A list of flights by ORIGIN - DESTINATION; a flight shows
    what goes on INIT A and INIT B, the route to the destination and to the alternates, and the winds flown by the simulator. */
-const OV={flt:null,shut:{}};
+const OV={flt:null,shut:{},cg:{}};
+/* the OFP has no ZFWCG (it is on the loadsheet): a training value drawn at random between 26.0 and 30.0 for each flight */
+function ofpCg(flt){if(OV.cg[flt]==null)OV.cg[flt]=(26+Math.round(Math.random()*40)/10).toFixed(1);return OV.cg[flt]}
 try{OV.shut=JSON.parse(localStorage.getItem('airmanship.ofp.sections')||'{}')||{}}catch(e){}
 /* a section of a flight: the + / - button beside its title shows or hides it; the choice is kept for every flight */
 function ofpSec(key,title,body,wide){const shut=!!OV.shut[key];return'<div class="card sec'+(wide?' wide':'')+(shut?' shut':'')+'" data-sec="'+key+'"><h2><button type="button" class="sec-t" data-ofp-sec="'+key+'" aria-expanded="'+!shut+'" aria-label="'+(shut?'Show ':'Hide ')+title+'">'+(shut?'+':'−')+'</button><span data-ofp-sec="'+key+'">'+title+'</span></h2><div class="sec-b">'+body+'</div></div>'}
@@ -24,7 +26,7 @@ function ofpDetail(o){const R=ofpRte(o),r=R&&R.r,f=Object.assign({},o.fuel),m=o.
     kv('COST INDEX',o.ci)+kv('CRZ FL/TEMP','FL'+o.fl+' / '+temp,'ISA '+(o.isa>=0?'+':'')+o.isa)+kv('TROPO','36090','default')+
   '</ul><div class="note"><span class="tag">TIP</span><span>Enter the flight number, then INIT REQUEST: the uplink fills INIT A and the F-PLN, with the route to '+(mcduAlt||o.altn[0].id)+' as the ALTN F-PLN.</span></div>')+
   ofpSec('initb','INIT B','<ul class="okv">'+
-    kv('TAXI',t1(f.taxi),f.taxi+' kg')+kv('ZFW/ZFWCG',t1(m.zfm)+' / CG','ZFW '+m.zfm+' kg; the CG is on the loadsheet, not on the OFP')+kv('BLOCK',tz(f.block.fuel),kgz(f.block.fuel))+
+    kv('TAXI',t1(f.taxi),f.taxi+' kg')+kv('ZFW/ZFWCG',t1(m.zfm)+' / '+ofpCg(o.flt),'ZFW '+m.zfm+' kg; training CG (not on the OFP), a new one each time the app is opened')+kv('BLOCK',tz(f.block.fuel),kgz(f.block.fuel))+
     kv('RTE RSV',tz(f.cont.fuel),'contingency '+kgz(f.cont.fuel))+kv('ALTN',tz(f.altn.fuel),'to '+f.altnId+', '+kgz(f.altn.fuel))+kv('FINAL/TIME',tz(f.final.fuel)+' / '+hz(f.final.time),kgz(f.final.fuel))+
     kv('TRIP WIND',tw,'average '+(o.wc||'').toLowerCase())+
   '</ul><h3>OFP figures to cross-check</h3><ul class="okv">'+

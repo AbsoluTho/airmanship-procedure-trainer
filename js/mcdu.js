@@ -59,6 +59,7 @@ function buildArr(p){dropSeg(p,'arr','map');const di=idxK(p,'dest'),d=p.legs[di]
   if(ap){const d2=idxK(p,'dest');p.legs.splice(d2+1,0,...clone(ap.missed).map(l=>Object.assign(l,{seg:'map',via:''})))}normalize(p)}
 function insertAwy(p,fi,via,to){const from=p.legs[fi].id;let seq;
   if(via){const L=AWY[via],i=L.indexOf(from),j=L.indexOf(to);seq=i<j?L.slice(i+1,j+1):L.slice(j,i).reverse()}else seq=[to];
+  seq.forEach(id=>{if(typeof fixReg==='function')fixReg(id)});   /* VORs on the airway */
   const legs=seq.map(id=>W(id,{seg:'enr',via:via||''}));
   const k=p.legs.findIndex((l,ix)=>ix>fi&&l.k==='wpt'&&l.id===to);
   if(k>0)p.legs.splice(fi+1,k-fi-1,...legs.slice(0,-1));
@@ -193,12 +194,12 @@ P.FPLN={render(){const p=cur(),rows=fplnRows(p),ds=p?dists(p):[];
   if(r.k==='end')return err('NOT ALLOWED');
   /* ALTN F-PLN: a waypoint typed on any of its lines is inserted (after the destination, before a waypoint or the alternate);
      CLR removes a waypoint or the discontinuity; a line key with an empty scratchpad opens the ALTN AIRWAYS page from that fix */
-  if(r.k==='altorig'){const R=altRte(),v=S.sp;if(!v){S.aaw={i:-1,rows:[]};return go('ALTAWY')}if(v==='CLR')return err('NOT ALLOWED');
+  if(r.k==='altorig'){const R=altRte(),v=S.sp;if(!v){S.aaw={i:-1,rows:[]};return go('ALTLR')}if(v==='CLR')return err('NOT ALLOWED');
     if(!/^[A-Z0-9]{2,5}$/.test(v))return err('FORMAT ERROR');if(!fixReg(v))return err('NOT IN DATA BASE');R.wpts.splice(0,0,v);return ok()}
   if(r.k==='altn'){const v=S.sp;if(v==='CLR'){I().altn=null;I().altnRwy=null;return ok()}
     if(v){if(!/^[A-Z0-9]{2,5}$/.test(v))return err('FORMAT ERROR');if(!fixReg(v))return err('NOT IN DATA BASE');const R=altRte();R.wpts.push(v);R.dct=true;return ok()}S.lr=-1;return go('LATREV')}
   /* ALTN route: a waypoint typed on the discontinuity or on a waypoint is inserted there; CLR on the discontinuity joins DCT */
-  if(r.k==='altdisc'||r.k==='altwpt'){const R=altRte(),v=S.sp;if(!v){if(r.k==='altdisc')return err('NOT ALLOWED');S.aaw={i:r.i,rows:[]};return go('ALTAWY')}
+  if(r.k==='altdisc'||r.k==='altwpt'){const R=altRte(),v=S.sp;if(!v){if(r.k==='altdisc')return err('NOT ALLOWED');S.aaw={i:r.i,rows:[]};return go('ALTLR')}
     if(v==='CLR'){if(r.k==='altdisc')R.dct=true;else R.wpts.splice(r.i,1);return ok()}
     if(!fixReg(v))return err('NOT IN DATA BASE');
     R.wpts.splice(r.k==='altdisc'?R.wpts.length:r.i,0,v);return ok()}

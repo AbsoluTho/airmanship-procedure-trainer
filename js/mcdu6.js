@@ -92,6 +92,14 @@ P.ROUTESEL={render(){const L=S.rsel.list,name=L[S.rsel.i],r=allRtes()[name],R=ro
  slew(d){const n=routeLines(allRtes()[S.rsel.list[S.rsel.i]]).length;S.rsel.ro=Math.max(0,Math.min(Math.max(0,n-8),(S.rsel.ro||0)+d))},
  lsk(s,n){if(s+n==='L6')return go('ROUTELIST');if(s+n==='R6'){const name=S.rsel.list[S.rsel.i];applyRoute(name,allRtes()[name]);return go('INIT')}return err('NOT ALLOWED')}};
 
+/* LAT REV on a fix of the ALTN F-PLN (the destination or a waypoint): the same keys as on the F-PLN: NEXT WPT (3R) and AIRWAYS (5R) */
+P.ALTLR={render(){const id=P.ALTAWY.from(),pos=S.aaw.i<0?legPos(S.active.legs[idxK(S.active,'dest')]):DB.wpt[id];
+  csegs(1,[['LAT REV','w'],[' FROM ','w','S'],[id,'b']]);if(pos)cput(2,fmtLL(pos),'b','S');
+  rput(6,'NEXT WPT ','w','S');rput(7,'[    ]','b');rput(11,'AIRWAYS>');put(13,0,'<RETURN')},
+ lsk(s,n){const k=s+n,v=S.sp;if(k==='L6')return go('FPLN');if(k==='R5'){S.aaw.rows=[];return go('ALTAWY')}
+  if(k==='R3'){if(!v)return;if(!/^[A-Z0-9]{2,5}$/.test(v))return err('FORMAT ERROR');if(!fixReg(v))return err('NOT IN DATA BASE');if(v===P.ALTAWY.from())return err('NOT ALLOWED');
+    P.ALTAWY.ins([v],'');S.sp='';return go('FPLN')}
+  return err('NOT ALLOWED')}};
 /* ALTN AIRWAYS: the route to the alternate by airway (VIA) and waypoint (TO), from the fix chosen on the ALTN F-PLN.
    It goes straight into the ALTN F-PLN (shown in blue): there is no temporary F-PLN for the alternate. */
 P.ALTAWY={from(){const a=S.aaw,R=altRte();return a.i<0?destId():R.wpts[a.i]},

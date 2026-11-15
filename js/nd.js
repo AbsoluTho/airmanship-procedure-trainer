@@ -34,7 +34,7 @@ function planGeo(p,base,from){const G={lines:[],wpts:[],rwys:[]};let prev=null,v
     if(l.k==='orig'||l.k==='dest'){const ap=DB.apt[l.id],r=l.rwy&&ap.rwy[l.rwy],pos=r?r.pos:ap.pos;vr=ap.var||0;
       if(l.k==='dest'&&prev)G.lines.push({pts:[prev,pos],col,ix});
       G.rwys.push({k:l.k,id:l.id,rwy:l.rwy,pos,crsT:r?r.crs+vr:null,len:r?r.len/1852:0});prev=pos;return}
-    if(l.k==='wpt'){const pos=DB.wpt[l.id];if(!pos){prev=null;return}
+    if(l.k==='wpt'){const pos=DB.wpt[l.id]||(typeof fixReg==='function'&&fixReg(l.id)?DB.wpt[l.id]:null);if(!pos){prev=null;return}
       if(prev)G.lines.push({pts:l.lbl==='ARC'&&l.ctr&&DB.wpt[l.ctr]?arcPts(prev,pos,DB.wpt[l.ctr]):[prev,pos],col,ix});
       G.wpts.push({id:l.id,pos,col,alt:l.alt,spd:l.spd,ix});prev=pos;return}
     if(l.k==='tp'){const a=typeof dirArc==='function'?dirArc(p,ix):[];if(a.length)G.lines.push({pts:[l.pos,...a],col,ix});prev=a.length?a[a.length-1]:l.pos;return}
@@ -75,7 +75,7 @@ function drawND(g,W,H,powered){g.save();g.setTransform(1,0,0,1,0,0);g.fillStyle=
   const diamond=(x,y,col,s)=>{g.beginPath();g.moveTo(x,y-s);g.lineTo(x+s,y);g.lineTo(x,y+s);g.lineTo(x-s,y);g.closePath();g.strokeStyle=NC[col];g.lineWidth=3;g.stroke()};
   const star=(x,y,col)=>{g.strokeStyle=NC[col];g.lineWidth=3;g.beginPath();for(let i=0;i<4;i++){const a=i*Math.PI/4;g.moveTo(x-11*Math.cos(a),y-11*Math.sin(a));g.lineTo(x+11*Math.cos(a),y+11*Math.sin(a))}g.stroke()};
   const fr=flying()&&!FL.ground?FL.fromIx:-1;const geos=[];if(A)geos.push([planGeo(A,'g',fr),false]);if(T)geos.push([planGeo(T,'y',fr),true]);if(S.secMode&&S.sec)geos.push([planGeo(S.sec,'w'),'sec']);
-  if(A&&I().altn&&DB.apt[I().altn]){const d=A.legs[idxK(A,'dest')],dp=legPos(d),ap=DB.apt[I().altn].pos,R=typeof altRte==='function'?altRte():{wpts:[],dct:true};const wp=R.wpts.map(id=>DB.wpt[id]).filter(Boolean);line([dp,...wp,...(R.dct?[ap]:[])],'b',[14,10]);
+  if(V.m==='PLAN'&&A&&I().altn&&DB.apt[I().altn]){const d=A.legs[idxK(A,'dest')],dp=legPos(d),ap=DB.apt[I().altn].pos,R=typeof altRte==='function'?altRte():{wpts:[],dct:true};const wp=R.wpts.map(id=>DB.wpt[id]).filter(Boolean);line([dp,...wp,...(R.dct?[ap]:[])],'b',[14,10]);
     const[x,y]=pj(ap);star(x,y,'b');label(I().altn,x+16,y+2,'b')}
   /* offset: the original route dashed between the entry point and the rejoin point, the offset path solid */
   const ofR=p=>{if(!p||!p.ofst)return null;const ie=p.legs.findIndex(l=>l.seg==='arr'||l.k==='dest');return[p.ofst.ix0??0,ie]};
@@ -108,7 +108,7 @@ function drawND(g,W,H,powered){g.save();g.setTransform(1,0,0,1,0,0);g.fillStyle=
     for(const[id,ap]of Object.entries(DB.apt)){if(used.has(id))continue;const[x,y]=pj(ap.pos);star(x,y,'m');label(id,x+16,y+2,'m')}}
   for(const[G,tm]of geos)for(const w of G.wpts){const[x,y]=pj(w.pos);if(!inMap(x,y,30))continue;
     const col=tm==='sec'?'w':tm?'y':(to&&w.id===to.id&&w.col==='g')?'w':w.col;diamond(x,y,col,9);label(w.id,x+16,y+2,col,26);
-    if(EFIS.cstr&&!tm&&(w.alt||w.spd)){let yy=y+25;if(w.alt){label(fAlt(w.alt),x+16,yy,'m',20);yy+=22}if(w.spd)label(String(w.spd),x+16,yy,'m',20)}
+    if(EFIS.cstr&&!tm&&(w.alt||w.spd)){let yy=y+27;if(w.alt){label(fAlt(w.alt),x+16,yy,'m',24);yy+=25}if(w.spd)label(String(w.spd),x+16,yy,'m',24)}
     /* altitude constraint circle: in flight magenta if predicted met, amber if missed, white if not taken into account (NAV or managed vertical mode not engaged) */
     if(!tm&&w.alt&&(EFIS.cstr||flying())){let cc='m';if(flying()){const vp=vPred(),q=vp&&vp.wp[w.ix];cc=FL.lat!=='NAV'||!(vp&&vp.mgd)?'w':q&&!q.met?'a':'m'}
       g.strokeStyle=NC[cc]||NC.m;g.lineWidth=2.5;g.beginPath();g.arc(x,y,17,0,Math.PI*2);g.stroke()}}

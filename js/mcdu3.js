@@ -178,6 +178,11 @@ function lastExit(){if(!flying()||FL.ground)return null;const e=destEfob(),pr=pr
   const extra=e.efob-pr.altn.fuel-pr.final.fuel,ff=PM.hold(gwNowF());if(extra<=0)return{utc:utcStr(FL.utc0+FL.t*1000),fuel:FL.fob};
   return{utc:utcStr(FL.utc0+(FL.t+extra/ff*3600)*1000),fuel:FL.fob-extra}}
 
+/* HOLD at PPOS while it is still temporary: the hold fix is the present position at the moment of the insertion, not where the HOLD key
+   was pressed (the aircraft flies on while the HOLD page is open). The inbound course follows the track unless the pilot has revised it. */
+function ppHoldSync(p){if(!p||!flying()||FL.ground)return;const i=FL.fromIx+1,w=p.legs[i],h=p.legs[i+1];
+  if(!w||!h||w.k!=='wpt'||w.id!=='PPOS'||h.k!=='hold'||h.fix!=='PPOS')return;DB.wpt.PPOS=FL.pos.slice();
+  if(h.type==='COMPUTED'){h.crs=Math.round((FL.trkT-magVarOf(p)+360)%360)||360;if(h.def)h.def.crs=h.crs}}
 /* ---------- F-PLN: hold line (HOLD R, SPD, IMM EXIT* / RESUME HOLD*), OFFSET, hold and PPOS keys ---------- */
 function fplnHoldRow(r,ln,lb,col,p,n){const top=n===0;   /* on the first line the label row is the column header */
   if(r.lbl&&!top)put(lb,1,r.lbl,'w','S');put(ln,0,r.id,col);

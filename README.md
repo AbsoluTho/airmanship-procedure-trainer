@@ -4,7 +4,7 @@ An unofficial A320 **procedure** trainer that runs in the browser (iPad first). 
 
 Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator manuals. The navigation data was typed from charts for training only and must never be used for navigation.
 
-## Status: Phase 3 prototype (v0.21.1)
+## Status: Phase 3 prototype (v0.22.0)
 
 - **MCDU** (Thales FMS2 layout, per FCOM DSC-22): keyboard and scratchpad, INIT A, F-PLN with TMPY (ERASE/INSERT), LAT REV, DEPARTURE, AIRWAYS (with airway-to-airway intersection), ARRIVAL, waypoint insertion, CLR of waypoints and discontinuities.
 - **Exercise** OEJN to OETB: RWY 16C MIGD2E, L677 WEJ, V54 TBK, ILS 31 via D179O, ALTN OEMA, FL340, CI 20, with automatic progress checks.
@@ -17,6 +17,16 @@ Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator
   - 11 approaches: ILS 16L (IMBF 111.7), 16R (IWSR 108.1), 34L (IWMR 108.9), 34R (IABF 110.7); RNP 16L, 16R, 34L, 34R; VOR 16R, 34L and 34R (KFA 112.3, the 34R final offset on 326°). Vias from the IAFs of the KFA 14 DME arc (LOPOD, RESAN, KEBAP, LOSAX, DASLA, KFA; DAXAR and KAVIV for the 16 runways) and from DF603, DF604 and RESAN for the RNP approaches; published missed approaches to the RESAN and LOSAX holds.
   - 32 RNAV SIDs: EMUSA, MIBRA, PUSRA, TAYMA 2E/2F/2G/2H and LADNA, METLA, ROTEL, RYDAN 1E/2E, 1F/2F, 1G/2G, 1H/2H (one set per runway).
   - Fix positions from KFA radial/DME, the extended centrelines and the chart tracks and distances; the same fix reached by different procedures agrees within 0.6 NM (36 cross-checks printed by the generator).
+- **v0.22.0**:
+  - HOLD at PPOS: the hold was neither drawn nor flown once inserted if the HOLD page had been open for a while (the fix stayed where the key was pressed, behind the aircraft). While the hold is temporary its fix now follows the aircraft, so the inserted hold starts at the present position and is drawn on the ND and flown.
+  - N1 on the approach in landing configuration, stabilised on the glide path: CONF 3 45 to 55 %, CONF FULL 55 to 63 %, rising with the gross weight (50 t to 66 t). Idle in the flare, less while still decelerating, more on a shallower path.
+  - PROG: the TO field takes a runway (OEDF34R: bearing and distance to the threshold), as well as a waypoint, navaid or airport.
+  - Airways through VORs: the ND route was broken at a navaid entered through AIRWAYS (the F-PLN showed no discontinuity). Navaids on an airway are now F-PLN fixes with their position.
+  - ND: altitude and speed constraints in a larger font.
+  - ALTN F-PLN: a line key on the destination or a waypoint of the ALTN F-PLN opens LAT REV, with NEXT WPT (3R) and AIRWAYS (5R) as on the F-PLN. Airways of the OFP alternate routes added: Z712, N697, G674, H616, Y155.
+  - The ALTN F-PLN is drawn on the ND in PLAN mode only. After ENABLE ALTN it is the active F-PLN and shows in every mode.
+  - FLIGHT PLANS: the ZFWCG is a random training value between 26.0 and 30.0 for each flight, new each time the app is opened.
+  - Minimums on the PFD (FlyByWire A32NX `A32NX_FMCMainDisplay.shouldTransmitMinimums` and `FMA.tsx`): BARO, RADIO or NO DH entered on PERF APPR show on the FMA in descent, approach and go-around, and in cruise within 250 NM of the destination. Before, they appeared only once APPR was armed. The label is RADIO (was DH).
 - **v0.21.1**:
   - FLIGHT PLANS: every section of a flight (INIT A, INIT B, route to the destination, each alternate, winds) has a + / − button beside its title to show or hide it; + All and − All at the top. The choice is kept for every flight and between visits.
   - Fix: five of the flights (FAD226, 309, 310, 429, 430) did not open on the FLIGHT PLANS tab: their contingency fuel is printed "CONT 5%" and was not read. Every flight is now opened by the test, and a figure missing on an OFP shows as a dash.

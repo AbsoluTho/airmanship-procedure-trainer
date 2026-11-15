@@ -84,7 +84,7 @@ async def run(url,b):
     # FLIGHT PLANS tab, OFP winds, CO RTES list, ALTN F-PLN, short approach names, arrow scrolling
     fp=await pg.evaluate("""(()=>{const A0=S.active,I0=clone(S.init),pg0=S.page,ar0=S.arr,out={};document.querySelector('.tab[data-v="ofp"]').click();
       out.list=[...document.querySelectorAll('.ofp-item .od')].map(x=>x.textContent).slice(0,2).join();document.querySelector('[data-ofp="FAD225"]').click();
-      const t=document.querySelector('#ofpView').textContent;out.detail=['OERK - OEMA','OERKOEMA1','FL340 / -44','51.7 / CG','HD027','SISUD B544 NOMDA','PEGUR Z712 WEJ V54 TBK','325/017'].filter(x=>!t.includes(x));
+      const t=document.querySelector('#ofpView').textContent;out.detail=['OERK - OEMA','OERKOEMA1','FL340 / -44','51.7 / 2','HD027','SISUD B544 NOMDA','PEGUR Z712 WEJ V54 TBK','325/017'].filter(x=>!t.includes(x));
       out.all=OFPS.map(o=>{OV.flt=o.flt;ofpRender();const n=document.querySelectorAll('#ofpView .sec').length,t=document.querySelector('#ofpView').textContent;return n===4+o.altn.length&&!/undefined|NaN|null|could not/.test(t)?'':o.flt}).filter(Boolean).join();OV.flt='FAD225';ofpRender();
       const sb=document.querySelector('[data-sec="initb"]');sb.querySelector('.sec-t').click();out.sec=[sb.classList.contains('shut'),sb.querySelector('.sec-t').textContent,getComputedStyle(sb.querySelector('.sec-b')).display];sb.querySelector('.sec-t').click();out.sec.push(sb.classList.contains('shut'),document.querySelectorAll('#ofpView .sec').length);
       document.querySelector('[data-ofp-back]').click();document.querySelector('.tab[data-v="mcdu"]').click();
@@ -94,6 +94,21 @@ async def run(url,b):
       S.arrAlt=false;S.arr={list:'APPR',off:0};S.page='ARR';out.appr=P.ARR.items()[0].txt;P.ARR.slew(1);out.off=S.arr.off;
       S.wind={clb:[],crz:[],des:[]};S.active=A0;S.init=I0;S.tmpy=null;S.coRte=null;S.page=pg0;S.arr=ar0;WX.flt=null;WX.on=false;render();return out})()""")
     assert fp=={'list':'OERK - OEMA,OEMA - OERK','detail':[],'alt':'SISUD ASLAD RBG NOMDA/B544/4','wind':[278,32,417,270],'calm':0,'up':[5,'300,320,340,360',39000],'appr':'<ILS17','off':1,'sec':[True,'+','none',False,6],'all':''},f'FLIGHT PLANS tab and OFP winds: {fp}'
+    # v0.22: PROG TO a runway, airways through VORs on the ND, ALTN LAT REV and airways, ALTN route in PLAN only, random ZFWCG
+    v22=await pg.evaluate("""(()=>{const A0=S.active,I0=clone(S.init),pg0=S.page,sp0=S.sp,pr0=S.prog.to,off0=S.fpOff,out={};
+      S.page='PROG';S.sp='OEDF34R';P.PROG.lsk('R',4);out.prog=[S.prog.to,Math.round(gc(anyPos('OEDF34R'),DB.apt.OEDF.rwy['34R'].pos)*10)];S.sp='OEDF99';P.PROG.lsk('R',4);out.bad=S.prog.to;S.sp='';
+      const p=newPlan('OEMA','OERK');setRunway(p,'35');setSid(p,'MEDR1K');normalize(p);delete DB.wpt.BDB;delete DB.wpt.DAW;const fi=p.legs.findIndex(l=>l.id==='MEDRO');insertAwy(p,fi,'M872','ORDEM');
+      const G=planGeo(p,'g'),ids=G.wpts.map(w=>w.id);out.vor=[ids.includes('BDB'),ids.includes('DAW'),G.lines.filter(L=>p.legs[L.ix]&&['BDB','DAW','TASBA'].includes(p.legs[L.ix].id)).length];
+      applyRoute('OERKOEMA1',CO_RTES.OERKOEMA1);S.init.altn='OETB';S.init.altR=null;const rows=()=>fplnRows(S.active),lsk=(k,v)=>{const i=rows().findIndex(r=>r.k===k);S.fpOff=i;S.sp=v||'';P.FPLN.lsk('L',1)};
+      lsk('altorig','PEGUR');lsk('altwpt');out.lr=S.page;P.ALTLR.lsk('R',5);out.aw=S.page;S.sp='Z712';P.ALTAWY.lsk('L',1);S.sp='WEJ';P.ALTAWY.lsk('R',1);S.sp='V54';P.ALTAWY.lsk('L',2);S.sp='TBK';P.ALTAWY.lsk('R',2);
+      out.alt=altRte().wpts.join(' ')+'|'+altRte().via.IVUDA+altRte().via.NETOL;
+      S.page='FPLN';lsk('altwpt');S.sp='WEJ';P.ALTLR.lsk('R',3);out.next=altRte().wpts.slice(0,2).join(' ');
+      const cg=ofpCg('FAD225');out.cg=[+cg>=26&&+cg<=30,ofpCg('FAD225')===cg];
+      out.n1=(()=>{const f0={conf:FL.conf,vs:FL.vs,gs:FL.gs,ias:FL.ias,spdT:FL.spdT,ver:FL.ver,alt:FL.alt,stage:FL.stage,thr:FL.thr,active:FL.active},g0=window.gwNowF;const r=[];
+        Object.assign(FL,{active:true,stage:'AIR',thr:'CL',ver:'G/S',alt:3000,gs:140,vs:-140*101.27/57.3*3,ias:135,spdT:135});
+        for(const[c,w]of[['3',50],['3',66],['FULL',50],['FULL',66]]){FL.conf=c;window.gwNowF=()=>w;r.push(Math.round(engTarget().n1))}Object.assign(FL,f0);window.gwNowF=g0;return r})();
+      S.active=A0;S.init=I0;S.page=pg0;S.sp=sp0;S.prog.to=pr0;S.fpOff=off0;S.msg='';S.tmpy=null;S.coRte=null;render();return out})()""")
+    assert v22=={'prog':['OEDF34R',0],'bad':'OEDF34R','vor':[True,True,3],'lr':'ALTLR','aw':'ALTAWY','alt':'PEGUR SIGRO IVUDA WEJ LABUN NETOL DEMSU TBK|Z712V54','next':'PEGUR WEJ','cg':[True,True],'n1':[45,55,55,63]},f'v0.22 checks: {v22}'
     # VERT REV at the origin (1R: CLB SPD LIM) and at the destination (6R: DES SPD LIM)
     await k('R1');x=await scr();assert 'VERT REV AT OEJN' in x and 'CLB SPD LIM' in x and 'SPD CSTR' not in x,('VERT REV at the origin',x)
     await t('250/FL120');await k('L2');assert await pg.evaluate('JSON.stringify(window.__S().spdLim.clb)')=='{"spd":250,"alt":12000}','CLB SPD LIM entry'
