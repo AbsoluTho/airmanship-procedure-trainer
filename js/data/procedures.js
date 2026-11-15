@@ -34,7 +34,10 @@ const AWY={L677:['MIGDA','RIDEP','YEN','RAGNO','ORGIM','TUGRU','WEJ'],V54:['WEJ'
   V31:['EGPOB','DATVA','BHA'],V40:['BHA','EMEKO','KEDAS','ABH'],
   /* B544: the ABH-BOSUT-JDW part and the NOMDA-SISUD part north of Jeddah, joined at JDW */
   B544:['ABH','ITESO','RABGO','QUN','TORBI','LOVIL','BOSUT','JDW','NOMDA','RBG','ASLAD','SISUD'],
-  T510:['WEJ','KULKI','VELEK','VEDAX','TORTI','RBG'],A424:['JDW','DATAP','RULEB','ORMEK','DEGVU','PMA']};
+  T510:['WEJ','KULKI','VELEK','VEDAX','TORTI','RBG'],A424:['JDW','DATAP','RULEB','ORMEK','DEGVU','PMA'],
+  /* airways of the OFP routes to the alternates */
+  Z712:['PEGUR','SIGRO','IVUDA','WEJ'],N697:['KFA','TAYMA','LABLI','MEDGO','LUGAL','SIBLI','ANTER','BPN'],G674:['BPN','SERPU','MOBAD','GAS'],
+  H616:['BPN','SERPU','MOBAD','GAS','MUNPI','ROSUL','EMURI'],Y155:['UMASU','RGB','LAKMI','KUTOL','PUSDI','IMGUT','ALPUT','VUTEX','VEMEM']};
 
 /* Transition altitudes (ft). Check against the current AIP before relying on them. */
 const TA={OEJN:13000,OETB:13000,OEMA:13000,OERK:13000,OEAB:13000,OEGS:13000,OEAH:13000};

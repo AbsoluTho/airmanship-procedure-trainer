@@ -26,7 +26,9 @@ function navLookup(id){return DB.nav&&DB.nav[id]||null}
 function fixReg(id){if(!id)return false;if(DB.wpt[id])return true;if(DB.nav&&DB.nav[id]){DB.wpt[id]=DB.nav[id].pos;return true}
   const a=DB.apt[id];if(a){const r=Object.values(a.rwy||{})[0];DB.wpt[id]=(r?r.pos:a.pos).slice();return true}return false}
 const isAptWpt=l=>!!(l&&l.k==='wpt'&&DB.apt[l.id]);
-function anyPos(id){if(DB.wpt[id])return DB.wpt[id];if(DB.nav&&DB.nav[id])return DB.nav[id].pos;if(DB.apt[id])return DB.apt[id].pos;return null}
+/* a runway ident (airport + runway, OEDF34R): its threshold */
+function rwyPos(id){const m=/^([A-Z]{4})(\d{2}[LCR]?)$/.exec(id||''),a=m&&DB.apt[m[1]],r=a&&a.rwy&&a.rwy[m[2]];return r?r.pos:null}
+function anyPos(id){if(rwyPos(id))return rwyPos(id);if(DB.wpt[id])return DB.wpt[id];if(DB.nav&&DB.nav[id])return DB.nav[id].pos;if(DB.apt[id])return DB.apt[id].pos;return null}
 function destId(){const p=S.active;return p?p.legs[idxK(p,'dest')].id:null}
 function destElev(){const d=destId();if(!d)return 0;const p=S.active,dl=p.legs[idxK(p,'dest')],a=DB.apt[d];return dl.rwy&&a.rwy[dl.rwy]&&a.rwy[dl.rwy].tdze!=null?a.rwy[dl.rwy].tdze:a.elev}
 function bottomPhase(prev,next){if(prev){put(12,1,'PREV','w','S');put(13,0,'<PHASE')}if(next){rput(12,'NEXT ','w','S');rput(13,'PHASE>')}}
@@ -284,13 +286,13 @@ P.PROG={render(){const i=I(),rm=recMax(),opt=rm?Math.min(rm,Math.round((rm-20-(I
   put(5,0,'<REPORT');put(8,2,'BRG / DIST','w','S');
   const to=S.prog.to,ac=acState().pos,tp=to?anyPos(to):null;
   if(tp){const b=Math.round((brg(ac,tp)-acState().vr+360)%360)||360,d=gc(ac,tp);put(9,0,String(b).padStart(3,'0')+'°/'+(d<100?d.toFixed(1):String(Math.round(d))).padStart(5),'g')}else put(9,0,'---°/----.-','w');
-  segs(9,COLS-9,[['TO','w','S'],[' ','w'],[to?to.padEnd(6):'[    ]','b']]);
+  segs(9,COLS-(to&&to.length>6?10:9),[['TO','w','S'],[' ','w'],[to?to.padEnd(6):'[    ]','b']]);
   put(10,1,'PREDICTIVE','w','S');put(11,0,'<GPS');rput(11,'GPS PRIMARY','g');
   put(12,0,'REQUIRED','w','S');cat(12,'ACCUR','w','S');rput(12,'ESTIMATED','w','S');
   put(13,0,'1.0NM','b');cat(13,'HIGH','g');rput(13,'0.05NM','g','S')},
  lsk(s,n){const k=s+n,v=S.sp;
   if(k==='L2')return go('REPORT');if(k==='L5')return go('PREDGPS');
-  if(k==='R4'){if(!v)return;if(v==='CLR'){S.prog.to=null;return ok()}if(!/^[A-Z0-9]{2,5}$/.test(v))return err('FORMAT ERROR');if(!anyPos(v))return err('NOT IN DATA BASE');S.prog.to=v;return ok()}
+  if(k==='R4'){if(!v)return;if(v==='CLR'){S.prog.to=null;return ok()}if(!/^[A-Z0-9]{2,7}$/.test(v))return err('FORMAT ERROR');if(!anyPos(v))return err('NOT IN DATA BASE');S.prog.to=v;return ok()}   /* waypoint, navaid, airport or runway (OEDF34R) */
   if(k==='L1'){if(!v)return;return P.INIT.lsk.call(P.INIT,'L',6)}
   return err('NOT ALLOWED')}};
 P.REPORT={render(){const t=toWpt(),p=S.active,nx=p?p.legs.filter(l=>l.k==='wpt')[1]:null,d=destId();

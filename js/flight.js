@@ -233,8 +233,12 @@ function setFma(){const st=FL.stage,a=S.perf,fx=a.flex!=null&&S.phase!=='GA'?'FL
     f.c2=ren(f.c2);f.c3=ren(f.c3);
     if(f.land==='LAND'||(!f.land&&f.c2[0]&&f.c2[0][0]==='FINAL'&&f.c3[0]&&f.c3[0][0]==='APP NAV')){f.land=null;f.c2=[['FINAL APP','g']];f.c3=[]}}
   if(FL.tdReached&&!DESCENDING.includes(FL.ver))f.msg='T/D REACHED';
-  if((FCU.appr||FCU.loc)&&!['ROLLOUT','STOP','IDLE'].includes(st)&&FCU.appr){const q=S.p2,aps=(FCU.ap1?1:0)+(FCU.ap2?1:0),mn=q.radio!=null?(q.radio==='NO'?'NO DH':'DH '+q.radio):q.baro!=null?'BARO '+q.baro:'';
-    f.c4=aps?[['CAT 3','w'],[aps===2?'DUAL':'SINGLE','w'],[mn,'b']]:[['CAT 1','w'],null,[mn,'b']]}
+  /* minimums (FBW A32NX_FMCMainDisplay.shouldTransmitMinimums, FMA.tsx): BARO / RADIO / NO DH entered on PERF APPR show on the FMA in descent,
+     approach and go-around, and in cruise within 250 NM of the destination; the landing capability joins them once APPR is armed */
+  {const q=S.p2,ph=S.phase,toGo=FL.path?FL.path.sThr-FL.s:1e9,inR=!FL.ground&&(['DES','APPR','GA'].includes(ph)||ph==='CRZ'&&toGo<250);
+    const mn=!inR?'':q.baro!=null?'BARO '+q.baro:q.radio!=null?(q.radio==='NO'?'NO DH':'RADIO '+q.radio):'';
+    if(FCU.appr&&!['ROLLOUT','STOP','IDLE'].includes(st)){const aps=(FCU.ap1?1:0)+(FCU.ap2?1:0);f.c4=aps?[['CAT 3','w'],[aps===2?'DUAL':'SINGLE','w'],[mn,'b']]:[['CAT 1','w'],null,[mn,'b']]}
+    else if(mn&&!['ROLLOUT','STOP','IDLE'].includes(st))f.c4=[null,null,[mn,'b']]}
   if(st!=='STOP'){f.c5=[[FCU.ap1&&FCU.ap2?'AP1+2':FCU.ap1?'AP1':FCU.ap2?'AP2':'','w'],[(EFIS.fd?'1':'-')+' FD 2','w'],FCU.athr?['A/THR',FL.thr==='CL'&&st!=='IDLE'?'w':'b']:null]}
   for(const c of['c1','c2','c3'])if(JSON.stringify((f[c]||[])[0])!==JSON.stringify((FL.fma[c]||[])[0]))FL.fmaT[c]=FL.t;
   if(f.land!==FL.fma.land)FL.fmaT.land=FL.t;
@@ -246,7 +250,7 @@ function cstTarget(){if(!flying()||FL.ground||!FL.cst)return null;if(FL.ver==='A
 const cstArmed=()=>FL.verArm.length===1&&FL.verArm[0]==='ALT'&&['CLB','DES'].includes(FL.ver)&&cstTarget()!=null;
 
 /* ---------- one simulation step ---------- */
-function step(dt){const ias0=FL.ias;if(FL.sig!==planSig()&&!FL.ground)flightReplan();const P=FL.path,q=S.perf,p2=S.p2,crz=I().crz*100,sp=cfgSpeeds(),gnd=groundElev(),A=FCU.alt;
+function step(dt){if(S.tmpy&&typeof ppHoldSync==='function')ppHoldSync(S.tmpy);const ias0=FL.ias;if(FL.sig!==planSig()&&!FL.ground)flightReplan();const P=FL.path,q=S.perf,p2=S.p2,crz=I().crz*100,sp=cfgSpeeds(),gnd=groundElev(),A=FCU.alt;
   const agl=()=>FL.alt-gnd;
   if(PM_AUTO)autoPM(P.sThr-FL.s,sp);lvStep(dt);
   /* LOC, LAND and ROLL OUT never search back along the path (after a go-around the path starts on the final approach) */

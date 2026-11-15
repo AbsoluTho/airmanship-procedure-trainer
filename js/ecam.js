@@ -21,6 +21,10 @@ function engTarget(){const on=flying(),alt=on?FL.alt:elevO(),q=S.perf,flx=q.flex
   const gw=gwNowF(),k=gw/64;
   if(alt>20000)return{n1:58+alt/34000*25*k,n2:84+alt/34000*7,egt:520+alt/34000*90,ff:FL.ver==='ALT'||FL.ver.startsWith('ALT')?(PM.ff(I().crz,I().ci)*PM.wf(gw)*500):1100};
   const conf=FL.conf==='0'?0:FL.conf==='FULL'?4:+FL.conf[0]||1,fpa=FL.vs/Math.max(100,FL.gs)/101.27*57.3;
+  /* approach in landing configuration, stabilised on a 3 degree path at VAPP: CONF 3 45 to 55 % N1, CONF FULL 55 to 63 % N1, rising with the
+     gross weight (50 t to 66 t). More on a shallower path or in level flight, towards idle while still decelerating. */
+  if(conf>=3){const kw=Math.max(0,Math.min(1,(gw-50)/16)),base=conf===4?55+8*kw:45+10*kw,dec=FL.ias-(FL.spdT||FL.ias)>4;
+    const n1=FL.ver==='FLARE'?30:dec?Math.max(30,base-18):Math.max(30,Math.min(88,base+(fpa+3)*6));return{n1,n2:68+n1*0.24,egt:440+n1*2.4,ff:Math.max(350,n1*n1*0.36)}}
   return{n1:Math.max(30,52+conf*2.5+fpa*6+alt/1e4*6),n2:78+conf,egt:500+conf*10,ff:Math.max(350,900+conf*80+fpa*240)}}
 function engStep(){const tg=engTarget(),t=flying()?FL.t:0,dt=EC.t==null?99:Math.max(0,t-EC.t);EC.t=t;
   for(let i=0;i<2;i++){const e=EC.eng[i];if(!e||dt>60||!flying()){EC.eng[i]=Object.assign({},tg);continue}
