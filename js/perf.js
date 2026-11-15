@@ -45,7 +45,8 @@ function predict(){const p=S.active,i=I(),f=S.fuel;
   const lw=tow-trip.fuel;
   const pct=f.rsvPct??5,rsv=f.rsv??trip.fuel*pct/100;
   let altn={fuel:0,time:0};const dest=legPos(p.legs[di]);
-  if(i.altn&&DB.apt[i.altn]){const Da=gc(dest,DB.apt[i.altn].pos)*1.05+15;
+  if(i.altn&&DB.apt[i.altn]){const R=typeof altRte==='function'?altRte():{wpts:[]},pts=[dest,...R.wpts.map(id=>DB.wpt[id]).filter(Boolean),DB.apt[i.altn].pos];
+    const Da=(pts.length>2?pts.slice(1).reduce((n,q,k)=>n+gc(pts[k],q),0):gc(dest,DB.apt[i.altn].pos)*1.05)+15;   /* along the ALTN F-PLN when it has waypoints */
     const fl=Math.max(100,Math.min(310,Math.round(Da*0.85/10)*10));altn=profile(Da,fl,0,lw,0)}
   const altnF=f.altn??altn.fuel;
   const hff=PM.hold(lw-altnF);

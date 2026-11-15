@@ -87,8 +87,10 @@ function project(P,pos,from,to){let best=null;const a=P.pts;
 
 /* ---------- final approach course (LOC) ---------- */
 function destRwy(){const p=S.active,d=p.legs[idxK(p,'dest')],a=DB.apt[d.id],r=a.rwy[d.rwy]||Object.values(a.rwy)[0]||{pos:a.pos,crs:0,len:2000};return{a,r,tdze:r.tdze??a.elev}}   /* NEW DEST without a runway yet: the first runway */
-function locGeo(pos){const d=destRwy(),c=d.r.crs+(d.a.var||0),q=enu(d.r.pos,pos),u=[Math.sin(c*D2R),Math.cos(c*D2R)];
-  const along=-(q[0]*u[0]+q[1]*u[1]),xtk=(u[0]*q[1]-u[1]*q[0])*-1;return{crs:c,along,xtk}}   /* along: NM before the threshold */
+function locGeo(pos){const d=destRwy(),g=c=>{const q=enu(d.r.pos,pos),u=[Math.sin(c*D2R),Math.cos(c*D2R)];return{crs:c,along:-(q[0]*u[0]+q[1]*u[1]),xtk:(u[0]*q[1]-u[1]*q[0])*-1}};   /* along: NM before the threshold */
+  const v=d.a.var||0,r=g(d.r.crs+v),p=S.active,ap=p&&p.appr&&!/^(ILS|LOC)/.test(p.appr)&&(APPRS[destId()]||{})[p.appr];
+  /* VOR/RNP final on its own course (an offset final, e.g. VOR 31 on 311 to runway 306) down to 1 NM, then the runway centreline */
+  return ap&&ap.crs!=null&&ap.crs!==d.r.crs&&r.along>1?g(ap.crs+v):r}
 function faf(){const p=S.active,di=idxK(p,'dest');for(let i=di-1;i>0;i--){const l=p.legs[i];if(l.k==='wpt'&&l.alt&&l.seg==='arr')return l.alt.v}return destRwy().tdze+1500}
 function gsAlt(dtg){return destRwy().tdze+50+318*Math.max(0,dtg)}
 /* profileAlt() and tdDist() (constrained descent path, T/D) are in vnav.js */
@@ -289,8 +291,9 @@ function step(dt){const ias0=FL.ias;if(FL.sig!==planSig()&&!FL.ground)flightRepl
     if(FL.lat==='LOC*'&&lg&&Math.abs(lg.xtk)<0.08&&Math.abs(((lg.crs-FL.trkT+540)%360)-180)<4)FL.lat='LOC';
     const vr=DB.apt[orig()].var||3,L=Math.max(0.8,Math.min(4,FL.gs*30/3600));
     if(FL.lat==='RWY'||FL.lat==='RWY TRK'){const o=DB.apt[orig()],r=o.rwy[S.active.rwy];trkT=r.crs+(o.var||0)}
-    else if(FL.lat==='NAV'){if(FL.s>=P.len-0.05){FL.lat='HDG';FCU.hdgMgd=false;FCU.hdg=Math.round((FL.trkT-vr+360)%360)||360}else trkT=brg(FL.pos,posAt(P,Math.min(P.len,FL.s+L)).pos)}
-    else if(FL.lat==='HDG'||FL.lat==='TRK')trkT=(FCU.hdg??Math.round(FL.trkT-vr))+vr;
+    else if(FL.lat==='NAV'){if(FL.s>=P.len-0.05){FL.lat='HDG';FCU.hdgMgd=false;FCU.hdg=Math.round((FL.hdgT-vr+360)%360)||360}else trkT=brg(FL.pos,posAt(P,Math.min(P.len,FL.s+L)).pos)}
+    else if(FL.lat==='TRK')trkT=(FCU.hdg??Math.round(FL.trkT-vr))+vr;
+    else if(FL.lat==='HDG')trkT=trkOfHdg((FCU.hdg??Math.round(FL.hdgT-vr))+vr,FL.tas,FL.wind);   /* HDG: the selected heading drifts with the wind */
     else if(FL.lat==='GA TRK')trkT=FL.gaTrk;
     else if(['LOC*','LOC','LAND'].includes(FL.lat)&&lg){const d=destRwy(),Ll=Math.max(0.5,Math.min(2,FL.gs*12/3600)),tgt=dst(d.r.pos,lg.crs+180,Math.max(-2,lg.along-Ll));trkT=brg(FL.pos,tgt)}   /* tighter than NAV: 12 s ahead on the course */
     /* ---- vertical ---- */
@@ -399,7 +402,9 @@ function step(dt){const ias0=FL.ias;if(FL.sig!==planSig()&&!FL.ground)flightRepl
   if(FL.stage==='AIR'){const g3=FL.gp||1;FL.ias+=FL.soe?FL.accT*dt:Math.max(-1.6*dt,Math.min(1.6*g3*dt,spdT-FL.ias));FL.vs+=Math.max(-600*dt,Math.min(600*dt,vsT-FL.vs));FL.alt+=FL.vs/60*dt}
   else if(FL.ground)FL.alt=gnd;
   FL.tas=tasOf(FL.ias,FL.alt);FL.gs=FL.ground?FL.ias:FL.tas;FL.mach=FL.tas/sos(FL.alt);
-  const dh=((trkT-FL.trkT+540)%360)-180,rate=Math.max(-3,Math.min(3,dh*0.6));FL.trkT=(FL.trkT+rate*dt+360)%360;FL.hdgT=FL.trkT;
+  const dh=((trkT-FL.trkT+540)%360)-180,rate=Math.max(-3,Math.min(3,dh*0.6));FL.trkT=(FL.trkT+rate*dt+360)%360;
+  /* wind of the OFP: the guidance flies ground tracks, so the heading carries the drift and the ground speed the head or tail wind */
+  FL.wind=FL.ground?{dir:0,spd:0}:windAt(FL.pos,FL.alt,FL.alt-groundElev());{const c=crabOf(FL.trkT,FL.tas,FL.wind);FL.hdgT=c.hdg;if(!FL.ground)FL.gs=c.gs}
   const bank=FL.ground?0:Math.max(-30,Math.min(30,Math.atan(rate*D2R*FL.tas*0.5144/9.81)/D2R));FL.roll+=Math.max(-5*dt,Math.min(5*dt,bank-FL.roll));
   FL.pos=dst(FL.pos,FL.trkT,FL.gs*KT2NMS*dt);
   if(FL.stage==='AIR'){const fpa=Math.atan2(FL.vs,Math.max(60,FL.gs)*101.27)/D2R,aoa=FL.conf==='0'?2.5:FL.conf==='FULL'?4:3.5;

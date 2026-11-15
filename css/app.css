@@ -232,3 +232,36 @@ body.fs .flight{max-width:none}
 body.fs .fs-exit{display:block}
 body.fs #fsBtn{display:none}
 body.fs .app{min-height:100vh;display:flex;flex-direction:column;justify-content:center;box-sizing:border-box}
+
+/* ---------- FLIGHT PLANS tab ---------- */
+.ofp-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px;margin:2px 0 12px}
+.ofp-head h2{margin:0;font:700 26px/1 var(--f-display);letter-spacing:.07em;text-transform:uppercase}
+.ofp-head p{margin:0;color:var(--ink2);font-size:14px}
+.ofp-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
+.ofp-item{display:flex;flex-direction:column;gap:6px;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;color:var(--ink);cursor:pointer}
+.ofp-item:hover,.ofp-item:focus-visible{border-color:var(--accent);outline:none}
+.ofp-item .od{font:700 24px/1 var(--f-display);letter-spacing:.08em}
+.ofp-item .meta{font:500 12px/1.4 var(--f-mono);color:var(--ink2)}
+.ofp-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.ofp-grid .wide{grid-column:1/-1}
+@media(max-width:760px){.ofp-grid{grid-template-columns:1fr}}
+.okv{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.okv li{display:grid;grid-template-columns:130px minmax(0,auto) minmax(0,1fr);gap:4px 12px;align-items:baseline;padding:5px 0;border-bottom:1px solid var(--line);font-size:14px}
+.okv li span{font:600 12px/1.2 var(--f-display);letter-spacing:.08em;text-transform:uppercase;color:var(--ink3)}
+.okv li b{font:500 15px/1.2 var(--f-mono);color:var(--accent);overflow-wrap:anywhere}
+.okv li i{font-style:normal;font-size:12.5px;color:var(--ink2)}
+@media(max-width:520px){.okv li{grid-template-columns:104px minmax(0,1fr)}.okv li i{grid-column:2}}
+.otw{overflow-x:auto;margin-top:8px}
+.ot{border-collapse:collapse;font:500 13px/1.3 var(--f-mono);color:var(--ink2);min-width:100%}
+.ot th{font:600 11px/1 var(--f-display);letter-spacing:.08em;text-align:left;color:var(--ink3);padding:4px 12px 4px 0;border-bottom:1px solid var(--line)}
+.ot td{padding:3px 12px 3px 0;border-bottom:1px solid var(--line);white-space:nowrap}
+.ot td b{color:var(--ink);font-weight:600}.ot tr.ps td,.ot tr.ps td b{color:var(--ink3)}
+#v-ofp details{margin-top:10px}#v-ofp summary{cursor:pointer;color:var(--accent);font-size:13px}
+body.fs #v-ofp{display:none}
+.sec h2{display:flex;align-items:center;gap:10px;margin:0 0 8px}
+.sec h2 span{cursor:pointer}
+.sec.shut h2{margin-bottom:0}.sec.shut .sec-b{display:none}
+.sec-t{flex:none;width:28px;height:28px;display:grid;place-items:center;background:var(--accent-soft);border:1px solid #234a60;border-radius:7px;color:var(--accent);font:700 20px/1 var(--f-mono);cursor:pointer;padding:0}
+.sec-t:hover,.sec-t:focus-visible{border-color:var(--accent);outline:none}
+.sec-all{margin-left:auto;display:flex;gap:6px}
+.ofp-grid{align-items:start}

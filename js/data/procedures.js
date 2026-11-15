@@ -21,7 +21,20 @@ const SIDS={OEJN:{
 /* approaches and STARs: js/data/procgen.js (tools/navdb/procgen.py, typed from the charts) */
 const APPRS={};
 const STARS={};
-const AWY={L677:['MIGDA','RIDEP','YEN','RAGNO','ORGIM','TUGRU','WEJ'],V54:['WEJ','LABUN','NETOL','DEMSU','TBK'],M872:['WEJ','KULKI','TULOK','BOVET']};
+const AWY={L677:['MIGDA','RIDEP','YEN','RAGNO','ORGIM','TUGRU','WEJ'],V54:['WEJ','LABUN','NETOL','DEMSU','TBK'],
+  /* airway segments as printed on the OFPs of 15 Nov 2026 (M872: the WEJ-BOVET part and the MEDRO-ORDEM part, joined at Madinah) */
+  M872:['WEJ','KULKI','TULOK','BOVET','MEDRO','GOKSA','BDB','DAW','TASBA','ORDEM'],
+  Y216:['IVONU','GIDUV','ITLIX','KURDO','DAMUL','BOTIK','ITSEP'],
+  B417:['EGREP','PATOR','DASOR','ASVIV','BDB','KURDO','KINOB','AMBIV','GAS'],
+  L604:['GAS','NAGSA','KUMTO','LABIS','PUSLA','LOROX','MGA','MUSRI','KASOM','UMENA','TABTA','KFA'],
+  T532:['EGREP','PATOR','IMGOB','BOXEB','KODIS','DAW','TASBA','ORDEM','KAVUR','KSA'],
+  H976:['KSA','ORNIP','ORLOK','MUSRI'],N687:['KFA','ULDEG','SETBA','DEMKA'],H732:['KFA','OTISU'],A776:['KFA','OTISU'],
+  N112:['OTISU','RAPLO','GETOT'],Q212:['GETOT','SIVAG','MEMGO','REXOV','KSA'],
+  G782:['KSA','DURMA','UMASU','RGB','TUKVU','ASMUN','DFN','BOPEV','VEMEM'],
+  V31:['EGPOB','DATVA','BHA'],V40:['BHA','EMEKO','KEDAS','ABH'],
+  /* B544: the ABH-BOSUT-JDW part and the NOMDA-SISUD part north of Jeddah, joined at JDW */
+  B544:['ABH','ITESO','RABGO','QUN','TORBI','LOVIL','BOSUT','JDW','NOMDA','RBG','ASLAD','SISUD'],
+  T510:['WEJ','KULKI','VELEK','VEDAX','TORTI','RBG'],A424:['JDW','DATAP','RULEB','ORMEK','DEGVU','PMA']};
 
 /* Transition altitudes (ft). Check against the current AIP before relying on them. */
-const TA={OEJN:13000,OETB:13000,OEMA:13000};
+const TA={OEJN:13000,OETB:13000,OEMA:13000,OERK:13000,OEAB:13000,OEGS:13000,OEAH:13000};

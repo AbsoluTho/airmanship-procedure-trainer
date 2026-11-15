@@ -12,6 +12,7 @@ async def run(url,b):
     pg=await b.new_page(viewport={'width':1180,'height':820});errs=[]
     pg.on('pageerror',lambda e:errs.append(str(e)))
     await pg.goto(url);await pg.wait_for_timeout(500)
+    await pg.evaluate('WX.on=false')   # the flights of this test were written for still air; the OFP winds have their own check below
     k=lambda x:pg.evaluate('k=>window.__press(k)',x)
     async def t(s):
         for ch in s: await k('SP' if ch==' ' else ch)
@@ -22,12 +23,12 @@ async def run(url,b):
     assert await pg.evaluate("msgShown().t")=='GPS PRIMARY','GPS PRIMARY at power-up'
     await k('CLR');assert await pg.evaluate("msgShown()")==None,'CLR clears GPS PRIMARY'
     await t('OEJN/OETB');await k('R1')
-    assert await pg.evaluate("window.__S().page")=='ROUTESEL','ROUTE selection after FROM/TO (company routes)';await k('L6')
+    assert await pg.evaluate("window.__S().page")=='ROUTELIST','CO RTES list after FROM/TO (company routes)';await k('L6')
     await t('OEMA');await k('L2');await t('TRN385');await k('L3');await t('20');await k('L5')
     await t('340/46');await k('L6')
     assert await pg.evaluate('window.__S().init.temp')==-46,'unsigned CRZ temp should be negative'
     await t('360');await k('R5');assert await pg.evaluate('window.__S().init.tropo')==36000,'3-digit TROPO'
-    await k('FPLN');await k('L1');await k('L1');await k('L2');await k('DOWN');await k('DOWN');await k('L5');await k('R6')
+    await k('FPLN');await k('L1');await k('L1');await k('L2');await k('UP');await k('UP');await k('L5');await k('R6')
     legs=await pg.evaluate('window.__S().active.legs.map(l=>l.id||"-")')
     await pg.evaluate(f'window.__S().fpOff={(await pg.evaluate("fplnRows(window.__S().active).map(r=>r.id||r.k)")).index("MIGDA")}');await k('L1');await k('R5')
     await t('L677');await k('L1');await t('V54');await k('L2');await t('TBK');await k('R2');await k('R6')
@@ -62,13 +63,37 @@ async def run(url,b):
     dm=await pg.evaluate("""(()=>{const p=newPlan('OERK','OEDF');setRunway(p,'33R');p.appr='ILS34L';p.via='LOSAX';p.star='MIBR2J';buildArr(p);normalize(p);
       return[Object.keys(STARS.OEDF).length,Object.keys(APPRS.OEDF).length,Object.values(SIDS.OEDF).reduce((n,x)=>n+Object.keys(x).length,0),APPRS.OEDF.ILS16L.nav+APPRS.OEDF.ILS16L.freq,
         p.legs.filter(l=>l.seg==='arr'||l.k==='dest').map(l=>l.id).join(' '),+gc(DB.wpt.LOSAX,DB.nav.KFA.pos).toFixed(1)]})()""")
-    assert dm==[14,11,32,'IMBF111.7','MIBRA LOSAX D170N CF34L SIDGO OEDF',14.0],f'Dammam procedures: {dm}'
+    assert dm==[14,11,64,'IMBF111.7','MIBRA LOSAX D170N CF34L SIDGO OEDF',14.0],f'Dammam procedures: {dm}'
     rk=await pg.evaluate("[Object.keys(APPRS.OERK).sort().join(),APPRS.OERK.ILS33LY.nav+APPRS.OERK.ILS33LY.freq,APPRS.OERK.RNP15R.missed[0].id]")
     assert rk==['ILS15LY,ILS15LZ,ILS15RY,ILS15RZ,ILS33LY,ILS33LZ,ILS33RY,ILS33RZ,RNP15L,RNP15R,RNP33L,RNP33R,VOR15R,VOR33L','IFAT110.1','RK603'],f'Riyadh approaches: {rk}'
     rk2=await pg.evaluate("""(()=>{const p=newPlan('OEDF','OERK');setRunway(p,'34R');p.appr='ILS15RZ';p.via='PEBAK';p.star='KOBO1C';buildArr(p);normalize(p);
       return[Object.keys(STARS.OERK).length,Object.values(SIDS.OERK).reduce((n,x)=>n+Object.keys(x).length,0),DB.nav.KSA.freq,
         p.legs.filter(l=>l.seg==='arr'||l.k==='dest').map(l=>l.id+(l.lbl==='ARC'?'~':'')).join(' '),+gc(DB.wpt.ORDEG,DB.nav.KSA.pos).toFixed(1)]})()""")
     assert rk2==[36,68,115.0,'KOBOX D079Q D047Q~ PEBAK~ ORDEG~ ALPUR TAVNU OERK',17.0],f'Riyadh STARs, SIDs and the KSA arcs: {rk2}'
+    n3=await pg.evaluate("""(()=>{const k=a=>Object.keys(APPRS[a]).sort().join();const p=newPlan('OERK','OEAH');setRunway(p,'15R');p.appr='ILS34Y';p.via='KIREN';buildArr(p);normalize(p);
+      return[k('OEAB'),k('OEGS'),k('OEAH'),Object.keys(SIDS.OEAB['31']).join(),DB.apt.OEAB.var,APPRS.OEGS.ILS15.nav+APPRS.OEGS.ILS15.freq,
+        p.legs.filter(l=>l.seg==='arr'||l.k==='dest').map(l=>l.id).join(' ')]})()""")
+    assert n3==['ILS13,VOR13,VOR31','ILS15,VOR15,VOR33','ILS34Y,ILS34Z,VOR16,VOR34','RWYHDG',3.15,'IGAS110.1','KIREN AH400 ODBAX FF34H OEAH'],f'Abha, Gassim, Al Ahsa: {n3}'
+    of=await pg.evaluate("""(()=>{const A0=S.active;const p=newPlan('OEJN','OEAB');p.appr='VOR31';p.via='D131U';buildArr(p);normalize(p);S.active=p;const a=locGeo(DB.wpt.ITGOS),b=locGeo(DB.wpt.D131A);
+      p.appr='ILS13';const c=locGeo(DB.wpt.VUSIT);S.active=A0;return[Math.round(a.crs-DB.apt.OEAB.var),+Math.abs(a.xtk).toFixed(1),Math.round(b.crs-DB.apt.OEAB.var),+Math.abs(c.xtk).toFixed(1)]})()""")
+    assert of==[311,0,306,0],f'offset VOR final on its own course to 1 NM, then the centreline: {of}'
+    cr=await pg.evaluate("""(()=>{const p=buildRoute(CO_RTES.OEJNOEAH1),q=buildRoute(CO_RTES.OERKOEMA1),ids=x=>x.legs.filter(l=>l.k==='wpt').map(l=>l.id);
+      return[ids(p).filter(i=>['EGREP','KSA','MUSRI','KFA','DEMKA','HSA','ODBAX'].includes(i)).join(' '),p.legs.some(l=>l.k==='disc'&&p.legs.indexOf(l)<idxK(p,'dest')),q.star,ids(q).slice(-6).join(' '),
+        Math.round(buildPath(q).sThr),AOC_OFP.FAD429.rte,Object.values(SIDS.OEDF).reduce((n,x)=>n+Object.keys(x).length,0),+gc(DB.wpt.RK901,[24.87667,46.785]).toFixed(1)]})()""")
+    assert cr==['EGREP KSA MUSRI KFA DEMKA HSA ODBAX ODBAX',False,'ITSE1H','MA443 OBTOX CF35 FF35 D060P GERIR',469,'OEJNOEAH1',64,0],f'OFP company routes, Dammam SIDs, OFP positions: {cr}'
+    # FLIGHT PLANS tab, OFP winds, CO RTES list, ALTN F-PLN, short approach names, arrow scrolling
+    fp=await pg.evaluate("""(()=>{const A0=S.active,I0=clone(S.init),pg0=S.page,ar0=S.arr,out={};document.querySelector('.tab[data-v="ofp"]').click();
+      out.list=[...document.querySelectorAll('.ofp-item .od')].map(x=>x.textContent).slice(0,2).join();document.querySelector('[data-ofp="FAD225"]').click();
+      const t=document.querySelector('#ofpView').textContent;out.detail=['OERK - OEMA','OERKOEMA1','FL340 / -44','51.7 / CG','HD027','SISUD B544 NOMDA','PEGUR Z712 WEJ V54 TBK','325/017'].filter(x=>!t.includes(x));
+      out.all=OFPS.map(o=>{OV.flt=o.flt;ofpRender();const n=document.querySelectorAll('#ofpView .sec').length,t=document.querySelector('#ofpView').textContent;return n===4+o.altn.length&&!/undefined|NaN|null|could not/.test(t)?'':o.flt}).filter(Boolean).join();OV.flt='FAD225';ofpRender();
+      const sb=document.querySelector('[data-sec="initb"]');sb.querySelector('.sec-t').click();out.sec=[sb.classList.contains('shut'),sb.querySelector('.sec-t').textContent,getComputedStyle(sb.querySelector('.sec-b')).display];sb.querySelector('.sec-t').click();out.sec.push(sb.classList.contains('shut'),document.querySelectorAll('#ofpView .sec').length);
+      document.querySelector('[data-ofp-back]').click();document.querySelector('.tab[data-v="mcdu"]').click();
+      WX.on=true;applyRoute('OERKOEMA1',CO_RTES.OERKOEMA1);out.alt=altRte().wpts.join(' ')+'/'+altRte().via.RBG+'/'+fplnRows(S.active).filter(r=>r.k==='altwpt').length;
+      const w=windAt(DB.wpt.GIDUV,34000,30000,'CRZ'),c=crabOf(267+3,449,w);out.wind=[Math.round(w.dir),Math.round(w.spd),Math.round(c.gs),Math.round(trkOfHdg(c.hdg,449,w))];
+      out.calm=windAt(DB.wpt.GIDUV,34000,0,'CRZ').spd;out.up=wxUplink()&&[S.wind.clb.length,S.wind.crz.map(x=>x.alt/100).join(),S.wind.des[0].alt];
+      S.arrAlt=false;S.arr={list:'APPR',off:0};S.page='ARR';out.appr=P.ARR.items()[0].txt;P.ARR.slew(1);out.off=S.arr.off;
+      S.wind={clb:[],crz:[],des:[]};S.active=A0;S.init=I0;S.tmpy=null;S.coRte=null;S.page=pg0;S.arr=ar0;WX.flt=null;WX.on=false;render();return out})()""")
+    assert fp=={'list':'OERK - OEMA,OEMA - OERK','detail':[],'alt':'SISUD ASLAD RBG NOMDA/B544/4','wind':[278,32,417,270],'calm':0,'up':[5,'300,320,340,360',39000],'appr':'<ILS17','off':1,'sec':[True,'+','none',False,6],'all':''},f'FLIGHT PLANS tab and OFP winds: {fp}'
     # VERT REV at the origin (1R: CLB SPD LIM) and at the destination (6R: DES SPD LIM)
     await k('R1');x=await scr();assert 'VERT REV AT OEJN' in x and 'CLB SPD LIM' in x and 'SPD CSTR' not in x,('VERT REV at the origin',x)
     await t('250/FL120');await k('L2');assert await pg.evaluate('JSON.stringify(window.__S().spdLim.clb)')=='{"spd":250,"alt":12000}','CLB SPD LIM entry'

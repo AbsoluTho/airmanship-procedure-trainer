@@ -166,7 +166,10 @@ function drawND(g,W,H,powered){g.save();g.setTransform(1,0,0,1,0,0);g.fillStyle=
   {const ap=S.active&&S.active.appr,dd=flying()&&FL.path?FL.path.sThr-FL.s:1e9,shw=flying()&&(['DES','APPR','GA'].includes(S.phase)||S.phase==='CRZ'&&dd<250);
    if(shw&&ap&&!/^RWY/.test(ap)&&(APPRS[destId()]||{})[ap]){const m=ap.match(/^(ILS|LOC|RNP|VOR)(\d\d[LCR]?)([YZ])$/),nm=m?m[1]+m[2]+'-'+m[3]:ap;
     g.textAlign='center';g.font=NF(29);g.fillStyle=NC.g;g.fillText(nm,384,40);g.textAlign='left'}}
-  g.font=NF(31);g.fillStyle=NC.g;g.fillText('---',6,74);g.fillStyle=NC.w;g.fillText('/',56,74);g.fillStyle=NC.g;g.fillText('---',70,74);
+  /* wind: true direction / speed, and an arrow showing where it blows relative to the heading (above 100 kt TAS and 2 kt of wind) */
+  {const w=flying()&&FL.wind&&FL.tas>=100&&FL.wind.spd>=2?FL.wind:null;
+   g.font=NF(31);g.fillStyle=NC.g;g.fillText(w?String(Math.round(w.dir)%360||360).padStart(3,'0'):'---',6,74);g.fillStyle=NC.w;g.fillText('/',56,74);g.fillStyle=NC.g;g.fillText(w?String(Math.round(w.spd)):'---',70,74);
+   if(w){g.save();g.translate(30,104);g.rotate((w.dir+180-FL.hdgT)*D2R);g.strokeStyle=NC.g;g.lineWidth=3;g.beginPath();g.moveTo(0,20);g.lineTo(0,-20);g.moveTo(-8,-9);g.lineTo(0,-20);g.lineTo(8,-9);g.stroke();g.restore()}}
   if(to&&to.pos&&V.map){const b=Math.round((brg(ac.pos,to.pos)-ac.vr+360)%360)||360,d=gc(ac.pos,to.pos);
     g.textAlign='left';g.font=NF(31);g.fillStyle=NC.w;g.fillText(to.id,520,40);
     g.textAlign='right';g.fillStyle=NC.g;g.fillText(String(b).padStart(3,'0')+'°',756,40);

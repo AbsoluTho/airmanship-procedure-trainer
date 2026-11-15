@@ -1,7 +1,7 @@
 # OEDF Dammam / King Fahd. Jeppesen 10-2..10-2C (RNAV STAR), 10-3N/P/Q/S/T.. (RNAV SID), 11-1..11-4 (ILS), 12-1..12-4 (RNP),
 # 13-1..13-3 (VOR). Charts dated 24 Oct 25 / 19 Dec 25.
 # Fixes: KFA radial/DME (14 DME arc IAFs, VOR finals), distance on the extended centreline (ILS, RNP), track and distance (STAR, SID).
-# The conventional VOR/DME SIDs (EMUSA & TAYMA 1A-1D, LADNA & METLA 2A-2D, PUSRA & ROTEL 1A-1D, MIBRA & RYDAN 1A-1D) are not entered yet.
+# Conventional VOR/DME SIDs at the end of the file.
 AP = Apt('OEDF', var=3.6)          # runway 161/341 magnetic on a true bearing of 164.6
 a = AP
 a.rcrs.update({'16L': 161, '16R': 161, '34L': 341, '34R': 341})
@@ -163,3 +163,81 @@ for rwy, f0, sx in [('16R', 'DF520', 'G'), ('16L', 'DF530', 'H')]:
     sid(rwy, 'METL1' + sx, [W(f0, s=230), W('DF522', '-7000'), W('METLA', '+9000')])
     sid(rwy, 'ROTE2' + sx, [W(f0), W('ROTEL', '+7000')])
     sid(rwy, 'RYDA2' + sx, [W(f0), W('DF528', '-13000'), W('RYDAN')])
+
+# ================= conventional SIDs (10-3 .. 10-3G, 10-3H .. 10-3L): runway heading to a KFA DME, then KFA DME arcs and radials =================
+def kdme(rwy, dme):
+    """runway heading from the departure end until the KFA DME, past the point abeam the VOR"""
+    prev = None
+    for i in range(0, 3000):
+        q = dep(rwy, i*0.01); d = gc(q, a.P('KFA'))
+        if prev is not None and d > prev and d >= dme: return q
+        prev = d
+    raise ValueError('no D%s after rwy %s' % (dme, rwy))
+for n, r, d in [('D011G', 11, 7), ('D028G', 28, 7), ('D052G', 52, 7), ('D069G', 69, 7), ('D074G', 74, 7), ('D091G', 91, 7), ('D044G', 44, 7), ('D085G', 85, 7),
+                ('D107G', 107, 7), ('D090G', 90, 7), ('D233G', 233, 7), ('D249G', 249, 7), ('D218G', 218, 7), ('D234G', 234, 7), ('D182G', 182, 7),
+                ('K35283', 283, 35), ('K35252', 252, 35), ('K35249', 249, 35), ('K35279', 279, 35), ('K26028', 28, 26), ('K26329', 329, 26), ('K26324', 324, 26)]:
+    fix(n, rad('KFA', r, d))
+for n, r, d in [('EMUSA', 249, 60), ('TAYMA', 283, 60), ('METLA', 28, 31.2), ('ROTEL', 69, 33.1), ('LADNA', 91, 32.4), ('MIBRA', 234, 60), ('RYDAN', 182, 46.3)]:
+    chk(n, rad('KFA', r, d))
+a.notes.append('PUSRA on KFA R-%03d / D%.1f (charts: R-325 from 34L/R, R-324 from 16L/R, D60)' % (round((brg(a.P('KFA'), a.P('PUSRA')) - a.var) % 360), gc(a.P('KFA'), a.P('PUSRA'))))
+K = 'KFA'
+for rwy, x in [('34L', 'A'), ('34R', 'B')]:
+    fix('KF2' + rwy[2] + 'N', kdme(rwy, 2.0)); fix('KF7' + rwy[2] + 'N', kdme(rwy, 7.0)); f2, f7 = 'KF2' + rwy[2] + 'N', 'KF7' + rwy[2] + 'N'
+    sid(rwy, 'TAYM1' + x, [W(f2, '+4000'), W('K35283'), W('TAYMA')])
+    sid(rwy, 'EMUS1' + x, [W(f2, '+4000'), W('K35283'), ARC('K35252', K), W('EMUSA')])
+    sid(rwy, 'METL2' + x, [W(f7, '+4000'), ARC('D011G', K), W('METLA')])
+    sid(rwy, 'ROTE1' + x, [W(f7, '+4000'), ARC('D052G', K), W('ROTEL')])
+    sid(rwy, 'LADN2' + x, [W(f7, '+4000'), ARC('D074G', K), W('LADNA')])
+    sid(rwy, 'PUSR1' + x, [W(f7, '+4000'), W('PUSRA')])
+    sid(rwy, 'MIBR1' + x, [W(f7, '+4000'), W('KFA', '+4000'), W('MIBRA')])
+    sid(rwy, 'RYDA1' + x, [W(f7, '+4000'), W('KFA', '+4000'), W('RYDAN')])
+for rwy, x in [('16R', 'C'), ('16L', 'D')]:
+    fix('KF7' + rwy[2] + 'S', kdme(rwy, 7.0)); f7 = 'KF7' + rwy[2] + 'S'
+    sid(rwy, 'EMUS1' + x, [W(f7, '+4000'), ARC('D233G', K), W('EMUSA')])
+    sid(rwy, 'TAYM1' + x, [W(f7, '+4000'), ARC('D233G', K), W('K35249'), ARC('K35279', K), W('TAYMA')])
+    sid(rwy, 'LADN2' + x, [W(f7, '+4000'), ARC('D107G', K), W('LADNA')])
+    sid(rwy, 'ROTE1' + x, [W(f7, '+4000'), ARC('D085G', K), W('ROTEL')])
+    sid(rwy, 'METL2' + x, [W(f7, '+4000'), ARC('D044G', K), W('METLA')])
+    sid(rwy, 'PUSR1' + x, [W(f7, '+4000'), ARC('D044G', K), W('K26028'), ARC('K26329', K), W('PUSRA')])
+    sid(rwy, 'MIBR1' + x, [W(f7, '+4000'), ARC('D218G', K), W('MIBRA')])
+    sid(rwy, 'RYDA1' + x, [W(f7, '+4000'), W('RYDAN')])
+
+# ================= conventional SIDs (10-3 .. 10-3L): runway heading to a KFA DME, KFA DME arcs and radials =================
+def past(rwy, dme):
+    """runway heading until the KFA DME reads dme with the distance increasing (past the VOR abeam point)"""
+    o = a.thr(rwy); b = a.crs(rwy) + a.var; k = a.P('KFA'); prev = None
+    best = None
+    for i in range(1, 4000):
+        a.fx['_'] = o; q = frm('_', a.crs(rwy), i*0.01); d = gc(q, k)
+        if prev is not None and d > prev and abs(d - dme) < 0.006: best = q; break
+        prev = d
+    del a.fx['_']
+    if best is None: raise ValueError('no D%s past KFA on rwy %s' % (dme, rwy))
+    return best
+for n, r, d in [('F35283', 283, 35), ('F35252', 252, 35), ('F35249', 249, 35), ('F35279', 279, 35), ('F26028', 28, 26), ('F26329', 329, 26),
+                ('D074G', 74, 7), ('D011G', 11, 7), ('D052G', 52, 7), ('D233G', 233, 7), ('D107G', 107, 7), ('D044G', 44, 7), ('D085G', 85, 7), ('D218G', 218, 7)]:
+    fix(n, rad('KFA', r, d))
+for n, r, d in [('EMUSA', 249, 60), ('TAYMA', 283, 60), ('LADNA', 91, 32.4), ('METLA', 28, 31.2), ('ROTEL', 69, 33.1), ('PUSRA', 325, 60), ('MIBRA', 234, 60), ('RYDAN', 182, 46.3)]:
+    chk(n, rad('KFA', r, d))
+fix('KFA2L', past('34L', 2.0)); fix('KFA2R', past('34R', 2.0)); fix('KFA7L', past('34L', 7.0)); fix('KFA7R', past('34R', 7.0))
+fix('KFD7R', past('16R', 7.0)); fix('KFD7L', past('16L', 7.0))
+K_ = 'KFA'
+for rwy, x, d2, d7 in [('34L', 'A', 'KFA2L', 'KFA7L'), ('34R', 'B', 'KFA2R', 'KFA7R')]:
+    sid(rwy, 'EMUS1' + x, [W(d2, '+4000'), W('F35283'), ARC('F35252', K_), W('EMUSA')])
+    sid(rwy, 'TAYM1' + x, [W(d2, '+4000'), W('F35283'), W('TAYMA')])
+    sid(rwy, 'LADN2' + x, [W(d7, '+4000'), ARC('D074G', K_), W('LADNA')])
+    sid(rwy, 'METL2' + x, [W(d7, '+4000'), ARC('D011G', K_), W('METLA')])
+    sid(rwy, 'ROTE1' + x, [W(d7, '+4000'), ARC('D052G', K_), W('ROTEL')])
+    sid(rwy, 'PUSR1' + x, [W(d7, '+4000'), W('PUSRA')])
+    sid(rwy, 'MIBR1' + x, [W(d7, '+4000'), W('KFA', '+4000'), W('MIBRA')])
+    sid(rwy, 'RYDA1' + x, [W(d7, '+4000'), W('KFA', '+4000'), W('RYDAN')])
+for rwy, x, d7 in [('16R', 'C', 'KFD7R'), ('16L', 'D', 'KFD7L')]:
+    sid(rwy, 'EMUS1' + x, [W(d7, '+4000'), ARC('D233G', K_), W('EMUSA')])
+    sid(rwy, 'TAYM1' + x, [W(d7, '+4000'), ARC('D233G', K_), W('F35249'), ARC('F35279', K_), W('TAYMA')])
+    sid(rwy, 'LADN2' + x, [W(d7, '+4000'), ARC('D107G', K_), W('LADNA')])
+    sid(rwy, 'METL2' + x, [W(d7, '+4000'), ARC('D044G', K_), W('METLA')])
+    sid(rwy, 'ROTE1' + x, [W(d7, '+4000'), ARC('D085G', K_), W('ROTEL')])
+    sid(rwy, 'PUSR1' + x, [W(d7, '+4000'), ARC('D044G', K_), W('F26028'), ARC('F26329', K_), W('PUSRA')])
+    sid(rwy, 'MIBR1' + x, [W(d7, '+4000'), ARC('D218G', K_), W('MIBRA')])
+    sid(rwy, 'RYDA1' + x, [W(d7, '+4000'), W('RYDAN')])
+a.notes.append('KFA radial of the turn fixes: ' + ', '.join('%s R-%03d' % (n, round((brg(a.P('KFA'), a.P(n)) - a.var) % 360)) for n in ('KFA2L', 'KFA2R', 'KFA7L', 'KFA7R', 'KFD7R', 'KFD7L')))

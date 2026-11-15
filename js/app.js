@@ -26,7 +26,7 @@ $('#reset').addEventListener('click',()=>{const e=S.elec;S=freshState();S.elec=e
 let view='mcdu';
 document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>{view=b.dataset.v;
   document.querySelectorAll('.tab').forEach(x=>x.setAttribute('aria-selected',x===b));
-  $('#v-mcdu').classList.toggle('on',view==='mcdu');$('#v-3d').classList.toggle('on',view==='3d');
+  $('#v-mcdu').classList.toggle('on',view==='mcdu');$('#v-3d').classList.toggle('on',view==='3d');$('#v-ofp').classList.toggle('on',view==='ofp');if(view==='ofp')ofpRender();
   if(view==='3d')init3D().then(()=>window.__draw3D&&window.__draw3D());}));
 function openMcdu(side){$('#mslot').appendChild(mc);$('#mtitle').textContent=(side==='fo'?'First Officer':'Captain')+' MCDU'+(S.elec.ext?'':' · no AC power: set EXT PWR ON');
   mc.classList.toggle('off',!S.elec.ext);$('#modal').classList.add('on')}
