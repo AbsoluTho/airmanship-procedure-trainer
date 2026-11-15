@@ -4,7 +4,7 @@ An unofficial A320 **procedure** trainer that runs in the browser (iPad first). 
 
 Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator manuals. The navigation data was typed from charts for training only and must never be used for navigation.
 
-## Status: Phase 2 prototype (v0.16.0)
+## Status: Phase 2 prototype (v0.16.1)
 
 - **MCDU** (Thales FMS2 layout, per FCOM DSC-22): keyboard and scratchpad, INIT A, F-PLN with TMPY (ERASE/INSERT), LAT REV, DEPARTURE, AIRWAYS (with airway-to-airway intersection), ARRIVAL, waypoint insertion, CLR of waypoints and discontinuities.
 - **Exercise** OEJN to OETB: RWY 16C MIGD2E, L677 WEJ, V54 TBK, ILS 31 via D179O, ALTN OEMA, FL340, CI 20, with automatic progress checks.
@@ -12,6 +12,16 @@ Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator
 - **ND** (ROSE LS, ROSE VOR, ROSE NAV, ARC, PLAN; range 10 to 320 NM; CSTR, WPT, ARPT options; ROSE LS and ROSE VOR show the compass only for now): active F-PLN in green, TMPY in yellow dashed, missed approach in blue, alternate route in blue dashed, DME arcs and holds drawn. PLAN centres on the waypoint on the second line of the MCDU F-PLN page. Also live on both NDs in the 3D cockpit (EXT PWR on).
 - **INIT B**: TAXI, ZFW/ZFWCG, BLOCK, TRIP/TIME, RTE RSV, ALTN, FINAL, EXTRA, TOW/LW, TRIP WIND, MIN DEST FOB. **F-PLN** now shows TIME predictions and EFOB at destination once ZFW and BLOCK are entered.
 - **PERF TAKE OFF**: V1/VR/V2 (with V1/VR/V2 DISAGREE), F/S/O speeds, RWY, TO SHIFT, FLAPS/THS, FLEX, TRANS ALT, THR RED/ACC, ENG OUT ACC. Changing the takeoff runway clears the V speeds (CHECK TAKE OFF DATA).
+- **v0.16.1**:
+  - NAV capture (FBW LnavDriver): only the active leg can be captured; the capture zone grows with the intercept angle, from any side and at any angle (RADIAL IN from the left, base turns of 90° and more).
+  - SEC activated in flight brings the SEC approach and landing PERF, speed limit and descent winds (fuel and take-off data stay as flown); the legs already flown stay flown, so the departure route is not drawn again on a return.
+  - ND: one runway only, the departure runway until the departure is flown, then the runway of the approach.
+  - ILS and LOC approaches: the final approach fixes are placed on the extended runway centreline (straight final).
+  - LOC capture as the turn onto the course must begin, and tighter LOC tracking (established within about 2 NM of capture).
+  - EWD: REV amber while the reversers are in transit (2 s), then green; engine start: N2 on a grey background, AVAIL boxed for 3 s.
+  - FMA: mode boxes stay inside their column; no division line behind LAND, FLARE or ROLL OUT.
+  - F and S speeds from the FlyByWire NXSpeeds tables (by gross weight), in place of the earlier formula, until performance data is available.
+  - Approach phase managed speed: green dot clean, S flaps 1, F flaps 2, the higher of VAPP and F - 10 flaps 3, VAPP flaps FULL; VAPP as on PERF APPR (wind correction).
 - **Holds** (v0.16.0, FlyByWire HX leg and HoldEntryTransition): turn radius from the hold ground speed at 25° of bank, legs of 1 min (1.5 min above FL140) at that speed or the distance entered; entries by the FBW sectors: teardrop (30° to the holding side, turn in the hold direction, intercept), parallel (outbound on the non-holding side, turn back through the holding side, 45° intercept) or direct. The entry is drawn on the ND until the racetrack is reached. Managed speed in the hold: green dot clean (the configuration speed with flaps); after the exit, the speed of the phase (green dot clean in the approach phase).
 - **HOLD at PPOS** (v0.16.0, FCOM): in flight the FROM line (L1) opens LAT REV FROM PPOS; HOLD makes the present position the hold fix (inbound course the present track, right turns, 1 min); after the hold the F-PLN continues to the next waypoint.
 - **RADIAL IN fix** (v0.16.0): after INSERT the IN point is the FROM and the radial is drawn from the waypoint (the final course extended); the rebuild uses the sequencing area, and NAV engages only within 90° of the leg (not across the final the wrong way).

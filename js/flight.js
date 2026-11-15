@@ -53,8 +53,11 @@ function dirArc(p,ix){const l=p.legs[ix];if(l.trk==null)return[];
   return pts}
 const planSig=()=>{const p=S.active;return p?p.legs.map(l=>l.k+(l.id||'')+(l.rwy||'')+(l.k==='hold'?[l.crs,l.turn,l.time,l.dist].join(','):'')).join('|')+(p.appr||'')+(p.ofst?'|OFST'+p.ofst.side+p.ofst.nm:''):''};
 /* the active F-PLN changed in flight (DIR TO, ENABLE ALTN, new approach...): rebuild the path from the present position */
-function flightReplan(){const P=buildPath();FL.path=P;const pr=project(P,FL.pos,1,P.pts.length-1);FL.s=pr?pr.s:0;FL.seg=pr?pr.i:1;FL.fromIx=0;
-  {const ti=S.active.legs.reduce((a,l,i)=>l.k==='tp'?i:a,-1);if(ti>=0)FL.fromIx=ti}   /* after a DIR TO the T-P (or the RADIAL IN point) is the FROM */
+function flightReplan(){const P=buildPath();FL.path=P;
+  /* the FROM floor: after a DIR TO the T-P (or the RADIAL IN point); after a SEC activated in flight, the legs already flown */
+  let f0=0;{const ti=S.active.legs.reduce((a,l,i)=>l.k==='tp'?i:a,-1);if(ti>=0)f0=ti;const fl=S.active.flownIx;if(fl!=null&&fl>=0&&fl<S.active.legs.length)f0=Math.max(f0,fl)}
+  let i0=1;if(f0>0){let k=-1;P.pts.forEach((q,i)=>{if(q.ix!=null&&q.ix<=f0)k=i});if(k>=0)i0=Math.min(P.pts.length-1,k+1)}
+  const pr=project(P,FL.pos,i0,P.pts.length-1);FL.s=pr?pr.s:0;FL.seg=pr?pr.i:1;FL.fromIx=f0;
   /* sequencing area (FBW LnavDriver): the nearest part of the path counts only within 7 NM and 90 deg of it (RADIAL IN: the final course
      near the aircraft is not sequenced); otherwise the distance runs direct to the TO waypoint */
   if(pr&&!['NAV','RWY','RWY TRK','LOC*','LOC','LAND','ROLL OUT'].includes(FL.lat)&&!FL.ground){const a=P.pts,A=a[pr.i-1],B=a[pr.i],tae=Math.abs(((brg(A.p,B.p)-FL.trkT+540)%360)-180);
@@ -64,6 +67,14 @@ function posAt(P,s){const a=P.pts;let i=1;while(i<a.length-1&&a[i].s<s)i++;const
   return{pos:[A.p[0]+(B.p[0]-A.p[0])*f,A.p[1]+(B.p[1]-A.p[1])*f],trk:brg(A.p,B.p),i}}
 /* track angle error to the path segment of a projection (NAV engages only within 90 deg of the leg, not across it the wrong way) */
 const navTae=(P,pr)=>{const A=P.pts[pr.i-1],B=P.pts[pr.i];return A&&B?Math.abs(((brg(A.p,B.p)-FL.trkT+540)%360)-180):0};
+/* NAV capture from HDG/TRK (FBW LnavDriver computeNavCaptureCondition): only the active leg (FROM to TO) can be captured. Converging, the
+   capture zone grows with the intercept angle from the turn radius at 25 deg of bank (at least 0.3 NM); diverging, within two turn radii. */
+function navCapture(P){const a=P.pts,iT=a.findIndex(q=>q.ix!=null&&q.ix>FL.fromIx);if(iT<1)return false;let iF=0;for(let i=0;i<iT;i++)if(a[i].ix!=null&&a[i].ix<=FL.fromIx)iF=i;
+  const q=project(P,FL.pos,Math.max(1,iF+1),iT);if(!q)return false;const A=a[q.i-1],B=a[q.i],c=brg(A.p,B.p),e=enu(A.p,FL.pos);
+  const xte=e[0]*Math.cos(c*D2R)-e[1]*Math.sin(c*D2R),tae=((FL.trkT-c+540)%360)-180,v=Math.max(150,FL.tas)/1.94384,R=v*v/(9.81*Math.tan(25*D2R))/1852;
+  if(xte*tae>0)return q.d<2*R&&Math.abs(tae)<90;
+  /* our lateral law rolls in more gently than FBW's path law, so the lead is the full turn: radius x (1 - cos intercept angle) */
+  return q.d<Math.max(0.3,R*(1-Math.cos(Math.min(180,Math.abs(tae))*D2R))+0.2)}
 /* local flat projection around a point (NM) */
 function enu(o,p){return[(p[1]-o[1])*60*Math.cos(o[0]*D2R),(p[0]-o[0])*60]}
 /* closest point on the path: along-track distance and cross-track (+ right of track) */
@@ -89,6 +100,12 @@ const tasOf=(ias,alt)=>ias*(1+alt/1000*0.02);
 const iasOf=(tas,alt)=>tas/(1+alt/1000*0.02);
 const sos=alt=>661.47*Math.sqrt(Math.max(216.65,288.15-1.98*alt/1000)/288.15);
 function gwNowF(){return S.fuel.zfw+FL.fob}
+/* managed speed of the configuration set (approach phase, hold with flaps): green dot clean, S with flaps 1, F with flaps 2,
+   the higher of Vapp and F - 10 with flaps 3, Vapp with flaps FULL */
+/* VAPP as on PERF APPR: the pilot's entry, else VLS + 1/3 of the headwind on the landing runway (5 to 15 kt) */
+function vappNow(sp,p2){if(p2.vapp!=null)return p2.vapp;const a=S.active,dl=a&&a.legs[idxK(a,'dest')],ap=dl&&DB.apt[dl.id],r=ap&&ap.rwy[dl.rwy];
+  const hw=p2.wdir!=null&&r?Math.max(0,p2.wspd*Math.cos((p2.wdir-r.crs)*D2R)):0;return Math.round(sp.VLS)+Math.round(Math.min(15,Math.max(5,hw/3)))}
+function apprCfgSpd(sp,p2){const vapp=vappNow(sp,p2);return{'0':sp.GD,'1':sp.S,'1+F':sp.S,'2':sp.F,'3':Math.max(vapp,sp.F-10),FULL:vapp}[FL.conf]??sp.GD}
 function cfgSpeeds(){const w=gwNowF(),cs=charSpeeds(w);return{GD:cs.O,S:cs.S,F:cs.F,VLS:vls(w,S.p2.conf3)}}
 /* ground elevation: the airport nearer the aircraft (origin runway or destination runway) */
 function groundElev(){if(!FL.path)return elevO();const o=DB.apt[orig()],d=destRwy(),pos=FL.pos||o.pos;return gc(pos,o.pos)<gc(pos,d.r.pos)?(o.rwy[S.active.rwy].tdze??o.elev):d.tdze}
@@ -169,7 +186,7 @@ function goAround(){if(!FL.active||FL.ground||FL.stage!=='AIR'||!['APPR','DES'].
     const tp={k:'tp',id:'T-P',pos:FL.pos.slice(),seg:'ga'};
     p.legs=[...p.legs.slice(0,di),tp,...ga,{k:'disc'},...clone(arr),clone(p.legs[di]),...clone(map)]}
   S.phase='GA';S.apprArm=false;FL.thr='TO';FL.lvrT=null;FL.ver='SRS';FL.verArm=FCU.alt>FL.alt+250?['CLB']:[];FL.lat='GA TRK';FL.latArm=map.length?'NAV':null;FL.gaTrk=FL.trkT;
-  FL.gaSpd=Math.max(FL.ias,S.p2.vapp??cfgSpeeds().VLS+5);FL.loc=false;FL.gsCap=false;FCU.appr=false;FCU.loc=false;FL.ldgSeq=0;FL.tdReached=false;FL.gaT=FL.t;
+  FL.gaSpd=Math.max(FL.ias,vappNow(cfgSpeeds(),S.p2));FL.loc=false;FL.gsCap=false;FCU.appr=false;FCU.loc=false;FL.ldgSeq=0;FL.tdReached=false;FL.gaT=FL.t;
   FL.conf=FL.conf==='FULL'?'3':FL.conf==='3'?'1+F':FL.conf;if(FL.alt-groundElev()<5)FL.alt=groundElev()+5;
   flightReplan();setFma();refreshAll();return true}
 
@@ -261,10 +278,13 @@ function step(dt){const ias0=FL.ias;if(FL.sig!==planSig()&&!FL.ground)flightRepl
     /* ---- lateral ---- */
     /* takeoff: RWY on the ground, RWY TRK once airborne (NAV stays armed), NAV from 400 ft AAL */
     if(FL.lat==='RWY'&&agl()>30)FL.lat=FCU.hdgMgd||FL.latArm==='NAV'?'RWY TRK':(FCU.trkFpa?'TRK':'HDG');
-    if(FL.latArm==='NAV'&&pr&&pr.d<0.6&&navTae(P,pr)<90&&!(FL.lat==='GA TRK'&&agl()<100)&&FL.lat!=='RWY'&&!(FL.lat==='RWY TRK'&&agl()<400)){FL.lat='NAV';FL.latArm=null}
+    {const tko=FL.lat==='RWY TRK'||FL.lat==='GA TRK';
+      if(FL.latArm==='NAV'&&!(FL.lat==='GA TRK'&&agl()<100)&&FL.lat!=='RWY'&&!(FL.lat==='RWY TRK'&&agl()<400)&&(tko?pr&&pr.d<0.6&&navTae(P,pr)<90:navCapture(P))){FL.lat='NAV';FL.latArm=null}}
     const lg=hasLs()?locGeo(FL.pos):null,lsArmed=(FCU.loc||FCU.appr)&&lg;
     if(lsArmed&&!['LOC*','LOC','LAND'].includes(FL.lat)){if(FL.latArm!=='NAV')FL.latArm='LOC';
-      const hdif=Math.abs(((lg.crs-FL.trkT+540)%360)-180);if(lg.along>0.5&&lg.along<30&&Math.abs(lg.xtk)<1.2&&hdif<100){FL.lat='LOC*';FL.latArm=null;FL.loc=true}}
+      const hdif=Math.abs(((lg.crs-FL.trkT+540)%360)-180),v=Math.max(140,FL.tas)/1.94384,R=v*v/(9.81*Math.tan(25*D2R))/1852;
+      /* LOC capture as the turn onto the course must begin: the turn radius x (1 - cos intercept angle), from 0.25 NM to 1.5 NM off the course */
+      if(lg.along>0.5&&lg.along<30&&Math.abs(lg.xtk)<Math.min(1.5,Math.max(0.25,R*(1-Math.cos(Math.min(100,hdif)*D2R))+0.15))&&hdif<100){FL.lat='LOC*';FL.latArm=null;FL.loc=true}}
     if(!lsArmed&&FL.latArm==='LOC')FL.latArm=null;
     if(FL.lat==='LOC*'&&lg&&Math.abs(lg.xtk)<0.08&&Math.abs(((lg.crs-FL.trkT+540)%360)-180)<4)FL.lat='LOC';
     const vr=DB.apt[orig()].var||3,L=Math.max(0.8,Math.min(4,FL.gs*30/3600));
@@ -272,7 +292,7 @@ function step(dt){const ias0=FL.ias;if(FL.sig!==planSig()&&!FL.ground)flightRepl
     else if(FL.lat==='NAV'){if(FL.s>=P.len-0.05){FL.lat='HDG';FCU.hdgMgd=false;FCU.hdg=Math.round((FL.trkT-vr+360)%360)||360}else trkT=brg(FL.pos,posAt(P,Math.min(P.len,FL.s+L)).pos)}
     else if(FL.lat==='HDG'||FL.lat==='TRK')trkT=(FCU.hdg??Math.round(FL.trkT-vr))+vr;
     else if(FL.lat==='GA TRK')trkT=FL.gaTrk;
-    else if(['LOC*','LOC','LAND'].includes(FL.lat)&&lg){const d=destRwy(),tgt=dst(d.r.pos,lg.crs+180,Math.max(-2,lg.along-L));trkT=brg(FL.pos,tgt)}
+    else if(['LOC*','LOC','LAND'].includes(FL.lat)&&lg){const d=destRwy(),Ll=Math.max(0.5,Math.min(2,FL.gs*12/3600)),tgt=dst(d.r.pos,lg.crs+180,Math.max(-2,lg.along-Ll));trkT=brg(FL.pos,tgt)}   /* tighter than NAV: 12 s ahead on the course */
     /* ---- vertical ---- */
     const capBand=Math.max(80,Math.abs(FL.vs)*0.12),CK=cstrNow();FL.cst=CK;
     const gp=!FL.ground&&(['TAKEOFF','CLB','GA'].includes(S.phase)||CLIMBING.includes(FL.ver)||FL.ver==='SRS')?1-0.5*(FL.gearPos??1):1;FL.gp=gp;   /* gear drag follows the gear position: half rate down, full rate up and locked, gradual in transit */   /* gear left down in the climb: half the climb rate and acceleration */
@@ -335,11 +355,11 @@ function step(dt){const ias0=FL.ias;if(FL.sig!==planSig()&&!FL.ground)flightRepl
         else if(S.phase==='DES'){const em=iasOf(0.80*sos(FL.alt),FL.alt),v=FL.ver==='EXP DES'?340:FL.alt<dl.alt+1000?dl.spd:mgd.des();
           mm=FL.ver==='EXP DES'?em<340:mmo<v;spdT=FL.ver==='EXP DES'?Math.min(340,em):Math.min(v,mmo)}
         else if(S.phase==='GA')spdT=sp.GD;
-        else if(S.phase==='APPR'){const vapp=p2.vapp??sp.VLS+5;spdT={'0':sp.GD,'1':sp.S,'1+F':sp.S,'2':sp.F,'3':Math.max(vapp,sp.F-10),FULL:vapp}[FL.conf]??sp.GD}}   /* the speed of the configuration actually set */
+        else if(S.phase==='APPR')spdT=apprCfgSpd(sp,p2)}   /* the speed of the configuration actually set */
       /* managed speed in a hold: the hold speed, from the deceleration point before its fix */
       /* clean: green dot (hold speed); flaps extended: the speed of the configuration. After the exit the speed of the phase comes back
          (in the approach phase, green dot clean) */
-      {const vapp=p2.vapp??sp.VLS+5,hs=FL.conf==='0'?holdSpd():({'1':sp.S,'1+F':sp.S,'2':sp.F,'3':Math.max(vapp,sp.F-10),FULL:vapp}[FL.conf]??sp.GD);
+      {const hs=FL.conf==='0'?holdSpd():apprCfgSpd(sp,p2);
         const nh=(P.holds||[]).find(h=>FL.holdExit!==h.ix&&h.s1>FL.s);if(nh&&(FL.inHold===nh.ix||FL.s>=nh.sE-0.05||nh.sE-FL.s<=Math.max(0,FL.ias-hs)*0.07+2)){FL.hsActive=nh.ix;if(FCU.spdMgd||FCU.spd==null){spdT=Math.min(spdT,hs);mm=false}}else FL.hsActive=null}
       /* engine out (FMGC EO condition): managed speed green dot in climb and cruise */
       if(FL.eoEng&&S.eo&&(FCU.spdMgd||FCU.spd==null)&&['CLB','CRZ'].includes(S.phase)){spdT=sp.GD;mm=false}

@@ -66,6 +66,7 @@ function drawEWD(c){const D=ecCtx(c,76,82,522,510),{g,T,L,R}=D,E=engStep(),q=S.p
   const pol=(cx,cy,r,a)=>[cx+Math.cos(a)*r,cy-Math.sin(a)*r];
   /* N1: arc from idle (lower left) to 110 %, red above 100 %, amber N1 limit, cyan thrust lever, green needle, readout box */
   const n1a=v=>(215-Math.max(0,Math.min(110,v))/100*190)*Math.PI/180;
+  const rev=on&&/^REV/.test(LV.thr||'');if(rev&&EC.revT==null)EC.revT=FL.t;if(!rev)EC.revT=null;
   [222,432].forEach((cx,i)=>{const cy=150,r=43,n=E[i].n1;
     g.strokeStyle=EC_C.w;g.lineWidth=2.4;g.beginPath();g.arc(cx,cy,r,-n1a(0),-n1a(100));g.stroke();
     g.strokeStyle=EC_C.r;g.lineWidth=3.5;g.beginPath();g.arc(cx,cy,r,-n1a(100),-n1a(110));g.stroke();
@@ -74,7 +75,11 @@ function drawEWD(c){const D=ecCtx(c,76,82,522,510),{g,T,L,R}=D,E=engStep(),q=S.p
     g.strokeStyle=EC_C.b;g.lineWidth=2;g.beginPath();g.arc(...pol(cx,cy,r,n1a(tla)),3.5,0,7);g.stroke();
     L([pol(cx,cy,4,n1a(n)),pol(cx,cy,r-2,n1a(n))],'g',3.2);
     g.fillStyle='#000';g.fillRect(cx-11,cy+5,64,22);R(cx-11,cy+5,64,22,'#7d8296',1.6);
-    const t=(Math.floor(n*10)/10).toFixed(1);T(t.slice(0,-1),cx+40,cy+17,'g',19,'right');T(t.slice(-1),cx+41,cy+18,'g',14)});
+    const t=(Math.floor(n*10)/10).toFixed(1);T(t.slice(0,-1),cx+40,cy+17,'g',19,'right');T(t.slice(-1),cx+41,cy+18,'g',14);
+    /* engine start: AVAIL boxed in green for 3 s once the engine is stabilised */
+    if(E[i].avail){g.fillStyle='#000';g.fillRect(cx-30,cy-27,60,21);R(cx-30,cy-27,60,21,EC_C.g,1.8);T('AVAIL',cx,cy-16,'g',16,'center')}
+    /* reverser: REV amber while in transit (about 2 s), then green when deployed */
+    if(rev){const tr=EC.revT!=null&&FL.t-EC.revT<2,c=tr?'a':'g';g.fillStyle='#000';g.fillRect(cx-22,cy-27,44,21);R(cx-22,cy-27,44,21,EC_C[c],1.8);T('REV',cx,cy-16,c,16,'center')}});
   T('N1',330,152,'w',18,'center');T('%',330,170,'b',15,'center');
   /* EGT */
   const ea=v=>(180-Math.max(0,Math.min(1100,v))/1100*180)*Math.PI/180;
@@ -83,7 +88,7 @@ function drawEWD(c){const D=ecCtx(c,76,82,522,510),{g,T,L,R}=D,E=engStep(),q=S.p
     L([pol(cx,cy,r*0.55,ea(v)),pol(cx,cy,r-1,ea(v))],'g',3.2);g.fillStyle='#000';g.fillRect(cx-22,cy-11,47,22);R(cx-22,cy-11,47,22,'#7d8296',1.6);T(String(Math.round(v/5)*5),cx+21,cy+1,'g',19,'right')});
   T('EGT',330,220,'w',18,'center');T('°C',330,238,'b',15,'center');
   /* N2 and FF with the slanted label lines */
-  [[0,247],[1,457]].forEach(([i,x])=>{const n2=E[i].n2.toFixed(1);T(n2.slice(0,-1),x-9,287,'g',19,'right');T(n2.slice(-1),x-8,288,'g',14);T(String(Math.round(E[i].ff/10)*10),x+5,334,'g',19,'right')});
+  [[0,247],[1,457]].forEach(([i,x])=>{const n2=E[i].n2.toFixed(1);if(E[i].st==='start'){g.fillStyle='#4d525e';g.fillRect(x-50,273,56,22)}   /* N2 on a grey background during the start */T(n2.slice(0,-1),x-9,287,'g',19,'right');T(n2.slice(-1),x-8,288,'g',14);T(String(Math.round(E[i].ff/10)*10),x+5,334,'g',19,'right')});
   T('N2',330,276,'w',18,'center');T('%',330,294,'b',15,'center');L([[281,289],[311,281]],'w',1.8);L([[350,281],[380,289]],'w',1.8);
   T('FF',330,323,'w',18,'center');T('KG/H',330,341,'b',15,'center');L([[281,337],[311,329]],'w',1.8);L([[350,329],[380,337]],'w',1.8);
   /* thrust limit */

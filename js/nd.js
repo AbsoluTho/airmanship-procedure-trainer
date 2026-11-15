@@ -33,7 +33,7 @@ function planGeo(p,base,from){const G={lines:[],wpts:[],rwys:[]};let prev=null,v
   p.legs.forEach((l,ix)=>{const col=l.seg==='map'?'b':base;
     if(l.k==='orig'||l.k==='dest'){const ap=DB.apt[l.id],r=l.rwy&&ap.rwy[l.rwy],pos=r?r.pos:ap.pos;vr=ap.var||0;
       if(l.k==='dest'&&prev)G.lines.push({pts:[prev,pos],col,ix});
-      G.rwys.push({id:l.id,rwy:l.rwy,pos,crsT:r?r.crs+vr:null,len:r?r.len/1852:0});prev=pos;return}
+      G.rwys.push({k:l.k,id:l.id,rwy:l.rwy,pos,crsT:r?r.crs+vr:null,len:r?r.len/1852:0});prev=pos;return}
     if(l.k==='wpt'){const pos=DB.wpt[l.id];if(!pos){prev=null;return}
       if(prev)G.lines.push({pts:l.lbl==='ARC'&&l.ctr&&DB.wpt[l.ctr]?arcPts(prev,pos,DB.wpt[l.ctr]):[prev,pos],col,ix});
       G.wpts.push({id:l.id,pos,col,alt:l.alt,spd:l.spd,ix});prev=pos;return}
@@ -85,7 +85,10 @@ function drawND(g,W,H,powered){g.save();g.setTransform(1,0,0,1,0,0);g.fillStyle=
   for(const[pl,c]of[[A,'g'],[T,'y']]){if(!pl||!pl.ofst)continue;let Pp=null;try{Pp=pl===A&&flying()&&FL.path?FL.path:buildPath(pl)}catch(e){}
     if(Pp&&Pp.ofstStart!=null){const seg=Pp.pts.filter(q=>q.s>=Pp.ofstStart-0.01&&q.s<=Pp.ofstEnd+0.01).map(q=>q.p);if(seg.length>1)line(seg,c,c==='y'?[16,10]:null)}}
   if(typeof ndFixInfo==='function')ndFixInfo(g,pj,V);
-  for(const[G]of geos)for(const r of G.rwys){const[x1,y1]=pj(r.pos);
+  /* one runway only: the departure runway until the departure is flown, then the runway of the approach (FBW) */
+  const useDest=flying()&&(FL.ground?['ROLLOUT','STOP'].includes(FL.stage):(['CRZ','DES','APPR','GA','DONE'].includes(S.phase)||(A&&FL.fromIx>=A.legs.reduce((m,l,i)=>l.seg==='dep'||l.k==='orig'?i:m,0))));
+  const rws=geos.length?geos[0][0].rwys.filter(r=>r.k===(useDest?'dest':'orig')):[];
+  for(const r of rws){const[x1,y1]=pj(r.pos);
     if(r.crsT!=null){let[x2,y2]=pj(dst(r.pos,r.crsT,r.len));let dx=x2-x1,dy=y2-y1,L=Math.hypot(dx,dy);
       if(L<16){const k=16/Math.max(L,1e-3);dx*=k;dy*=k;L=16}
       const nx=-dy/L*4,ny=dx/L*4;g.strokeStyle=NC.w;g.lineWidth=2.5;g.beginPath();

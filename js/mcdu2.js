@@ -225,6 +225,11 @@ P.PERFGA={render(){const q=S.p2,pr=predict(),cs=pr?charSpeeds(pr.lw):null;cput(1
 {const lsk0=P.PERFTO.lsk;P.PERFTO.lsk=function(s,n){if(s+n==='R6')return go('PERFCLB');return lsk0.call(this,s,n)}}
 const PERF_OF={PREFLIGHT:'PERFTO',TAKEOFF:'PERFTO',CLB:'PERFCLB',CRZ:'PERFCRZ',DES:'PERFDES',APPR:'PERFAPPR',GA:'PERFGA',DONE:'PERFTO'};
 
+/* SEC activated in flight: the legs it shares with the active F-PLN up to the FROM waypoint are already flown (the departure route is not
+   flown again and is erased from the ND) */
+function secFlown(A,B){const f=A.legs[FL.fromIx];if(!f)return -1;let best=-1;
+  for(let j=0;j<B.legs.length;j++){const l=B.legs[j];if(l.k===f.k&&l.id===f.id&&(best<0||Math.abs(j-FL.fromIx)<Math.abs(best-FL.fromIx)))best=j}
+  if(best<0){for(let j=0;j<B.legs.length;j++){const l=B.legs[j];if(l.seg==='dep'||l.k==='orig')best=j}}return best}
 /* ---------- SEC INDEX and SEC F-PLN ---------- */
 P.SECIDX={render(){cput(1,'SEC INDEX');put(3,0,'{COPY ACTIVE','b');rput(3,'INIT>');put(5,0,'<SEC F-PLN');rput(5,'PERF>');
   if(S.sec){put(7,0,'*DELETE SEC','b');put(9,0,'*ACTIVATE SEC','b');put(13,0,'*SWAP ACTIVE','b')}},
@@ -232,8 +237,8 @@ P.SECIDX={render(){cput(1,'SEC INDEX');put(3,0,'{COPY ACTIVE','b');rput(3,'INIT>
   if(k==='L1'){if(!S.active)return err('NOT ALLOWED');S.sec=clone(S.active);S.secOff=0;return}
   if(k==='L2'){if(!S.sec)return err('NOT ALLOWED');S.secMode=true;S.fpOffMain=S.fpOff;S.fpOff=S.secOff||0;return go('FPLN')}
   if(k==='L3'&&S.sec){S.sec=null;return}
-  if(k==='L4'&&S.sec){S.active=S.sec;S.sec=null;S.tmpy=null;S.fpOff=0;if(flying())FCU.hdgMgd=true;return}   /* in flight too: immediate return or diversion (path rebuilt from the present position) */
-  if(k==='L6'&&S.sec){const a=S.active;S.active=S.sec;S.sec=a;S.tmpy=null;S.fpOff=0;return}
+  if(k==='L4'&&S.sec){if(flying()&&!FL.ground)S.sec.flownIx=secFlown(S.active,S.sec);S.active=S.sec;S.sec=null;S.tmpy=null;S.fpOff=0;if(flying())FCU.hdgMgd=true;return}   /* in flight too: immediate return or diversion (path rebuilt from the present position) */   /* in flight too: immediate return or diversion (path rebuilt from the present position) */
+  if(k==='L6'&&S.sec){const a=S.active;if(flying()&&!FL.ground)S.sec.flownIx=secFlown(a,S.sec);S.active=S.sec;S.sec=a;S.tmpy=null;S.fpOff=0;return}
   return err('NOT IN PROTOTYPE')}};
 /* ---------- FUEL PRED ---------- */
 P.FUELPRED={render(){const f=S.fuel,pr=predict(),d=destId(),al=I().altn,D='---.-',T='----';

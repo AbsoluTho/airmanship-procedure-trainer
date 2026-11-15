@@ -222,6 +222,8 @@ async def run(url,b):
     assert th==[['1/UP0.4','2/UP0.4','2/DN1.2','3/UP0.4'],False,True],f'THS formats; V speeds not required for START (computed when blank): {th}'
     pf=await pg.evaluate("(()=>{const fd=EFIS.fd;EFIS.fd=true;drawPFD2D();const ok=!flying()&&S.fuel.zfw!=null;EFIS.fd=fd;return ok})()")
     assert pf,'pre-flight FMA conditions (INIT B, FD)'
+    cs=await pg.evaluate("[50,60,66,70,75].map(w=>{const c=charSpeeds(w);return[c.F,c.S,c.O]})")
+    assert cs==[[131,169,185],[144,186,205],[150,194,217],[155,200,225],[160,207,235]],f'F, S, green dot from the FBW tables: {cs}'
     vs=await pg.evaluate("(()=>{const o=[];const v0=[FL.ver,FCU.vsVal,FL.stage,FCU.ap1];FL.stage='AIR';FCU.ap1=true;for(const v of[1500,-500,0]){FL.ver='V/S';FCU.vsVal=v;setFma();o.push(FL.fma.c2[0][0])}[FL.ver,FCU.vsVal,FL.stage,FCU.ap1]=v0;setFma();return o})()")
     assert vs==['V/S +1500','V/S -500','V/S 0'],f'FMA V/S value: {vs}'
     ch=await pg.evaluate("""(()=>{const A0=clone(S.active);S.tmpy=null;S.page='FPLN';S.fpOff=fplnRows(S.active).findIndex(r=>r.k==='dest');press('L1');press('R1');const l1=S.arr.list;
@@ -273,6 +275,21 @@ async def run(url,b):
     assert pp==[True,'HOLD','PPOS HOLD R PUSPO',179,'R',1,['PARALLEL','TEARDROP','DIRECT','TEARDROP']],f'L1 in flight: LAT REV FROM PPOS, HOLD at the present position (track, right, 1 min); hold entries (FBW sectors): {pp}'
     hg=await pg.evaluate("(()=>{const v=FL.active;FL.active=false;const r=[holdR(null),holdLen(null),holdLen({time:1.5}),holdLen({dist:6})];FL.active=v;return r.map(x=>Math.round(x*10)/10)})()")
     assert 1.2<=hg[0]<=1.6 and 3.3<=hg[1]<=3.8 and abs(hg[2]-1.5*hg[1])<0.2 and hg[3]==6,f'hold: 25 deg bank radius, 1 min legs at the hold speed, distance entered: {hg}'
+    sc=await pg.evaluate("""(()=>{const A0=clone(S.active),Q0=clone(S.p2),sec0=S.sec,ph=S.phase,fa=FL.active,fg=FL.ground;S.sec=null;S.phase='DES';FL.active=true;FL.ground=false;S.page='SECIDX';press('L1');press('R2');
+      const pgn=S.page;S.page='SECPERFAPPR';S.sp='1005';P.SECPERFAPPR.lsk('L',1);const act=S.p2.qnh,sec=S.sec.data.p2.qnh;
+      S.page='SECIDX';press('L4');const after=S.p2.qnh;S.active=A0;S.p2=Q0;S.sec=sec0;S.phase=ph;FL.active=fa;FL.ground=fg;return[pgn,act,sec,after]})()""")
+    assert sc[0]=='SECPERFDES' and sc[1]!=1005 and sc[2]==1005 and sc[3]==1005,f'SEC PERF in flight: its own APPR data, made active with ACTIVATE SEC: {sc}'
+    vs=await pg.evaluate("""(()=>{const c0=FL.conf,sp={GD:210,S:180,F:150,VLS:130},o={};for(const c of ['0','1','2','3','FULL']){FL.conf=c;o[c]=apprCfgSpd(sp,{vapp:136,conf3:false})}FL.conf='3';o.c3=apprCfgSpd(sp,{vapp:136,conf3:true});FL.conf=c0;return o})()""")
+    assert vs=={'0':210,'1':180,'2':150,'3':140,'FULL':136,'c3':140},f'approach phase speed by configuration (GD, S, F, max(VAPP, F-10), VAPP): {vs}'
+    al=await pg.evaluate("""(()=>{let m=0;for(const[a,x]of Object.entries(APPRS))for(const y of Object.values(x)){if(!y||!/^(ILS|LOC)/.test(y.type||''))continue;const ap=DB.apt[a],r=ap.rwy[y.rwy],cT=r.crs+(ap.var||0);
+      for(const l of y.final||[]){const P=DB.wpt[l.id];if(!P)continue;const d=gc(r.pos,P),b=brg(r.pos,P);m=Math.max(m,Math.abs(d*Math.sin((b-cT)*D2R)))}}return m})()""")
+    assert al<0.005,f'ILS/LOC final approach fixes on the extended runway centreline: {al}'
+    sf=await pg.evaluate("""(()=>{const fi=FL.fromIx;const A={legs:[{k:'orig',id:'OEJN'},{k:'ca',id:'(426)',seg:'dep'},{k:'wpt',id:'JN254',seg:'dep'},{k:'wpt',id:'JN276',seg:'dep'},{k:'dest',id:'OETB'}]};
+      const B={legs:[{k:'orig',id:'OEJN'},{k:'ca',id:'(426)',seg:'dep'},{k:'wpt',id:'JN254',seg:'dep'},{k:'disc'},{k:'wpt',id:'SOLOG'},{k:'dest',id:'OEJN'}]};FL.fromIx=2;const r=[secFlown(A,B)];
+      const C={legs:[{k:'orig',id:'OEJN'},{k:'ca',id:'(426)',seg:'dep'},{k:'wpt',id:'OTHER',seg:'dep'},{k:'wpt',id:'SOLOG'},{k:'dest',id:'OEJN'}]};r.push(secFlown(A,C));FL.fromIx=fi;return r})()""")
+    assert sf==[2,2],f'SEC activated in flight: the legs already flown stay flown (departure route erased): {sf}'
+    es=await pg.evaluate("(()=>{const e=ENG.e[0],s0=Object.assign({},e);Object.assign(e,{st:'start',n1:5,n2:30,egt:300,ff:300});const a=engStep()[0].st;Object.assign(e,s0,{st:'run',avT:performance.now()});const b=engStep()[0].avail;e.avT=performance.now()-4000;const c=engStep()[0].avail;Object.assign(e,s0);return[a,b,c]})()")
+    assert es==['start',True,False],f'engine start: N2 grey box while starting, AVAIL for 3 s: {es}'
     fk=await pg.evaluate("(()=>{S.page='FPLN';S.fpOff=6;press('FPLN');return S.fpOff})()")
     assert fk==0,f'F-PLN key shows the F-PLN from the top: {fk}'
     h2=await pg.evaluate("(()=>{const L=window.__S().active.legs,i=L.findIndex(l=>l.k==='hold');return[L[i+1].k+':'+L[i+1].id,L[i+2].k]})()")

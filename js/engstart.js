@@ -18,13 +18,13 @@ function engTick(dt){const amb=typeof satC==='function'?satC():25;let busy=false
       const lit=e.n2>=16;e.ff=lit?Math.min(IDLE_E.ff,250+(e.n2-16)):0;
       e.n1=lit?Math.pow(Math.max(0,(e.n2-16)/(IDLE_E.n2-16)),1.3)*IDLE_E.n1:e.n2*0.05;
       const tg=!lit?amb:e.n2<40?640:IDLE_E.egt+(IDLE_E.n2-e.n2)*12;e.egt+=Math.max(-25*dt,Math.min(25*dt,tg-e.egt));
-      if(e.n2>=IDLE_E.n2-0.05&&Math.abs(e.egt-IDLE_E.egt)<3){Object.assign(e,IDLE_E);e.st='run'}busy=true}
+      if(e.n2>=IDLE_E.n2-0.05&&Math.abs(e.egt-IDLE_E.egt)<3){Object.assign(e,IDLE_E);e.st='run';e.avT=performance.now()}busy=true}   /* AVAIL shown for 3 s */
     else if(e.st==='stop'){e.ff=0;e.n2=Math.max(0,e.n2-1.5*dt);e.n1=Math.max(0,e.n1-0.8*dt);e.egt=Math.max(amb,e.egt-8*dt);
       if(e.n2<=0&&e.n1<=0&&e.egt<=amb+0.5){engInit(i,false)}busy=true}});
   return busy}
 /* ECAM values: on the ground before the flight, from the start model */
 {const es0=engStep;engStep=function(){if(flying())return es0();const amb=typeof satC==='function'?satC():25;
-  return ENG.e.map((e,i)=>({n1:e.n1+(engRun(i)&&i?0.2:0),n2:e.n2+(engRun(i)&&i?0.3:0),egt:Math.round(e.egt)+(engRun(i)&&i?6:0),ff:e.ff,fail:e.st!=='run',off:e.st==='off'}))}}
+  return ENG.e.map((e,i)=>({n1:e.n1+(engRun(i)&&i?0.2:0),n2:e.n2+(engRun(i)&&i?0.3:0),egt:Math.round(e.egt)+(engRun(i)&&i?6:0),ff:e.ff,fail:e.st!=='run',off:e.st==='off',st:e.st,avail:e.avT!=null&&performance.now()-e.avT<3000}))}}
 /* the flight starts with both engines running; after RESET the engines keep running */
 {const fs0=flightStart;flightStart=function(){const r=fs0();if(!r.length){engInit(0,true);engInit(1,true);LV.m1=LV.m2=true}return r}}
 function engMode(v){if(!['CRANK','NORM','IGN'].includes(v))return;ENG.mode=v;if(typeof refreshAll==='function')refreshAll()}
