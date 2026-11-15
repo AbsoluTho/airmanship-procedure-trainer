@@ -39,10 +39,10 @@ function ofpDetail(o){const R=ofpRte(o),r=R&&R.r,f=Object.assign({},o.fuel),m=o.
   '</ul>'+ofpLogTable(o.log,true),true)+
   o.altn.map((a,n)=>ofpSec('alt'+n,'Route to alternate '+a.id,'<ul class="okv">'+kv('ROUTE',escH(a.route))+kv('LEVEL',a.fl?'FL'+a.fl:'')+kv('DISTANCE',a.dist+' NM')+kv('FUEL',a.fuel?t1(a.fuel):'',a.fuel?a.fuel+' kg':'')+
     kv('MCDU',a.id===mcduAlt?'ALTN F-PLN of the company route':'enter on the ALTN F-PLN','after END OF F-PLN: type each waypoint on the line, or open ALTN AIRWAYS with the line key')+'</ul>'+ofpLogTable(a.log,true),true)).join('')+
-  ofpSec('winds','Winds','<ul class="okv">'+kv('SIMULATOR',flown?'flying these winds':WX.on?'flown when this city pair is the active F-PLN':'OFP winds off','<button type="button" class="btn sm" data-ofp-wx>'+(WX.on?'Turn the OFP winds off':'Turn the OFP winds on')+'</button>')+
+  ofpSec('winds','Winds','<ul class="okv">'+kv('SIMULATOR',flown?'flying these winds':WX.on?'flown when this city pair is the active F-PLN':'winds off','<button type="button" class="btn sm" data-ofp-wx>'+(WX.on?'Turn simulator winds off':'Turn simulator winds on')+'</button>')+
     kv('MCDU','WIND REQUEST','CLIMB, CRUISE and DESCENT WIND pages: the uplink fills the forecast from this OFP')+'</ul>'+
     '<h3>Climb</h3><div class="otw">'+tb(w.clb)+'</div><h3>Descent</h3><div class="otw">'+tb(w.des)+'</div>'+lvl+
-    '<div class="note"><span class="tag">NOTE</span><span>True direction / knots. The cruise wind at each waypoint is in the route table above. Below 1500 ft above the airfield the wind fades to calm on the runway.</span></div>',true)+
+    '<div class="note"><span class="tag">NOTE</span><span>True direction / knots. The cruise wind at each waypoint is in the route table above. Each flight gets a steady random surface wind below 20 kt through 1500 ft above the airfield. It blends into the OFP wind by 3000 ft.</span></div>',true)+
   '</div>'}
 function ofpRender(){const el=$('#ofpView');if(!el||typeof OFPS==='undefined')return;const o=OV.flt&&ofpOf(OV.flt);try{el.innerHTML=o?ofpDetail(o):ofpList()}catch(e){el.innerHTML='<div class="ofp-head"><button type="button" class="btn sm" data-ofp-back>← Flights</button><h2>'+(o?o.from+' - '+o.to:'')+'</h2><p>This flight plan could not be shown: '+escH(e.message)+'</p></div>'}}
 function ofpKeep(){try{localStorage.setItem('airmanship.ofp.sections',JSON.stringify(OV.shut))}catch(e){}}
