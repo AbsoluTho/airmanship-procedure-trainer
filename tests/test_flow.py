@@ -63,6 +63,8 @@ async def run(url,b):
       return[Object.keys(STARS.OEDF).length,Object.keys(APPRS.OEDF).length,Object.values(SIDS.OEDF).reduce((n,x)=>n+Object.keys(x).length,0),APPRS.OEDF.ILS16L.nav+APPRS.OEDF.ILS16L.freq,
         p.legs.filter(l=>l.seg==='arr'||l.k==='dest').map(l=>l.id).join(' '),+gc(DB.wpt.LOSAX,DB.nav.KFA.pos).toFixed(1)]})()""")
     assert dm==[14,11,32,'IMBF111.7','MIBRA LOSAX D170N CF34L SIDGO OEDF',14.0],f'Dammam procedures: {dm}'
+    rk=await pg.evaluate("[Object.keys(APPRS.OERK).sort().join(),APPRS.OERK.ILS33LY.nav+APPRS.OERK.ILS33LY.freq,APPRS.OERK.RNP15R.missed[0].id]")
+    assert rk==['ILS15LY,ILS15RY,ILS33LY,ILS33RY,RNP15L,RNP15R,RNP33L,RNP33R','IFAT110.1','RK603'],f'Riyadh approaches: {rk}'
     # VERT REV at the origin (1R: CLB SPD LIM) and at the destination (6R: DES SPD LIM)
     await k('R1');x=await scr();assert 'VERT REV AT OEJN' in x and 'CLB SPD LIM' in x and 'SPD CSTR' not in x,('VERT REV at the origin',x)
     await t('250/FL120');await k('L2');assert await pg.evaluate('JSON.stringify(window.__S().spdLim.clb)')=='{"spd":250,"alt":12000}','CLB SPD LIM entry'

@@ -1,5 +1,5 @@
-# OERK Riyadh / King Khalid. Jeppesen 11-.. ILS Y Rwy 15L, 15R, 33L, 33R (RNAV transitions). First part only:
-# the ILS Z, RNP and VOR approaches, the STARs and the SIDs are not entered yet.
+# OERK Riyadh / King Khalid. Jeppesen ILS Y and RNP Rwy 15L, 15R, 33L, 33R (RNAV transitions), RNAV STARs.
+# Not entered yet: ILS Z and VOR approaches, conventional STARs (1B, 1C) and the SIDs.
 AP = Apt('OERK', var=3.2)          # runway 147/327 magnetic on a true bearing of 150.2
 a = AP
 a.rcrs.update({'15L': 147, '15R': 147, '33L': 327, '33R': 327})
@@ -12,15 +12,17 @@ fix('RK621', to('LONUD', 135, 7.2)); fix('RK721', to('LONUD', 147, 7.0))
 a.chk('RK621', to('ALPUR', 147, 7.1)); a.chk('RK721', to('ALPUR', 159, 7.1))
 fix('RK413', to('LOPAK', 300, 3.3)); fix('RK517', to('LOPAK', 327, 6.8))
 a.chk('RK413', to('ORMAT', 327, 3.0)); a.chk('RK517', to('ORMAT', 339, 7.1))
-# missed approach fixes. Published: the tracks and the distances 7.0, 9.9, 11.1 and 9.3. The other positions (RK703, RK769, RK612, RK503,
-# RK526, RK533, ORBON) are measured on the chart drawing with the chart's own scale, to about 0.5 NM.
-fix('RK703', dep('15L', 0.5)); fix('RK769', frm('RK703', 2, 11.9)); fix('RK762', frm('RK769', 327, 7.0)); fix('MEPTU', frm('RK762', 12, 9.9))
+# missed approach fixes (RNP charts: the turn points 3.0 NM past the threshold; tracks and distances as published).
+# RK769, RK612 and ORBON have no published distance: measured on the chart drawing with the chart's own scale, to about 0.5 NM.
+for r, n in [('15L', 'RK703'), ('15R', 'RK603'), ('33L', 'RK503'), ('33R', 'RK533')]: fix(n, dep(r, 3.0 - a.a['rwy'][r]['len']/1852))
+fix('RK769', frm('RK703', 2, 11.9)); fix('RK762', frm('RK769', 327, 7.0)); fix('MEPTU', frm('RK762', 12, 9.9))
 fix('RK612', frm('ALPUR', 197, 7.0)); fix('RK655', frm('RK612', 320, 11.1)); fix('PEDIR', frm('RK655', 327, 7.0))
-fix('RK503', dep('33L', 1.3)); fix('RK526', frm('RK503', 243, 13.9)); fix('ORLUD', frm('RK526', 188, 9.3))
-fix('RK533', dep('33R', 1.0)); fix('ORBON', frm('RK533', 76, 16.0))
+fix('RK526', frm('RK503', 243, 13.9)); fix('ORLUD', frm('RK526', 188, 9.3)); fix('ORBON', frm('RK533', 76, 16.0))
 d_ = lambda c, t: {'lbl': 'C%03d°' % c, 'alt': A('@%d' % t)}
 def appr(id, rwy, crs, vias, final, dest, missed, nav, freq):
     a.apprs[id] = dict(type='ILS', rwy=rwy, crs=crs, vias=vias, final=final, dest=dest, missed=missed, nav=nav, freq=freq)
+    r = dict(type='RNP', rwy=rwy, crs=crs, vias=vias, final=final, dest=dest, missed=[W('RK603')] + missed[1:] if rwy == '15R' else missed)
+    a.apprs['RNP' + rwy] = r          # the RNP approach of each runway: same IAFs, IF, FAF and missed approach
 appr('ILS15LY', '15L', 147, {'RK621': [W('RK621', '@6000', 210)], 'RK721': [W('RK721', '@6000', 210)]},
      [W('LONUD', '@6000', 210), W('ITETU', '@4000')], d_(147, 2037),
      [W('RK703'), W('RK769', '@5000'), W('RK762'), W('MEPTU', '@5000', 190), HOLD(57, 'R', 5000)], 'IELF', 109.5)
