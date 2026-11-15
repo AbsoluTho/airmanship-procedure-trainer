@@ -186,6 +186,17 @@ Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator
 - **ND PLAN** uses the whole screen for the map, so the route runs past the range circle.
 - **Cockpit 3D** (Three.js): cockpit panels as textured planes, touch look and zoom, view presets; BAT 1, BAT 2, EXT PWR and APU MASTER SW clickable; live MCDU screens on the pedestal (powered by EXT PWR).
 
+## Cockpit audio
+
+On the MCDU tab, press **COCKPIT SOUND** to enable or mute the audio. **CABIN CALL** simulates a cabin crew call to the cockpit.
+
+- On descent and approach, the trainer calls 2,500, 1,000, 500, 400, 300, 200, 100, 50, 40, 30, 20, 10 and 5 ft as it crosses those radio heights. This uses the trainer's existing runway-based approximation of radio altitude.
+- **HUNDRED ABOVE** and **MINIMUMS** follow the BARO or RADIO entry on PERF APPR. BARO uses the same indicated altitude as the PFD. **NO DH** suppresses the two minimums calls.
+- **RETARD** plays once during the flare if the thrust levers are above idle, at 20 ft in manual flight or 10 ft with an autopilot engaged. Disconnecting the last engaged autopilot in flight and triggering an engine failure also play distinct alerts.
+- Pause and skip suppress approach audio during the interruption. At accelerated speeds, higher-priority alerts can replace radio-height calls so outdated calls don't play after the aircraft has passed them.
+
+The bundled WAVs use eSpeak NG 1.52.0's built-in English voice and synthesized chimes. These are simulator approximations. No aircraft or third-party simulator recordings are bundled. Regenerate them with `python tools/build_audio.py` and eSpeak NG on your PATH, or give the script the path to the executable. See [eSpeak's generated-audio terms](https://sourceforge.net/p/espeak/discussion/538920/thread/c6944a60/) and the [eSpeak NG source](https://github.com/espeak-ng/espeak-ng/releases/tag/1.52.0).
+
 ## Layout
 
 | Path | Contents |
@@ -200,6 +211,7 @@ Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator
 | `js/mcdu2.js` | IRS INIT, WIND, RAD NAV, VERT REV, PERF phase pages, SEC, DATA, FUEL PRED, PROG |
 | `js/fcu.js` | FCU state, displays, knob pad and pushbuttons; deck layout sizing |
 | `js/flight.js` | Flight guided by the FCU/FMGS modes: lateral and vertical modes, speeds, phases, FMA logic, fuel, flight controls |
+| `js/audio.js`, `audio/` | Cockpit playback manager and locally bundled WAV callouts and chimes |
 | `js/mcdu3.js` | LAT REV, NEW DEST, HOLD AT, OFFSET, FIX INFO (MCDU and ND), scratchpad system messages; hold racetrack and offset geometry used by the flight |
 | `js/mcdu4.js` | SEC INIT/PERF pages, STEP ALTS, engine-out condition, VDEV on PROG, RTA |
 | `js/mcdu5.js` | F-PLN pseudo waypoints (T/C, T/D, DECEL), ACTIVATE APPR PHASE after a go-around |
@@ -214,7 +226,7 @@ Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator
 | `js/cockpit3d.js` | 3D cockpit scene, pushbuttons, live pedestal MCDUs |
 | `js/app.js` | Exercise checks, tabs, MCDU pop-up |
 | `img/`, `fonts/`, `vendor/three.min.js` | Assets (Three.js r149) |
-| `tools/build_single.py` | Builds `dist/index.html`, one self-contained file for the private test page; also stamps the scripts and stylesheet in `index.html` with a hash of their contents (`?v=…`) so that browsers and the home-screen app load new versions instead of cached files |
+| `tools/build_single.py` | Builds `dist/index.html`, one self-contained file for the private test page with audio embedded; also stamps the scripts and stylesheet in `index.html` with a hash of their contents (`?v=…`) so that browsers and the home-screen app load new versions instead of cached files |
 | `tools/navdb/` | Scripts used to turn chart positions and OFP coordinates into `navdb.js` |
 | `tests/test_flow.py` | End-to-end test (Playwright + Chrome) of the exercise and the 3D cockpit |
 

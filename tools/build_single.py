@@ -1,4 +1,4 @@
-"""Build dist/index.html: one self-contained file (scripts, styles, fonts and images inlined).
+"""Build dist/index.html: one self-contained file with scripts, styles, fonts, images and audio inlined.
 Used to publish the private test page. Run from the repository root: python3 tools/build_single.py"""
 import base64,re,os
 root=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -12,7 +12,7 @@ src=rd('index.html')
 mv=re.search(r'^## Status: (.+?) \((v[0-9.]+)\)',rd('README.md'),re.M)
 if mv:src=re.sub(r'<span class="appver">[^<]*</span>','<span class="appver">%s · %s</span>'%(mv.group(2),mv.group(1)),src)
 def stamp(m):
-    path=m.group(2);h=hashlib.sha1(open(os.path.join(root,path),'rb').read()).hexdigest()[:8]
+    path=m.group(2);h=hashlib.sha1(rd(path).encode('utf-8')).hexdigest()[:8]
     return m.group(1)+path+'?v='+h+m.group(4)
 src2=re.sub(r'((?:src|href)=")((?:js|css|vendor)/[^"?]+\.(?:js|css))(\?v=[0-9a-f]+)?(")',stamp,src)
 if src2!=rd('index.html'):open(os.path.join(root,'index.html'),'w',encoding='utf-8').write(src2)
@@ -23,6 +23,7 @@ html=re.sub(r'<link rel="stylesheet" href="css/app.css(\?v=[0-9a-f]+)?">',lambda
 def inline(m):
     src=rd(m.group(1))
     src=re.sub(r"'(img/[a-z_\-]+\.webp)'",lambda k:"'data:image/webp;base64,%s'"%b64(k.group(1)),src)
+    src=re.sub(r"'(audio/[a-z0-9-]+\.wav)'",lambda k:"'data:audio/wav;base64,%s'"%b64(k.group(1)),src)
     return '<script>\n'+src.replace('</script','<\\/script')+'\n</script>'
 html=re.sub(r'<script src="([^"?]+)(?:\?v=[0-9a-f]+)?"></script>',inline,html)
 # icons: inline as data URIs; the manifest needs separate files, so the single file leaves it out

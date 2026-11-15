@@ -127,6 +127,7 @@ function flightReady(){const a=S.active,i=I(),q=S.perf,f=S.fuel,miss=[];
 function vFill(){const q=S.perf,f=S.fuel,tow=(f.zfw||58)+(f.block||8)-(f.taxi??0.2),v2=q.v2||Math.round(150*Math.sqrt(tow/66.8));
   if(!q.v2)q.v2=v2;if(!q.vr)q.vr=Math.min(q.v2,v2-4);if(!q.v1)q.v1=Math.min(q.vr,v2-9)}
 function flightStart(){const miss=flightReady();if(miss.length)return miss;vFill();
+  cockpitAudio.reset();
   const P=buildPath(),o=DB.apt[orig()],r=o.rwy[S.active.rwy],tr=r.crs+(o.var||0);
   Object.assign(FL,{active:true,running:true,t:0,utc0:Date.now(),path:P,s:0,seg:1,xtk:0,pos:r.pos,hdgT:tr,trkT:tr,roll:0,pitch:0,alt:r.tdze??o.elev,vs:0,ias:0,tas:0,gs:0,mach:0,
     ground:true,lat:'RWY',latArm:FCU.hdgMgd&&!S.active.noSid&&!(S.active.legs[1]&&S.active.legs[1].k==='disc')?'NAV':null,ver:'SRS',verArm:[FCU.lvlch?'CLB':'OP CLB'],thr:'IDLE',conf:['0','1+F','2','3','FULL'][LV.flaps],gear:true,gearPos:1,gaFlap:false,pmGearT:null,pmF3T:null,revDone:false,
@@ -173,6 +174,7 @@ function autoPM(dtg,sp){const st=FL.stage,h=FL.alt-groundElev();
     if(n!==LV.flaps)lever('flaps',n)}
   else if(h>400){let n=LV.flaps;if(FL.ias>=sp.S-2)n=0;else if(FL.ias>=sp.F-2)n=Math.min(n,1);if(n!==LV.flaps)lever('flaps',n)}}
 function flightReset(){S.eo=false;Object.assign(FL,{active:false,running:false,eoEng:null,path:null,stage:'IDLE',fma:{c1:[],c2:[],c3:[],c4:[],c5:[]},ias:0,gs:0,tas:0,vs:0});
+  cockpitAudio.reset();
   FCU.ap1=FCU.ap2=FCU.athr=FCU.loc=FCU.appr=FCU.exped=false;if(FCU.spdMgd)FCU.mach=false;S.phase='PREFLIGHT';S.apprArm=false;refreshAll()}
 
 /* ---------- go-around (thrust levers to TOGA) ----------
@@ -181,6 +183,7 @@ function flightReset(){S.eo=false;Object.assign(FL,{active:false,running:false,e
 const DECEL_NM=25;
 function gaLeg(l){l.seg='ga';if(l.k==='hold'&&!l.fix)return null;return l}
 function goAround(){if(!FL.active||FL.ground||FL.stage!=='AIR'||!['APPR','DES'].includes(S.phase))return false;
+  cockpitAudio.reset();
   const p=S.active,di=idxK(p,'dest'),map=p.legs.slice(di+1).filter(l=>l.seg==='map');
   if(map.length){const arr=p.legs.filter((l,i)=>i<di&&l.seg==='arr'),ga=[];
     map.forEach((l,i)=>{const c=clone(l);c.seg='ga';if(c.k==='hold'){const fx=map[i-1];const m=String(c.lbl||'').match(/(\d{3})/);
@@ -419,12 +422,27 @@ function step(dt){if(S.tmpy&&typeof ppHoldSync==='function')ppHoldSync(S.tmpy);c
   const aNow=(FL.ias-ias0)/(dt||1);FL.acc=(FL.acc??0)+(aNow-(FL.acc??0))*Math.min(1,dt*1.2)}
 
 /* ---------- loop ---------- */
-function flightTick(dtReal){if(!FL.active)return;let dt=dtReal*FL.rate;while(dt>0){const h=Math.min(0.5,dt);step(h);dt-=h;if(!FL.running)break}setFma();refreshAll()}
+function flightTick(dtReal){
+  if(!FL.active)return;
+  let dt=dtReal*FL.rate;
+  let before=dt>0?cockpitAudio.readFlight():null;
+  while(dt>0){
+    const h=Math.min(0.5,dt);
+    step(h);
+    const after=cockpitAudio.readFlight();
+    cockpitAudio.sample(before,after);
+    before=after;
+    dt-=h;
+    if(!FL.running)break;
+  }
+  cockpitAudio.flush();
+  setFma();refreshAll()
+}
 function refreshAll(){if(typeof render==='function')render();if(window.drawPFD2D)drawPFD2D();if(window.drawFcu)drawFcu();if(window.drawEcam)drawEcam();flightUI()}
 let _lastFrame=null,_acc=0;
 function frame(ts){if(FL.active&&FL.running){if(_lastFrame!=null){const d=Math.min(0.25,(ts-_lastFrame)/1000);_acc+=d;if(_acc>=0.1){flightTick(_acc);_acc=0}}}_lastFrame=ts;requestAnimationFrame(frame)}
 requestAnimationFrame(frame);
-function flightSkip(cond){if(!FL.active)return;let n=0;while(!cond()&&FL.stage!=='STOP'&&n<40000){step(0.5);if(n%20===0)setFma();n++}setFma();refreshAll()}
+function flightSkip(cond){if(!FL.active)return;cockpitAudio.cancelFlight();let n=0;while(!cond()&&FL.stage!=='STOP'&&n<40000){step(0.5);if(n%20===0)setFma();n++}setFma();refreshAll()}
 
 /* ---------- UTC in flight ---------- */
 function utcStr(ms){const d=new Date(ms);return String(d.getUTCHours()).padStart(2,'0')+String(d.getUTCMinutes()).padStart(2,'0')}
@@ -442,12 +460,17 @@ function flightUI(){const host=$('#flight');if(!host)return;const miss=FL.active
   ['eng:1','eng:2'].forEach(k=>{const x=b(k);if(x){x.disabled=!FL.active||FL.ground;x.setAttribute('aria-pressed',String(FL.eoEng===+k.slice(4)))}})}
 function flightBtn(k){
   if(k==='start'){const m=flightStart();if(m.length)S.msg='F-PLN/PERF INCOMPLETE'}
-  else if(k==='pause'){FL.running=!FL.running}
+  else if(k==='pause'){FL.running=!FL.running;if(!FL.running)cockpitAudio.cancelFlight()}
   else if(k==='reset')flightReset();
   else if(k.startsWith('rate'))FL.rate=+k.slice(5);
   else if(k==='ga')lever('thr','TOGA');
   else if(k.startsWith('pm:'))PM_AUTO=k==='pm:on';
-  else if(k.startsWith('eng:')){const n=+k.slice(4);if(FL.active&&!FL.ground){FL.eoEng=FL.eoEng===n?null:n;S.eo=!!FL.eoEng}}
+  else if(k.startsWith('eng:')&&FL.active&&!FL.ground){
+    const n=+k.slice(4);
+    FL.eoEng=FL.eoEng===n?null:n;
+    S.eo=!!FL.eoEng;
+    if(S.eo)cockpitAudio.play('warning');
+  }
   else if(k==='td')flightSkip(()=>FL.s>=FL.td-5||FL.tdReached);
   else if(k==='appr')flightSkip(()=>FL.path.sThr-FL.s<=30);
   refreshAll()}

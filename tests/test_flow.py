@@ -5,9 +5,11 @@ import asyncio,sys,threading,http.server,functools,os
 from playwright.async_api import async_playwright
 ROOT=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 def serve():
+    class TestServer(http.server.ThreadingHTTPServer):
+        request_queue_size=64
     h=functools.partial(http.server.SimpleHTTPRequestHandler,directory=ROOT)
     h.log_message=lambda *a:None
-    s=http.server.ThreadingHTTPServer(('127.0.0.1',8765),h);threading.Thread(target=s.serve_forever,daemon=True).start()
+    s=TestServer(('127.0.0.1',8765),h);threading.Thread(target=s.serve_forever,daemon=True).start()
 async def run(url,b):
     pg=await b.new_page(viewport={'width':1180,'height':820});errs=[]
     pg.on('pageerror',lambda e:errs.append(str(e)))
@@ -507,11 +509,84 @@ async def run(url,b):
     assert await pg.evaluate('window.__S().elec.ext'),'EXT PWR tap'
     assert not errs,errs
     print('PASS',url);await pg.close()
+async def check_audio(url,b):
+    pg=await b.new_page()
+    errors=[]
+    pg.on('pageerror',lambda e:errors.append(str(e)))
+    await pg.add_init_script("""(() => {
+      window.startedSounds = [];
+      const create = AudioContext.prototype.createBufferSource;
+      AudioContext.prototype.createBufferSource = function () {
+        const source = create.call(this);
+        source.finished = new Promise(resolve => source.addEventListener('ended', resolve, {once: true}));
+        const start = source.start.bind(source);
+        source.start = (...args) => {
+          start(...args);
+          startedSounds.push(source);
+        };
+        return source;
+      };
+    })()""")
+    await pg.goto(url)
+    await pg.click('#cockpitSound')
+    await pg.wait_for_function("document.querySelector('#cockpitSound').getAttribute('aria-pressed') === 'true'")
+    await pg.click('#cabinCall')
+    assert await pg.evaluate('startedSounds.length')==1, 'cabin call plays a decoded WAV'
+    result=await pg.evaluate("""async () => {
+      const finish = async () => {
+        const last = startedSounds.at(-1);
+        last.stop();
+        await last.finished;
+        await new Promise(resolve => setTimeout(resolve, 0));
+      };
+      const move = (from, to, overrides={}, previousOverrides={}) => {
+        const sample = height => ({
+          approach: true, height, altitude: height + 3000, minimum: 'NO',
+          minimumMode: 'radio', baroOffset: 0, retardArmed: false, retardHeight: 20,
+          ...overrides
+        });
+        cockpitAudio.sample({...sample(from), ...previousOverrides}, sample(to));
+        cockpitAudio.flush();
+        return startedSounds.length;
+      };
+      await finish();
+      const counts = [move(510, 495)];
+      await finish();
+      counts.push(move(510, 495)); // identical callout must stay suppressed
+      cockpitAudio.reset();
+      counts.push(move(510, 495)); // new approach can call it again
+      await finish();
+      counts.push(move(260, 240)); // NO DH means no minimums announcements
+      const baro = {minimumMode: 'baro', minimum: 3150};
+      move(270, 260, baro);
+      counts.push(move(260, 255, {...baro, baroOffset: -30}, {baroOffset: 0})); // QNH change alone
+      counts.push(move(255, 245, baro)); // hundred above
+      await finish();
+      counts.push(move(155, 145, baro)); // minimums
+      await finish();
+      const radio = {minimum: 140};
+      cockpitAudio.reset();
+      move(255, 250, radio);
+      counts.push(move(245, 235, radio)); // hundred above on RADIO
+      await finish();
+      counts.push(move(145, 135, radio)); // minimums on RADIO
+      await finish();
+      return counts;
+    }""")
+    assert result==[2,2,3,3,3,4,5,6,7], result
+    await pg.click('#cockpitSound')
+    assert await pg.locator('#cabinCall').is_disabled(), 'mute disables the cabin call'
+    assert not errors, errors
+    print('PASS cockpit audio',url)
+    await pg.close()
+
 async def main():
     urls=sys.argv[1:]
     if not urls: serve();urls=['http://127.0.0.1:8765/index.html','http://127.0.0.1:8765/dist/index.html']
     async with async_playwright() as p:
-        b=await p.chromium.launch(executable_path='/usr/bin/google-chrome',args=['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader'])
-        for u in urls: await run(u,b)
+        b=await p.chromium.launch(channel='chrome',args=['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader'])
+        for u in urls:
+            await check_audio(u,b)
+            await run(u,b)
         await b.close()
 asyncio.run(main())

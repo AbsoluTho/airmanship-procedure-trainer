@@ -6,6 +6,7 @@ const EFIS={mode:'ARC',range:10,cstr:false,wpt:false,vord:false,ndb:false,arpt:f
 const baroHpa=()=>EFIS.baro;
 /* actual QNH: 1013 near the departure, the PERF APPR QNH (hPa) near the destination when it was entered */
 function actualQnh(){const q=S.p2&&S.p2.qnh;return flying()&&FL.path&&FL.s>FL.path.sThr/2&&typeof q==='number'?q:1013}
+function indicatedAltitude(alt){return alt+((EFIS.std?1013:baroHpa())-actualQnh())*27.3}
 /* VOR/ADF stations: manual RAD NAV tuning, otherwise the nearest station is autotuned */
 function navStation(n){const r=S.rad||{},sw=EFIS['nav'+n];if(sw==='OFF')return null;const ac=acState().pos,isA=sw==='ADF';
   const man=isA?r['adf'+n]:r['vor'+n];if(man&&man.id&&DB.nav[man.id])return{id:man.id,...DB.nav[man.id],adf:isA};

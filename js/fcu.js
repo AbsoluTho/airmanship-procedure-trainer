@@ -74,7 +74,17 @@ function fcuPush(knob,pull){const now=Date.now();
     else{FCU.lvlch=false;fcuEvent('vs-push')}}
   fcuRefresh()}
 function fcuButton(b){const air=inAir();
-  if(b==='ap1'||b==='ap2'){const o=b==='ap1'?'ap2':'ap1';if(FCU[b]){FCU[b]=false}else{if(!air||FL.alt-groundElev()<100)return fcuRefresh();FCU[b]=true;if(!FCU.appr&&!FCU.loc)FCU[o]=false}}
+  if(b==='ap1'||b==='ap2'){
+    const other=b==='ap1'?'ap2':'ap1';
+    if(FCU[b]){
+      FCU[b]=false;
+      if(air&&!FCU[other])cockpitAudio.play('apDisconnect');
+    }else{
+      if(!air||FL.alt-groundElev()<100)return fcuRefresh();
+      FCU[b]=true;
+      if(!FCU.appr&&!FCU.loc)FCU[other]=false;
+    }
+  }
   if(b==='athr')FCU.athr=!FCU.athr;
   if(b==='loc'){if(!hasLsSel())return fcuRefresh();if(FCU.loc){FCU.loc=false}else{FCU.loc=true;FCU.appr=false}}
   if(b==='appr'){if(!(typeof hasLs==='function'&&hasLs()))return fcuRefresh();if(FCU.appr){FCU.appr=false;if(FCU.ap1&&FCU.ap2)FCU.ap2=false}else{FCU.appr=true;FCU.loc=false}}
