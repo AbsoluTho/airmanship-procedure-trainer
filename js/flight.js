@@ -142,9 +142,23 @@ let PM_AUTO=false;   /* test hook: a pilot monitoring that moves the levers (off
 function lever(k,v){
   if(k==='thr'){if(!['IDLE','REVIDLE','REVMAX','N50','CL','FLX','TOGA'].includes(v))return;
     if(v.startsWith('REV')&&FL.active&&!FL.ground)return;   /* no reverse in flight; on the ground the levers go into the REV zone (reverse thrust acts on the landing roll) */
+    const prev=LV.thr;
     LV.thr=v;if(!FL.active)return;
     if(FL.stage==='LINEUP'&&(v==='FLX'||v==='TOGA')){FL.stage='ROLL';FL.thr='TO'}   /* the take-off roll starts at FLX/MCT or TOGA */
-    else if(FL.stage==='AIR'){if(v==='TOGA'&&!['TO','LVR'].includes(FL.thr))goAround();else if(v==='CL'&&['TO','LVR','MCT'].includes(FL.thr))FL.thr='CL';else if(v==='FLX'&&FL.thr!=='TO')FL.thr='MCT'}}
+    else if(FL.stage==='AIR'){
+      if(v==='TOGA'&&FL.thr==='GA SOFT'){FL.thr='TO';setFma()}
+      else if(v==='TOGA'&&!['TO','LVR'].includes(FL.thr))goAround();
+      else if(v==='FLX'&&prev==='TOGA'&&FL.thr==='TO'&&S.phase==='GA'&&FL.ver==='SRS'&&!FL.eoEng){
+        FL.thr='GA SOFT';
+        setFma();
+      }
+      else if(v==='CL'&&['TO','GA SOFT','LVR','MCT'].includes(FL.thr)){
+        const wasSoft=FL.thr==='GA SOFT';
+        FL.thr='CL';
+        if(wasSoft)setFma();
+      }
+      else if(v==='FLX'&&!['TO','GA SOFT'].includes(FL.thr))FL.thr='MCT';
+    }}
   else if(k==='flaps'){const n=+v;if(n>=0&&n<=4)LV.flaps=n}
   else if(k==='gear'){if(v==='UP'&&FL.active&&FL.ground)return;LV.gear=v}   /* weight on wheels: no gear up on the ground */
   else if(k==='abrk')LV.abrk=LV.abrk===v?null:v;
@@ -216,6 +230,7 @@ function setFma(){const st=FL.stage,a=S.perf,fx=a.flex!=null&&S.phase!=='GA'?'FL
   const fx2=LV.thr==='TOGA'||S.phase==='GA'?'TOGA':(a.flex!=null?'FLX '+a.flex:'MCT');
   if(st==='LINEUP'){f.c1=[]}
   else if(FL.thr==='TO'&&st!=='IDLE'){f.c1=[['MAN','w'],[fx2,'w']]}
+  else if(FL.thr==='GA SOFT'){f.c1=[['MAN','w'],['GA SOFT','w']]}
   else if(FL.thr==='MCT'){f.c1=[['MAN','w'],['MCT','w']]}
   else if(FL.thr==='LVR'){f.c1=[['LVR CLB','w',true]]}
   else if(FCU.athr&&!['ROLLOUT','STOP','IDLE'].includes(st)){
@@ -234,7 +249,9 @@ function setFma(){const st=FL.stage,a=S.perf,fx=a.flex!=null&&S.phase!=='GA'?'FL
       f.c3=[[FL.lat==='LOC*'?'LOC *':FL.lat,'g'],FL.latArm?[FL.latArm,'b']:null]}}
   if(npaAppr()){const M={'LOC *':'APP NAV','LOC':'APP NAV','G/S*':'FINAL','G/S':'FINAL'},ren=c=>c&&c.map(x=>x&&[M[x[0]]||x[0].replace('G/S','FINAL').replace(/^LOC\b/,'APP NAV'),x[1]]);
     f.c2=ren(f.c2);f.c3=ren(f.c3);
-    if(f.land==='LAND'||(!f.land&&f.c2[0]&&f.c2[0][0]==='FINAL'&&f.c3[0]&&f.c3[0][0]==='APP NAV')){f.land=null;f.c2=[['FINAL APP','g']];f.c3=[]}}
+    if(f.land==='LAND'||(!f.land&&f.c2[0]&&f.c2[0][0]==='FINAL'&&f.c3[0]&&f.c3[0][0]==='APP NAV')){
+      f.land='FINAL APP';f.c2=[];f.c3=[];
+    }}
   if(FL.tdReached&&!DESCENDING.includes(FL.ver))f.msg='T/D REACHED';
   /* minimums (FBW A32NX_FMCMainDisplay.shouldTransmitMinimums, FMA.tsx): BARO / RADIO / NO DH entered on PERF APPR show on the FMA in descent,
      approach and go-around, and in cruise within 250 NM of the destination; the landing capability joins them once APPR is armed */
@@ -279,7 +296,8 @@ function step(dt){if(S.tmpy&&typeof ppHoldSync==='function')ppHoldSync(S.tmpy);c
 
   if(FL.stage==='ROLL'){FL.ias+=(LV.thr==='TOGA'?4.94:4.37)*dt;if(FL.ias>=q.vr){FL.pitch=Math.min(15,FL.pitch+3*dt);if(FL.ias>=q.vr+4){FL.ground=false;FL.stage='AIR'}}}
   const ga=S.phase==='GA',thrRed=ga?(p2.gaThr??defGa()):(q.thr??defRed()),acc=ga?(p2.gaAcc??defGa()):(q.acc??defRed());
-  if(FL.thr==='TO'&&!FL.ground&&FL.alt>=thrRed){FL.thr='LVR';FL.lvrT=FL.t}
+  if(FL.thr==='GA SOFT'&&FL.eoEng)FL.thr='TO';
+  if((FL.thr==='TO'||FL.thr==='GA SOFT')&&!FL.ground&&FL.alt>=thrRed){FL.thr='LVR';FL.lvrT=FL.t}
   if(FL.thr==='LVR'&&LV.thr==='CL')FL.thr='CL';   /* LVR CLB until the pilot sets the thrust levers to CL */
 
   let vsT=0,spdT=FL.ias,trkT=FL.trkT;
@@ -306,7 +324,8 @@ function step(dt){if(S.tmpy&&typeof ppHoldSync==='function')ppHoldSync(S.tmpy);c
     /* ---- vertical ---- */
     const capBand=Math.max(80,Math.abs(FL.vs)*0.12),CK=cstrNow();FL.cst=CK;
     const gp=!FL.ground&&(['TAKEOFF','CLB','GA'].includes(S.phase)||CLIMBING.includes(FL.ver)||FL.ver==='SRS')?1-0.5*(FL.gearPos??1):1;FL.gp=gp;   /* gear drag follows the gear position: half rate down, full rate up and locked, gradual in transit */   /* gear left down in the climb: half the climb rate and acceleration */
-    if(FL.ver==='SRS'){spdT=ga?FL.gaSpd:q.v2+10;vsT=(ga?Math.min(2400,FL.vs+600):2400)*gp;
+    if(FL.ver==='SRS'){const rate=FL.thr==='GA SOFT'?2000:2400;
+      spdT=ga?FL.gaSpd:q.v2+10;vsT=(ga?Math.min(rate,FL.vs+600):rate)*gp;
       if(FL.alt>=acc){FL.opSmall=false;if(A>FL.alt+capBand){FL.ver=FL.verArm.includes('OP CLB')?'OP CLB':'CLB';FL.verArm=['ALT']}else{FL.ver='ALT*';FL.verArm=[]}if(!ga)S.phase='CLB'}}
     FL.soe=false;
     if(CLIMBING.includes(FL.ver)){if(FL.opSmall&&FL.ver!=='EXP CLB')vsT=1000;else FL.soe=true;   /* THR CLB, speed on elevator: V/S computed after the speed target */
