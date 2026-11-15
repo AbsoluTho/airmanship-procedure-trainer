@@ -1,3 +1,10 @@
+/* ILS and LOC approaches: the final approach fixes lie exactly on the extended runway centreline (runway track through the threshold).
+   Fixes read from the chart grid can be a few hundredths of a mile off, which put small kinks in the final; each final fix within 1.5 NM of
+   the centreline is moved onto it at the same distance from the threshold. VOR and RNP approaches are left as charted. */
+(function(){for(const[a,o]of Object.entries(APPRS)){const ap=DB.apt[a];if(!ap)continue;const vr=ap.var||0;
+  for(const x of Object.values(o)){if(!x||!/^(ILS|LOC|LS)/.test(x.type||'')||!x.final)continue;const r=ap.rwy[x.rwy];if(!r||!r.pos)continue;const cT=r.crs+vr;
+    for(const l of x.final){const P=l.k==='wpt'&&DB.wpt[l.id];if(!P)continue;const d=gc(r.pos,P),b=brg(r.pos,P),along=-d*Math.cos((b-cT)*D2R),xt=d*Math.sin((b-cT)*D2R);
+      if(along>0.3&&Math.abs(xt)<1.5)DB.wpt[l.id]=dst(r.pos,cT+180,along)}}}})();
 'use strict';
 /* ================= state ================= */
 let S;

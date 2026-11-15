@@ -22,12 +22,16 @@ function drawPFD(g,W,H,powered){g.save();g.setTransform(1,0,0,1,0,0);g.fillStyle
   /* before the flight: with INIT B done and the FDs on, the FMA reads CLB and NAV armed (cyan) and 1 FD 2 */
   const preF=!on&&EFIS.fd&&S.fuel&&S.fuel.zfw!=null&&S.fuel.block!=null?{c1:[],c2:[null,['CLB','b']],c3:[null,S.active&&!S.active.noSid&&FCU.hdgMgd!==false?['NAV','b']:null],c4:[],c5:[null,['1 FD 2','w']]}:null;
   const cols=[[55,170],[170,290],[290,423],[423,537],[537,628]],F=preF||FL.fma;
-  [170,290,423,537].forEach(x=>L(x,42,x,120,'#c9ccd6',1.5));
+  /* division lines; none behind a mode spanning two columns (LAND, FLARE, ROLL OUT across the vertical and lateral columns; a message
+     across the first three columns) */
+  [170,290,423,537].forEach(x=>{const y0=F.land&&x===290?78:42,y1=F.msg&&x<423?98:120;L(x,y0,x,y1,'#c9ccd6',1.5)});
+  /* mode boxes kept inside their column, clear of the division lines */
+  const boxIn=(t,xm,fs,x1,x2)=>{g.font=PF(fs);const tw=g.measureText(t).width,a=Math.max(x1+4,xm-tw/2-6),b=Math.min(x2-4,xm+tw/2+6);box(a,45,b-a,30,'w',1.5)};
   ['c1','c2','c3','c4','c5'].forEach((c,k)=>{const[x1,x2]=cols[k],xm=(x1+x2)/2;(F[c]||[]).forEach((ln,j)=>{if(!ln||!ln[0])return;
     const flash=ln[2]&&Math.floor(FL.t*2)%2===0,fs=k>=3?22:(ln[0].length>7&&k===1?21:25);if(!flash)T(ln[0],xm,60+27*j,ln[1],fs,'center');
-    if(j===0&&k<3&&on&&FL.t-(FL.fmaT[c]??-99)<10){g.font=PF(25);const tw=g.measureText(ln[0]).width;box(xm-tw/2-6,45,tw+12,30,'w',1.5)}})});
+    if(j===0&&k<3&&on&&FL.t-(FL.fmaT[c]??-99)<10)boxIn(ln[0],xm,fs,x1,x2)})});
   if(F.msg)T(F.msg,(55+423)/2,114,'w',23,'center');
-  if(F.land){const xm=(170+423)/2;T(F.land,xm,60,'g',25,'center');if(on&&FL.t-(FL.fmaT.land??-99)<10){g.font=PF(25);const tw=g.measureText(F.land).width;box(xm-tw/2-6,45,tw+12,30,'w',1.5)}}
+  if(F.land){const xm=(170+423)/2;T(F.land,xm,60,'g',25,'center');if(on&&FL.t-(FL.fmaT.land??-99)<10)boxIn(F.land,xm,25,170,423)}
 
   /* ---- attitude sphere: circle (r 151) cut by straight sides at x 167 and 433 ---- */
   const ppd=6.2;

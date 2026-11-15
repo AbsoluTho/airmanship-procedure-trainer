@@ -10,7 +10,7 @@
 Object.assign(S,{eo:false,rta:null,stepFrom:'PERFCRZ'});
 
 /* ---------- SEC F-PLN: its own INIT A, INIT B and PERF data, used when it is activated or swapped ---------- */
-const SEC_KEYS=['init','fuel','perf','p2','spdLim','wind'];
+const SEC_KEYS=['init','fuel','perf','p2','spdLim','wind'],SEC_FLT=['p2','spdLim','wind'];
 const pickData=()=>clone(Object.fromEntries(SEC_KEYS.map(k=>[k,S[k]])));
 function secData(){if(!S.sec)return null;if(!S.sec.data)S.sec.data=pickData();return S.sec.data}
 /* run a page with the SEC F-PLN and its data in place of the active ones */
@@ -29,8 +29,11 @@ P.SECINITB=secPage('INITB',()=>{clrRow(1);put(1,2,'SEC INIT FUEL PRED');put(1,22
   if(k==='R1'){if(!S.sec)return err('NOT ALLOWED');return go('SECINIT')}
   if(k==='R2'){if(!S.sec)return err('NOT ALLOWED');return go('SEC'+(PERF_OF[S.phase]||'PERFTO'))}
   if(k==='L1'){lsk0.call(this,s,n);if(S.sec)S.sec.data=pickData();return}
-  if(k==='L4'&&S.sec&&!flying()){const d=secData();lsk0.call(this,s,n);SEC_KEYS.forEach(x=>S[x]=d[x]);delete S.active.data;return}
-  if(k==='L6'&&S.sec&&!flying()){const d=secData(),mine=pickData();lsk0.call(this,s,n);SEC_KEYS.forEach(x=>S[x]=d[x]);delete S.active.data;S.sec.data=mine;return}
+  /* ACTIVATE / SWAP: the SEC data become the active ones. In flight only what the rest of the flight uses: the approach and landing
+     PERF (QNH, temperature, wind, minimums, VAPP, landing configuration, go-around), the speed limit and the descent winds; fuel, weights
+     and take-off data stay as flown */
+  if(k==='L4'&&S.sec){const d=secData(),ks=flying()?SEC_FLT:SEC_KEYS;lsk0.call(this,s,n);ks.forEach(x=>S[x]=clone(d[x]));delete S.active.data;return}
+  if(k==='L6'&&S.sec){const d=secData(),mine=pickData(),ks=flying()?SEC_FLT:SEC_KEYS;lsk0.call(this,s,n);ks.forEach(x=>S[x]=clone(d[x]));delete S.active.data;S.sec.data=mine;return}
   return lsk0.call(this,s,n)}}
 
 /* ---------- STEP ALTS (FlyByWire CDUStepAltsPage) ---------- */
