@@ -147,9 +147,9 @@ function fplnRows(p){let rows=p?p.legs.map((l,ix)=>Object.assign({},l,{ix})):[];
 function altRte(){const i=I();if(!i.altR||i.altR.altn!==i.altn)i.altR={altn:i.altn,wpts:[],dct:false,via:{}};if(!i.altR.via)i.altR.via={};return i.altR}
 const dash=t=>{const n=COLS-t.length,a=Math.floor(n/2);return'-'.repeat(a)+t+'-'.repeat(n-a)};
 function planCentre(p){const rows=fplnRows(p);for(let j=Math.min(S.fpOff+1,rows.length-1);j>=0;j--){const r=rows[j];
-  const pos=(r.k==='altn')?legPos(r):(r.k&&r.k!=='end'&&r.k!=='disc')?legPos(r):null;if(pos)return{pos,id:r.id}}return null}
+  const pos=(r.k==='altn')?legPos(r):(r.k&&r.k!=='end'&&r.k!=='disc')?legPos(r):null;if(pos)return{pos,id:r.id,plan:p,ix:r.ix}}return null}
 P.FPLN={render(){const p=cur(),rows=fplnRows(p),ds=p?dists(p):[];
-  if(p){const c=planCentre(p);if(c)EFIS.ctr=c}
+  EFIS.ctr=p?planCentre(p):null;
   const pr=predict(),tcum=pr&&p===S.active?pr.cum:null;
   put(1,1,'FROM','w','S');if(S.secMode)put(1,6,'SEC','w');else if(S.tmpy)put(1,6,'TMPY','y');else if(p&&p.ofst)put(1,6,'OFST '+p.ofst.side+p.ofst.nm,'g');if(I().flt)rput(1,I().flt,'w','L',23);
   const base=S.tmpy?'y':'g';let firstD=true;

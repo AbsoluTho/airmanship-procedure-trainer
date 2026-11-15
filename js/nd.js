@@ -29,9 +29,10 @@ function arcPts(a,b,c){const r=gc(c,a),b1=brg(c,a);let d=((brg(c,b)-b1+540)%360)
 /* published hold (missed approach): the same racetrack as a flown hold (FBW HX leg dimensions) */
 function holdPts(F,crsT,right){return holdLoop(F,crsT,right,holdLen(null),holdR(null))}
 /* from: the FROM leg in flight. The flown route behind it is erased; the FROM waypoint and the active leg stay (FBW: display from the FROM leg) */
-function planGeo(p,base,from){const G={lines:[],wpts:[],rwys:[]};let prev=null,vr=0;from=from??-1;
+function planGeo(p,base,from,showMissed=true){const G={lines:[],wpts:[],rwys:[]};let prev=null,vr=0;from=from??-1;
   const crs=t=>{const m=String(t||'').match(/(\d{3})/);return m?+m[1]:null};
   p.legs.forEach((l,ix)=>{const col=l.seg==='map'?'b':base;
+    if(l.seg==='map'&&!showMissed){prev=null;return}
     if(l.k==='orig'||l.k==='dest'){const ap=DB.apt[l.id],r=l.rwy&&ap.rwy[l.rwy],pos=r?r.pos:ap.pos;vr=ap.var||0;
       if(l.k==='dest'&&prev)G.lines.push({pts:[prev,pos],col,ix});
       G.rwys.push({k:l.k,id:l.id,rwy:l.rwy,pos,crsT:r?r.crs+vr:null,len:r?r.len/1852:0});prev=pos;return}
@@ -50,6 +51,13 @@ function planGeo(p,base,from){const G={lines:[],wpts:[],rwys:[]};let prev=null,v
     prev=null});
   if(from>=0){G.lines=G.lines.filter(L=>L.ix==null||L.ix>from);G.wpts=G.wpts.filter(w=>w.ix>=from)}
   return G}
+
+function showMissedApproach(p,mode){
+  const centre=EFIS.ctr;
+  if(mode!=='PLAN'||centre?.plan!==p)return false;
+  const firstFix=p.legs.findIndex(l=>l.seg==='map'&&l.k==='wpt'&&legPos(l));
+  return firstFix>=0&&centre.ix===firstFix
+}
 
 /* ---------- projection ----------
    Design grid is 768 wide; its height follows the screen (the ND screen in the panel photo is 395 x 416). */
@@ -75,7 +83,11 @@ function drawND(g,W,H,powered){g.save();g.setTransform(1,0,0,1,0,0);g.fillStyle=
   const line=(pts,col,dash,w)=>{g.strokeStyle=NC[col];g.lineWidth=w||3.5;g.setLineDash(dash||[]);g.beginPath();pts.forEach((p,i)=>{const[x,y]=pj(p);i?g.lineTo(x,y):g.moveTo(x,y)});g.stroke();g.setLineDash([])};
   const diamond=(x,y,col,s)=>{g.beginPath();g.moveTo(x,y-s);g.lineTo(x+s,y);g.lineTo(x,y+s);g.lineTo(x-s,y);g.closePath();g.strokeStyle=NC[col];g.lineWidth=3;g.stroke()};
   const star=(x,y,col)=>{g.strokeStyle=NC[col];g.lineWidth=3;g.beginPath();for(let i=0;i<4;i++){const a=i*Math.PI/4;g.moveTo(x-11*Math.cos(a),y-11*Math.sin(a));g.lineTo(x+11*Math.cos(a),y+11*Math.sin(a))}g.stroke()};
-  const fr=flying()&&!FL.ground?FL.fromIx:-1;const geos=[];if(A)geos.push([planGeo(A,'g',fr),false]);if(T)geos.push([planGeo(T,'y',fr),true]);if(S.secMode&&S.sec)geos.push([planGeo(S.sec,'w'),'sec']);
+  const fr=flying()&&!FL.ground?FL.fromIx:-1,geos=[];
+  const displayGeo=(p,col,from)=>planGeo(p,col,from,showMissedApproach(p,V.m));
+  if(A)geos.push([displayGeo(A,'g',fr),false]);
+  if(T)geos.push([displayGeo(T,'y',fr),true]);
+  if(S.secMode&&S.sec)geos.push([displayGeo(S.sec,'w'),'sec']);
   if(V.m==='PLAN'&&A&&I().altn&&DB.apt[I().altn]){const d=A.legs[idxK(A,'dest')],dp=legPos(d),ap=DB.apt[I().altn].pos,R=typeof altRte==='function'?altRte():{wpts:[],dct:true};const wp=R.wpts.map(id=>DB.wpt[id]).filter(Boolean);line([dp,...wp,...(R.dct?[ap]:[])],'b',[14,10]);
     const[x,y]=pj(ap);star(x,y,'b');label(I().altn,x+16,y+2,'b')}
   /* offset: the original route dashed between the entry point and the rejoin point, the offset path solid */

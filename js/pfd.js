@@ -22,7 +22,7 @@ function drawPFD(g,W,H,powered){g.save();g.setTransform(1,0,0,1,0,0);g.fillStyle
   /* before the flight: with INIT B done and the FDs on, the FMA reads CLB and NAV armed (cyan) and 1 FD 2 */
   const preF=!on&&EFIS.fd&&S.fuel&&S.fuel.zfw!=null&&S.fuel.block!=null?{c1:[],c2:[null,['CLB','b']],c3:[null,S.active&&!S.active.noSid&&FCU.hdgMgd!==false?['NAV','b']:null],c4:[],c5:[null,['1 FD 2','w']]}:null;
   const cols=[[55,170],[170,290],[290,423],[423,537],[537,628]],F=preF||FL.fma;
-  /* division lines; none behind a mode spanning two columns (LAND, FLARE, ROLL OUT across the vertical and lateral columns; a message
+  /* division lines; none behind a mode spanning two columns (LAND, FLARE, ROLL OUT, FINAL APP across the vertical and lateral columns; a message
      across the first three columns) */
   [170,290,423,537].forEach(x=>{const y0=F.land&&x===290?78:42,y1=F.msg&&x<423?98:120;L(x,y0,x,y1,'#c9ccd6',1.5)});
   /* mode boxes kept inside their column, clear of the division lines */
