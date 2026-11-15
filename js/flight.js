@@ -101,11 +101,11 @@ const iasOf=(tas,alt)=>tas/(1+alt/1000*0.02);
 const sos=alt=>661.47*Math.sqrt(Math.max(216.65,288.15-1.98*alt/1000)/288.15);
 function gwNowF(){return S.fuel.zfw+FL.fob}
 /* managed speed of the configuration set (approach phase, hold with flaps): green dot clean, S with flaps 1, F with flaps 2,
-   Vapp + 5 with flaps 3 (Vapp when CONF 3 is the landing configuration), Vapp with flaps FULL */
+   the higher of Vapp and F - 10 with flaps 3, Vapp with flaps FULL */
 /* VAPP as on PERF APPR: the pilot's entry, else VLS + 1/3 of the headwind on the landing runway (5 to 15 kt) */
 function vappNow(sp,p2){if(p2.vapp!=null)return p2.vapp;const a=S.active,dl=a&&a.legs[idxK(a,'dest')],ap=dl&&DB.apt[dl.id],r=ap&&ap.rwy[dl.rwy];
   const hw=p2.wdir!=null&&r?Math.max(0,p2.wspd*Math.cos((p2.wdir-r.crs)*D2R)):0;return Math.round(sp.VLS)+Math.round(Math.min(15,Math.max(5,hw/3)))}
-function apprCfgSpd(sp,p2){const vapp=vappNow(sp,p2);return{'0':sp.GD,'1':sp.S,'1+F':sp.S,'2':sp.F,'3':p2.conf3?vapp:vapp+5,FULL:vapp}[FL.conf]??sp.GD}
+function apprCfgSpd(sp,p2){const vapp=vappNow(sp,p2);return{'0':sp.GD,'1':sp.S,'1+F':sp.S,'2':sp.F,'3':Math.max(vapp,sp.F-10),FULL:vapp}[FL.conf]??sp.GD}
 function cfgSpeeds(){const w=gwNowF(),cs=charSpeeds(w);return{GD:cs.O,S:cs.S,F:cs.F,VLS:vls(w,S.p2.conf3)}}
 /* ground elevation: the airport nearer the aircraft (origin runway or destination runway) */
 function groundElev(){if(!FL.path)return elevO();const o=DB.apt[orig()],d=destRwy(),pos=FL.pos||o.pos;return gc(pos,o.pos)<gc(pos,d.r.pos)?(o.rwy[S.active.rwy].tdze??o.elev):d.tdze}

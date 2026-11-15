@@ -278,7 +278,7 @@ async def run(url,b):
       S.page='SECIDX';press('L4');const after=S.p2.qnh;S.active=A0;S.p2=Q0;S.sec=sec0;S.phase=ph;FL.active=fa;FL.ground=fg;return[pgn,act,sec,after]})()""")
     assert sc[0]=='SECPERFDES' and sc[1]!=1005 and sc[2]==1005 and sc[3]==1005,f'SEC PERF in flight: its own APPR data, made active with ACTIVATE SEC: {sc}'
     vs=await pg.evaluate("""(()=>{const c0=FL.conf,sp={GD:210,S:180,F:150,VLS:130},o={};for(const c of ['0','1','2','3','FULL']){FL.conf=c;o[c]=apprCfgSpd(sp,{vapp:136,conf3:false})}FL.conf='3';o.c3=apprCfgSpd(sp,{vapp:136,conf3:true});FL.conf=c0;return o})()""")
-    assert vs=={'0':210,'1':180,'2':150,'3':141,'FULL':136,'c3':136},f'approach phase speed by configuration (GD, S, F, VAPP+5, VAPP): {vs}'
+    assert vs=={'0':210,'1':180,'2':150,'3':140,'FULL':136,'c3':140},f'approach phase speed by configuration (GD, S, F, max(VAPP, F-10), VAPP): {vs}'
     al=await pg.evaluate("""(()=>{let m=0;for(const[a,x]of Object.entries(APPRS))for(const y of Object.values(x)){if(!y||!/^(ILS|LOC)/.test(y.type||''))continue;const ap=DB.apt[a],r=ap.rwy[y.rwy],cT=r.crs+(ap.var||0);
       for(const l of y.final||[]){const P=DB.wpt[l.id];if(!P)continue;const d=gc(r.pos,P),b=brg(r.pos,P);m=Math.max(m,Math.abs(d*Math.sin((b-cT)*D2R)))}}return m})()""")
     assert al<0.005,f'ILS/LOC final approach fixes on the extended runway centreline: {al}'
