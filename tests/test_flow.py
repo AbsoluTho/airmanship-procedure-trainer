@@ -12,6 +12,7 @@ async def run(url,b):
     pg=await b.new_page(viewport={'width':1180,'height':820});errs=[]
     pg.on('pageerror',lambda e:errs.append(str(e)))
     await pg.goto(url);await pg.wait_for_timeout(500)
+    await pg.evaluate('WX.on=false')   # the flights of this test were written for still air; the OFP winds have their own check below
     k=lambda x:pg.evaluate('k=>window.__press(k)',x)
     async def t(s):
         for ch in s: await k('SP' if ch==' ' else ch)
@@ -84,13 +85,14 @@ async def run(url,b):
     fp=await pg.evaluate("""(()=>{const A0=S.active,I0=clone(S.init),pg0=S.page,ar0=S.arr,out={};document.querySelector('.tab[data-v="ofp"]').click();
       out.list=[...document.querySelectorAll('.ofp-item .od')].map(x=>x.textContent).slice(0,2).join();document.querySelector('[data-ofp="FAD225"]').click();
       const t=document.querySelector('#ofpView').textContent;out.detail=['OERK - OEMA','OERKOEMA1','FL340 / -44','51.7 / CG','HD027','SISUD B544 NOMDA','PEGUR Z712 WEJ V54 TBK','325/017'].filter(x=>!t.includes(x));
+      const sb=document.querySelector('[data-sec="initb"]');sb.querySelector('.sec-t').click();out.sec=[sb.classList.contains('shut'),sb.querySelector('.sec-t').textContent,getComputedStyle(sb.querySelector('.sec-b')).display];sb.querySelector('.sec-t').click();out.sec.push(sb.classList.contains('shut'),document.querySelectorAll('#ofpView .sec').length);
       document.querySelector('[data-ofp-back]').click();document.querySelector('.tab[data-v="mcdu"]').click();
-      applyRoute('OERKOEMA1',CO_RTES.OERKOEMA1);out.alt=altRte().wpts.join(' ')+'/'+altRte().via.RBG+'/'+fplnRows(S.active).filter(r=>r.k==='altwpt').length;
+      WX.on=true;applyRoute('OERKOEMA1',CO_RTES.OERKOEMA1);out.alt=altRte().wpts.join(' ')+'/'+altRte().via.RBG+'/'+fplnRows(S.active).filter(r=>r.k==='altwpt').length;
       const w=windAt(DB.wpt.GIDUV,34000,30000,'CRZ'),c=crabOf(267+3,449,w);out.wind=[Math.round(w.dir),Math.round(w.spd),Math.round(c.gs),Math.round(trkOfHdg(c.hdg,449,w))];
       out.calm=windAt(DB.wpt.GIDUV,34000,0,'CRZ').spd;out.up=wxUplink()&&[S.wind.clb.length,S.wind.crz.map(x=>x.alt/100).join(),S.wind.des[0].alt];
       S.arrAlt=false;S.arr={list:'APPR',off:0};S.page='ARR';out.appr=P.ARR.items()[0].txt;P.ARR.slew(1);out.off=S.arr.off;
-      S.wind={clb:[],crz:[],des:[]};S.active=A0;S.init=I0;S.tmpy=null;S.coRte=null;S.page=pg0;S.arr=ar0;WX.flt=null;render();return out})()""")
-    assert fp=={'list':'OERK - OEMA,OEMA - OERK','detail':[],'alt':'SISUD ASLAD RBG NOMDA/B544/4','wind':[278,32,417,270],'calm':0,'up':[5,'300,320,340,360',39000],'appr':'<ILS17','off':1},f'FLIGHT PLANS tab and OFP winds: {fp}'
+      S.wind={clb:[],crz:[],des:[]};S.active=A0;S.init=I0;S.tmpy=null;S.coRte=null;S.page=pg0;S.arr=ar0;WX.flt=null;WX.on=false;render();return out})()""")
+    assert fp=={'list':'OERK - OEMA,OEMA - OERK','detail':[],'alt':'SISUD ASLAD RBG NOMDA/B544/4','wind':[278,32,417,270],'calm':0,'up':[5,'300,320,340,360',39000],'appr':'<ILS17','off':1,'sec':[True,'+','none',False,6]},f'FLIGHT PLANS tab and OFP winds: {fp}'
     # VERT REV at the origin (1R: CLB SPD LIM) and at the destination (6R: DES SPD LIM)
     await k('R1');x=await scr();assert 'VERT REV AT OEJN' in x and 'CLB SPD LIM' in x and 'SPD CSTR' not in x,('VERT REV at the origin',x)
     await t('250/FL120');await k('L2');assert await pg.evaluate('JSON.stringify(window.__S().spdLim.clb)')=='{"spd":250,"alt":12000}','CLB SPD LIM entry'

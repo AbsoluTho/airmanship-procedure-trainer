@@ -74,7 +74,7 @@ def parse(txt):
         ide = next(i for i, l in enumerate(L) if 'DESCENT DATA WINDS' in l); w['des'] = table(L, ide+1)
         fls = []; pos = {r['id']: r['pos'] for r in o['log']}
         for l in L[iw+3:ide]:
-            if re.match(r'^(IDENT)?\s+FL', l): fls = [int(x) for x in re.findall(r'FL\s*(\d+)', l)]; continue
+            if re.match(r'^\s*(IDENT)?\s+FL', l): fls = [int(x) for x in re.findall(r'FL\s*(\d+)', l)]; continue
             v = WV.findall(l); t = l.split()
             if len(v) >= 3 and fls and t and t[0] in pos:
                 w['enr'].append({'id': t[0], 'pos': pos[t[0]], 'lv': [[fls[k], int(v[k][0]), int(v[k][1])] for k in range(min(len(fls), len(v)))]})

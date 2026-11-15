@@ -258,3 +258,10 @@ body.fs .app{min-height:100vh;display:flex;flex-direction:column;justify-content
 .ot td b{color:var(--ink);font-weight:600}.ot tr.ps td,.ot tr.ps td b{color:var(--ink3)}
 #v-ofp details{margin-top:10px}#v-ofp summary{cursor:pointer;color:var(--accent);font-size:13px}
 body.fs #v-ofp{display:none}
+.sec h2{display:flex;align-items:center;gap:10px;margin:0 0 8px}
+.sec h2 span{cursor:pointer}
+.sec.shut h2{margin-bottom:0}.sec.shut .sec-b{display:none}
+.sec-t{flex:none;width:28px;height:28px;display:grid;place-items:center;background:var(--accent-soft);border:1px solid #234a60;border-radius:7px;color:var(--accent);font:700 20px/1 var(--f-mono);cursor:pointer;padding:0}
+.sec-t:hover,.sec-t:focus-visible{border-color:var(--accent);outline:none}
+.sec-all{margin-left:auto;display:flex;gap:6px}
+.ofp-grid{align-items:start}
