@@ -3,7 +3,7 @@
    OFP winds are true direction / knots: a climb table and a descent table by flight level, and a table of five levels at every waypoint.
    The flight flies the wind of its OFP (matched by flight number, else by FROM/TO); without an OFP only the local surface wind is used.
    The FMS winds on the CLIMB / CRUISE / DESCENT WIND pages are the forecast and stay the pilot's entries (or the WIND REQUEST uplink). */
-const WX={on:true,flt:null,surface:{}};
+const WX={on:true,flt:null,surface:{},frozenWind:null};
 function ofpOf(flt){return typeof OFPS!=='undefined'&&OFPS.find(o=>o.flt===flt)||null}
 function ofpFor(from,to){return typeof OFPS!=='undefined'&&OFPS.find(o=>o.from===from&&o.to===to)||null}
 /* the OFP whose winds are flown: the one chosen on the FLIGHT PLANS tab, else by flight number, else by city pair */
@@ -20,8 +20,10 @@ function surfaceWind(pos){const p=S.active;if(!p)return{dir:0,spd:0};const from=
   const airports=[from,to].map(id=>({id,a:DB.apt[id]})).filter(x=>x.a);if(!airports.length)return{dir:0,spd:0};
   const nearest=airports.reduce((a,b)=>gc(pos,a.a.pos)<=gc(pos,b.a.pos)?a:b).id;
   return WX.surface[nearest]||(WX.surface[nearest]={dir:Math.random()*360,spd:3+Math.random()*16})}
-/* True wind {dir, spd}. Surface wind stays below 20 kt through 1500 ft AAL, then blends into the OFP wind by 3000 ft AAL. */
+/* True wind {dir, spd}. The stable surface wind applies through 1500 ft AAL, then blends into the OFP or frozen wind by 3000 ft AAL. */
 function windAt(pos,alt,aal,phase){if(!WX.on||!pos)return{dir:0,spd:0};const low=surfaceWind(pos);if(aal!=null&&aal<=1500)return low;
+  if(WX.frozenWind){const k=aal==null?1:Math.max(0,Math.min(1,(aal-1500)/1500)),lo=wvec(low.dir,low.spd),hi=wvec(WX.frozenWind.dir,WX.frozenWind.spd);
+    return wpol([lo[0]*(1-k)+hi[0]*k,lo[1]*(1-k)+hi[1]*k])}
   const o=wxOfp();const w=o&&o.wind;let v=null;
   if(!w){const k=aal==null?1:Math.max(0,Math.min(1,(aal-1500)/1500));return wpol(wvec(low.dir,low.spd*(1-k)))}
   let best=null,bd=1e9;for(const e of w.enr){const d=gc(pos,e.pos);if(d<bd){bd=d;best=e}}
