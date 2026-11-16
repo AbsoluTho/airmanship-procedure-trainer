@@ -53,7 +53,9 @@ function dirArc(p,ix){const l=p.legs[ix];if(l.trk==null)return[];
   return pts}
 const planSig=()=>{const p=S.active;return p?p.legs.map(l=>l.k+(l.id||'')+(l.rwy||'')+(l.k==='hold'?[l.crs,l.turn,l.time,l.dist].join(','):'')).join('|')+(p.appr||'')+(p.ofst?'|OFST'+p.ofst.side+p.ofst.nm:''):''};
 /* the active F-PLN changed in flight (DIR TO, ENABLE ALTN, new approach...): rebuild the path from the present position */
-function flightReplan(){const P=buildPath();FL.path=P;
+function flightReplan(){/* hold the actual wind across diversions and route changes, including activation of SEC F-PLN */
+  if(WX.on&&!WX.frozenWind&&FL.wind)WX.frozenWind={dir:FL.wind.dir,spd:FL.wind.spd};
+  const P=buildPath();FL.path=P;
   /* the FROM floor: after a DIR TO the T-P (or the RADIAL IN point); after a SEC activated in flight, the legs already flown */
   let f0=0;{const ti=S.active.legs.reduce((a,l,i)=>l.k==='tp'?i:a,-1);if(ti>=0)f0=ti;const fl=S.active.flownIx;if(fl!=null&&fl>=0&&fl<S.active.legs.length)f0=Math.max(f0,fl)}
   let i0=1;if(f0>0){let k=-1;P.pts.forEach((q,i)=>{if(q.ix!=null&&q.ix<=f0)k=i});if(k>=0)i0=Math.min(P.pts.length-1,k+1)}
@@ -126,7 +128,7 @@ function flightReady(){const a=S.active,i=I(),q=S.perf,f=S.fuel,miss=[];
 /* V speeds: the pilot's entries are used as entered (any order); a blank one is computed from the take-off weight */
 function vFill(){const q=S.perf,f=S.fuel,tow=(f.zfw||58)+(f.block||8)-(f.taxi??0.2),v2=q.v2||Math.round(150*Math.sqrt(tow/66.8));
   if(!q.v2)q.v2=v2;if(!q.vr)q.vr=Math.min(q.v2,v2-4);if(!q.v1)q.v1=Math.min(q.vr,v2-9)}
-function flightStart(){const miss=flightReady();if(miss.length)return miss;vFill();WX.surface={};
+function flightStart(){const miss=flightReady();if(miss.length)return miss;vFill();WX.surface={};WX.frozenWind=null;
   cockpitAudio.reset();
   const P=buildPath(),o=DB.apt[orig()],r=o.rwy[S.active.rwy],tr=r.crs+(o.var||0);
   Object.assign(FL,{active:true,running:true,t:0,utc0:Date.now(),path:P,s:0,seg:1,xtk:0,pos:r.pos,hdgT:tr,trkT:tr,roll:0,pitch:0,alt:r.tdze??o.elev,vs:0,ias:0,tas:0,gs:0,mach:0,
