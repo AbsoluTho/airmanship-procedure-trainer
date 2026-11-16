@@ -135,6 +135,35 @@ async def run(url,b):
       S.active=A0;S.init=I0;S.page=pg0;S.sp=sp0;S.prog.to=pr0;S.fpOff=off0;S.msg='';S.tmpy=null;S.coRte=null;render();return out})()""")
     assert v22=={'prog':['OEDF34R',0],'bad':'OEDF34R','vor':[True,True,3],'lr':'ALTLR','aw':'ALTAWY','alt':'PEGUR SIGRO IVUDA WEJ LABUN NETOL DEMSU TBK|Z712V54','next':'PEGUR WEJ','cg':[True,True],'n1':[45,55,55,63]},f'v0.22 checks: {v22}'
     assert await pg.evaluate("[!document.querySelector('#v-mcdu .side'),!!document.querySelector('#v-mcdu #deck'),OFPS.length,AOC_OFP.FAD122.rte,buildRoute(CO_RTES.OERKOEJN1).star].join()")=='true,true,12,OEJNOERK1,VEME1A','MCDU tab without the Exercise and How to cards; 12 OFP flights'
+    # idle deceleration rules (kt per NM): gear up 10/5/0, gear down 15/10/5, landing configuration 20/15/10, steeper than 2000 ft/min -5
+    r=await pg.evaluate("""(()=>{const g=FL.gear,c=FL.conf,o=[];for(const [gear,conf] of [[false,'0'],[false,'2'],[true,'2'],[true,'3'],[true,'FULL']]){FL.gear=gear;FL.conf=conf;
+      o.push([0,-1000,-2000,-2500,-3000].map(v=>idleDecel(v,200)).join('/'))}
+      FL.gear=false;FL.conf='0';o.push(+idleDecel(-2385,450).toFixed(1),Math.round(idleVs(5,200)),Math.round(idleVs(0,200)),Math.round(idleVs(-5,200)));FL.gear=g;FL.conf=c;return o.join(' ')})()""")
+    assert r=='10/5/0/-5/-5 10/5/0/-5/-5 15/10/5/-5/-5 20/15/10/-5/-5 20/15/10/-5/-5 3.4 1000 2000 2500',('idle deceleration rules',r)
+    # speed brakes: half 50 % more drag, full 100 % more; full only with the autopilot off; none in CONF FULL
+    r=await pg.evaluate("""(()=>{const k={g:FL.gear,c:FL.conf,a:FL.active,gr:FL.ground,ap1:FCU.ap1,ap2:FCU.ap2,sb:LV.spb},o=[];FL.active=true;FL.ground=false;FL.gear=false;FL.conf='0';FCU.ap2=false;
+      const row=()=>[0,-1000,-2000,-3000,-4000].map(v=>idleDecel(v,200)).join('/');
+      LV.spb=0.5;FCU.ap1=true;o.push(row());LV.spb=1;o.push(row());FCU.ap1=false;o.push(row(),Math.round(idleVs(0,200)));
+      FL.conf='FULL';FL.gear=true;o.push(row());FL.gear=k.g;FL.conf=k.c;FL.active=k.a;FL.ground=k.gr;FCU.ap1=k.ap1;FCU.ap2=k.ap2;
+      LV.spb=0;lever('spb','0.7');o.push(LV.spb);lever('spb','1.4');o.push(LV.spb);lever('spb',0.01);o.push(LV.spb);LV.spb=k.sb;return o.join(' ')})()""")
+    assert r=='15/10/5/0/-5 15/10/5/0/-5 20/15/10/5/0 4000 20/15/10/-5/-5 0.7 0.7 0',('speed brake rules',r)
+    # levers: speed brake marks and flap numbers are the buttons; the landing gear panel opens from LDG GEAR over the upper ECAM
+    await pg.evaluate("window.__ecam.show(true)");await pg.click('#lvBtn');await pg.click('#lgBtn')
+    r=await pg.evaluate("""(()=>{const q=s=>document.querySelector(s),o=[];
+      o.push(!!q('#lvPanel [data-sb]'),document.querySelectorAll('#lvPanel [data-lv="flaps"]').length,!q('#lvPanel [data-lv="gear"]'),!!q('#lgPanel [data-lv="gear"]'),!q('#lgPanel').hidden);
+      const f0=LV.flaps;q('#lvPanel [data-lv="flaps"][data-v="2"]').dispatchEvent(new MouseEvent('click',{bubbles:true}));o.push(LV.flaps);lever('flaps',f0);return o.join()})()""")
+    assert r=='true,5,true,true,true,2',('levers layout',r)
+    # speed brake lever: a tap on the handle at RET arms / disarms the ground spoilers, the handle is dragged freely, out of RET it disarms
+    bb=await pg.evaluate("(()=>{const r=document.querySelector('#lvPanel [data-sb]').getBoundingClientRect();return[r.left,r.top,r.width,r.height]})()")
+    sx=bb[0]+bb[2]*135.5/233;sy=lambda y:bb[1]+bb[3]*(y-45)/298      # image coordinates (x 135.5 = slot, y 97 = RET, 269 = FULL)
+    await pg.mouse.click(sx,sy(97));assert await pg.evaluate("LV.gsArm===true&&LV.spb===0"),'tap on the handle at RET arms the ground spoilers'
+    await pg.mouse.click(sx,sy(97));assert await pg.evaluate("LV.gsArm===false"),'second tap disarms'
+    await pg.mouse.click(sx,sy(97));await pg.mouse.move(sx,sy(97));await pg.mouse.down();await pg.mouse.move(sx,sy(130),steps=4);await pg.mouse.move(sx,sy(157.2),steps=4);await pg.mouse.up()
+    v=await pg.evaluate("[LV.spb,LV.gsArm]");assert abs(v[0]-0.35)<0.03 and v[1] is False,('dragged to 35 %, disarmed',v)
+    await pg.mouse.click(bb[0]+bb[2]*30/233,sy(269));assert await pg.evaluate("LV.spb")==1,'tap on the FULL mark'
+    await pg.mouse.move(sx,sy(269));await pg.mouse.down();await pg.mouse.move(sx,sy(60),steps=6);await pg.mouse.up();assert await pg.evaluate("LV.spb")==0,'dragged back to RET'
+    await pg.click('#lgBtn');await pg.click('#lvBtn');assert await pg.evaluate("document.querySelector('#lgPanel').hidden&&document.querySelector('#lvPanel').hidden")
+    await pg.evaluate("window.__ecam.show(false)")
     # RESET MCDU sits on the control bar and asks before clearing
     await pg.evaluate("window.__keep=S;S=Object.assign({},S,{sp:'TEST'});render()")
     await pg.click('#flight #reset')

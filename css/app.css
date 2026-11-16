@@ -219,7 +219,8 @@ button{font:inherit;color:inherit}
 .lv-panel[hidden]{display:none}
 .lv-panel svg{width:100%;height:100%;display:block;user-select:none;-webkit-user-select:none}
 .lv-panel .lvk:active rect{filter:brightness(1.4)}
-.lv-btn{position:absolute;z-index:3;top:0;left:50%;transform:translate(-50%,-55%);border:1px solid rgba(255,255,255,.35);border-radius:999px;background:rgba(18,24,32,.9);color:#9fe3ff;font:600 11px/1 "IBM Plex Mono",ui-monospace,monospace;letter-spacing:.08em;padding:6px 12px;cursor:pointer}
+.lv-btns{position:absolute;z-index:4;top:0;left:50%;transform:translate(-50%,-55%);display:flex;gap:8px;white-space:nowrap}
+.lv-btn{border:1px solid rgba(255,255,255,.35);border-radius:999px;background:rgba(18,24,32,.9);color:#9fe3ff;font:600 11px/1 "IBM Plex Mono",ui-monospace,monospace;letter-spacing:.08em;padding:6px 12px;cursor:pointer}
 .lv-btn[aria-pressed="true"]{color:#3cff3c}
 
 /* FULL SCREEN: only the instruments and the flight bar */
@@ -275,3 +276,8 @@ body.fs #v-ofp{display:none}
 .ask-row{display:flex;gap:10px;justify-content:flex-end}
 .ask-row .fb{padding:9px 14px}
 .fb.warn{background:#3a1c1c;border-color:#8f3a2f;color:#ffb4a8}
+
+/* landing gear panel over the lower part of the upper ECAM (as the ECP over the ND) */
+.lg-panel{position:absolute;z-index:2;left:3%;width:94%;bottom:7%;aspect-ratio:650/333;border-radius:6px;overflow:hidden;box-shadow:0 4px 14px rgba(0,0,0,.6);background:#3b4656;touch-action:manipulation}
+.lg-panel[hidden]{display:none}
+.lg-panel svg{width:100%;height:100%;display:block;user-select:none;-webkit-user-select:none}

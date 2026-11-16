@@ -40,7 +40,7 @@ function cstrNow(){const r={clb:null,clbIx:null,des:null,desIx:null,spd:null};if
     if(ahead&&c.alt&&c.ph==='clb'&&(c.alt.t==='-'||c.alt.t==='@')&&c.alt.v<A-50&&(r.clb==null||c.alt.v<=r.clb)){r.clb=c.alt.v;r.clbIx=c.ix}
     if(ahead&&c.alt&&c.ph==='des'&&(c.alt.t==='+'||c.alt.t==='@')&&c.alt.v>A+50&&(r.des==null||c.alt.v>=r.des)){r.des=c.alt.v;r.desIx=c.ix}
     if(c.spd){if(c.ph==='clb'&&ahead&&['CLB','TAKEOFF'].includes(S.phase))r.spd=Math.min(r.spd??999,c.spd);
-      if(c.ph==='des'&&['DES','APPR'].includes(S.phase)){const togo=c.s-FL.s;if(!ahead||togo<=Math.max(0,FL.ias-c.spd)*0.07+1)r.spd=Math.min(r.spd??999,c.spd)}}}
+      if(c.ph==='des'&&['DES','APPR'].includes(S.phase)){const togo=c.s-FL.s;if(!ahead||togo<=decelLead(FL.ias-c.spd)+1)r.spd=Math.min(r.spd??999,c.spd)}}}
   return r}
 
 /* ---------- vertical prediction along the path (altitude at each constrained waypoint) ---------- */

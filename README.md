@@ -4,7 +4,7 @@ An unofficial A320 **procedure** trainer that runs in the browser (iPad first). 
 
 Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator manuals. The navigation data was typed from charts for training only and must never be used for navigation.
 
-## Status: Phase 3 prototype (v0.22.4)
+## Status: Phase 3 prototype (v0.24.0)
 
 - **MCDU** (Thales FMS2 layout, per FCOM DSC-22): keyboard and scratchpad, INIT A, F-PLN with TMPY (ERASE/INSERT), LAT REV, DEPARTURE, AIRWAYS (with airway-to-airway intersection), ARRIVAL, waypoint insertion, CLR of waypoints and discontinuities.
 - **Exercise** OEJN to OETB: RWY 16C MIGD2E, L677 WEJ, V54 TBK, ILS 31 via D179O, ALTN OEMA, FL340, CI 20, with automatic progress checks.
@@ -19,6 +19,39 @@ Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator
   - 11 approaches: ILS 16L (IMBF 111.7), 16R (IWSR 108.1), 34L (IWMR 108.9), 34R (IABF 110.7); RNP 16L, 16R, 34L, 34R; VOR 16R, 34L and 34R (KFA 112.3, the 34R final offset on 326°). Vias from the IAFs of the KFA 14 DME arc (LOPOD, RESAN, KEBAP, LOSAX, DASLA, KFA; DAXAR and KAVIV for the 16 runways) and from DF603, DF604 and RESAN for the RNP approaches; published missed approaches to the RESAN and LOSAX holds.
   - 32 RNAV SIDs: EMUSA, MIBRA, PUSRA, TAYMA 2E/2F/2G/2H and LADNA, METLA, ROTEL, RYDAN 1E/2E, 1F/2F, 1G/2G, 1H/2H (one set per runway).
   - Fix positions from KFA radial/DME, the extended centrelines and the chart tracks and distances; the same fix reached by different procedures agrees within 0.6 NM (36 cross-checks printed by the generator).
+- **v0.24.0**: speed brake lever, levers panel rearranged.
+  - LEVERS: speed brake lever on the left (cut from the cockpit photo; RET, 1/2 and FULL on the lever are the buttons), thrust levers and ENG MASTER panel in the centre with the thrust buttons on their left, flaps lever on the right. The position numbers on the flaps lever are the buttons; the separate 0 to FULL buttons are gone. A read-out under the flaps lever gives the configuration, the gear and the speed brakes. The speed brake and flaps levers are drawn the same height, level with each other. The ENG MASTER panel is drawn larger (290 instead of 214 units wide, the thrust quadrant a little smaller) and its images are re-encoded from the photo at a higher quality.
+  - LDG GEAR: new button next to LEVERS. It opens the landing gear panel (gear lever and lights, AUTO BRK, BRK FAN, A/SKID) over the lower part of the upper ECAM, as the ECP opens over the ND. The panel is no longer inside LEVERS.
+  - Speed brake physics: speed brakes add drag to the deceleration rules of v0.23.0. Half adds 50 %, full adds 100 % of the level deceleration of the configuration:
+
+    | gear up | level | 1000 ft/min down | 2000 ft/min down | no deceleration at |
+    |---|---|---|---|---|
+    | no speed brake | 10 | 5 | 0 | 2000 ft/min |
+    | 1/2 | 15 | 10 | 5 | 3000 ft/min |
+    | FULL | 20 | 15 | 10 | 4000 ft/min |
+
+    Past the rate of the last column the speed increases (5 kt per NM, reached 500 ft/min further). Gear down: 15 becomes 22.5 (1/2) and 30 (FULL) in level flight.
+  - Idle descent (OP DES, EXP DES) on speed: 2000 ft/min clean, 3000 ft/min with half, 4000 ft/min with full speed brakes.
+  - Full speed brakes only with the autopilot off: with AP 1 or AP 2 engaged the lever can be at FULL but the extension stops at half (read-out "1/2 (AP ON)").
+  - CONF FULL: the speed brakes do not extend (read-out "INHIBITED"), no effect on the drag.
+  - EWD memo SPEED BRK in green while they are extended in flight.
+  - The speed brake lever travels freely: drag the handle along its slot (or tap the scale) to any position from RET to FULL. The drag added is proportional to the position (30 % of travel adds 30 % of the level deceleration: 13 kt per NM clean and level). The read-out gives the position in per cent.
+  - Ground spoilers: on the handle at RET, ARM arms them and DISARM disarms them (the GND SPLRS ARMED box lights green). Moving the lever out of RET disarms them. T.O and LDG memos: SPLRS ARM in green once armed, SPLRS ....ARM in blue until then (it was always green); memo GND SPLRS ARMED in green while armed, GND SPLRS on the landing roll if they were armed.
+- **v0.23.0**: flight physics.
+  - Rotation: 3 degrees per second, 0 to 15 degrees of pitch in 5 s (it slowed to 2 degrees per second after lift-off).
+  - Lift-off: the rate of climb builds up along an S curve (slow, faster in the middle, slow again) and reaches its target 5 s after lift-off. It rose at a constant 600 ft/min per second before. The target is limited while the gear is down (1200 ft/min, half the 2400 ft/min of SRS) and rises to the full rate as the gear retracts, so the rate of climb only ever increases.
+  - Deceleration at idle, in kt lost per NM flown. The speed follows these rates while it goes to its target, in every mode:
+
+    | | level | 1000 ft/min down | 2000 ft/min down | steeper |
+    |---|---|---|---|---|
+    | gear up (clean, CONF 1, CONF 2) | 10 | 5 | 0 | speed increases 5 kt per NM |
+    | gear down | 15 | 10 | 5 | speed increases 5 kt per NM |
+    | CONF 3 or FULL with the gear down | 20 | 15 | 10 | speed increases 5 kt per NM |
+
+    Between the columns the rate changes in proportion; past 2000 ft/min it goes to the 5 kt per NM increase over the next 500 ft/min. CONF 3 or FULL with the gear up counts as gear up. In a climb the speed is lost faster (5 kt per NM more for each 1000 ft/min).
+  - Above a ground speed of 250 kt the rule is applied to the descent gradient instead of the rate (rate x 250 / ground speed), so a 3 degree descent path decelerates the same at 250 kt as at cruise speed. Taken literally, the 2400 ft/min of a 3 degree path at 450 kt would make the speed increase all the way down.
+  - OP DES and EXP DES (idle, speed on elevator) fly the rate of descent of the table: 2000 ft/min clean on speed, shallower to decelerate, level at the most.
+  - Managed descent plans its decelerations with the same rates: the speed limit, speed constraints and the hold speed are started earlier (about 15 NM for 300 to 250 kt on the descent path, against 4 NM before).
 - **v0.22.4**:
   - RESET FLIGHT asks for confirmation, like RESET MCDU (CANCEL or RESET FLIGHT; Esc or a click outside cancels).
   - LOAD (saved set-up) asks for confirmation when a flight is in progress, since it stops that flight. On the ground before START it loads at once, as before.
