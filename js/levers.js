@@ -71,16 +71,20 @@ function gearSvg(){const G='#3cff3c',B='#3ad7ff',R='#ff3b30',t=lvT,hit=lvHit;let
     [['UP',592,44,64,86],['DOWN',592,150,64,148]].forEach(([v,x,y,w,h])=>{const on=LV.gear===v;
       if(on)s+=`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="8" fill="none" stroke="${G}" stroke-width="4"/>`;s+=hit(x,y-30,w,h+(v==='UP'?30:40),'gear',v)})}
   return s}
-function drawGear(){const o=$('#lgPanel');if(!o)return;o.hidden=!LVP.gear;const b=$('#lgBtn');if(b)b.setAttribute('aria-pressed',String(!!LVP.gear));
-  if(!LVP.gear)return;const h=gearSvg();if(o._h!==h){o.innerHTML=`<svg viewBox="10 0 650 333" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" aria-label="Landing gear panel">${h}</svg>`;o._h=h}}
-function drawLevers(){const o=$('#lvPanel');if(!o)return;o.hidden=!LVP.on;const b=$('#lvBtn');if(b){b.setAttribute('aria-pressed',String(LVP.on));b.textContent=LVP.on?'SD':'LEVERS'}
-  if(!LVP.on)return;const h=leversSvg();if(o._h!==h){o.innerHTML=`<svg viewBox="0 0 600 530" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" aria-label="Levers">${h}</svg>`;o._h=h}}
+function drawGear(){const o=$('#lgPanel');if(!o)return;const pop=typeof POP!=='undefined'&&!!POP.wins.gear,on=LVP.gear||pop;o.hidden=!on;const b=$('#lgBtn');if(b)b.setAttribute('aria-pressed',String(on));
+  if(!on)return;const h=gearSvg();if(o._h!==h){o.innerHTML=`<svg viewBox="10 0 650 333" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" aria-label="Landing gear panel">${h}</svg>`;o._h=h}}
+/* shown over the SD (LEVERS button), or always when the panel is in its own window */
+function drawLevers(){const o=$('#lvPanel');if(!o)return;const pop=typeof POP!=='undefined'&&!!POP.wins.levers,on=LVP.on||pop;o.hidden=!on;
+  const b=$('#lvBtn');if(b){b.setAttribute('aria-pressed',String(on));b.textContent=LVP.on&&!pop?'SD':'LEVERS'}
+  if(!on)return;const h=leversSvg();if(o._h!==h){o.innerHTML=`<svg viewBox="0 0 600 530" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" aria-label="Levers">${h}</svg>`;o._h=h}}
 function buildLevers(){const sd=$('#sd');if(!sd||$('#lvPanel'))return;const box=sd.parentElement,ewd=$('#ewd')&&$('#ewd').parentElement;
   box.insertAdjacentHTML('beforeend',`<div class="lv-panel" id="lvPanel" hidden></div><div class="lv-btns"><button type="button" class="lv-btn" id="lvBtn" aria-pressed="false" title="Thrust levers, speed brake, flaps and engine masters">LEVERS</button><button type="button" class="lv-btn" id="lgBtn" aria-pressed="false" title="Landing gear panel on/off">LDG GEAR</button></div>`);
   if(ewd)ewd.insertAdjacentHTML('beforeend',`<div class="lg-panel" id="lgPanel" hidden aria-label="Landing gear panel"></div>`);
   const tap=e=>{const g=e.target.closest('[data-lv]');if(!g)return;lever(g.dataset.lv,g.dataset.v);drawLevers();drawGear()};
-  $('#lvBtn').addEventListener('click',()=>{LVP.on=!LVP.on;drawLevers()});
-  $('#lgBtn').addEventListener('click',()=>{LVP.gear=!LVP.gear;drawGear()});
+  /* a panel that is in its own window: the button brings that window to the front */
+  const popFront=id=>{const r=typeof POP!=='undefined'&&POP.wins[id];if(r){try{r.w.focus()}catch(e){}}return!!r};
+  $('#lvBtn').addEventListener('click',()=>{if(popFront('levers'))return;LVP.on=!LVP.on;drawLevers()});
+  $('#lgBtn').addEventListener('click',()=>{if(popFront('gear'))return;LVP.gear=!LVP.gear;drawGear()});
   $('#lvPanel').addEventListener('click',tap);if($('#lgPanel'))$('#lgPanel').addEventListener('click',tap);
   /* speed brake lever: dragged freely along its slot (or the scale tapped); a tap on the handle at RET arms or disarms the ground spoilers */
   {const pan=$('#lvPanel');let drag=null;

@@ -230,7 +230,9 @@ function ecpPress(k){
   else EC.page=EC.page===k?null:k;
   drawEcam()}
 function ecamShow(on){EC.on=on;EC.ecp=on;const h=$('#mcduHome');if(h)h.classList.toggle('ecam-on',on);const b=$('#duToggle');if(b){b.textContent=on?'MCDU':'ECAM';b.setAttribute('aria-pressed',String(on))}drawEcam();ecamUI()}
-function drawEcam(){if(EC.on){const a=$('#ewd'),b=$('#sd');if(a&&a.width)drawEWD(a);if(b&&b.width)drawSD(b)}else engStep();ecamUI()}
+/* the ECAM is drawn when it is shown in the page, or when one of its displays is in its own window */
+function drawEcam(){const pw=typeof POP!=='undefined'?POP.wins:{},e=EC.on||!!pw.ewd,s=EC.on||!!pw.sd;
+  if(e||s){const a=$('#ewd'),b=$('#sd');if(e&&a&&a.width)drawEWD(a);if(s&&b&&b.width)drawSD(b);if(!e)engStep()}else engStep();ecamUI()}
 function buildEcam(){const home=$('#mcduHome');if(!home||$('#ecam'))return;const pc=(v,t)=>(v/t*100).toFixed(3)+'%';
   home.insertAdjacentHTML('afterbegin',`<button type="button" class="dutoggle" id="duToggle" aria-pressed="false" title="Switch between MCDU and ECAM">ECAM</button>
    <div class="ecam" id="ecam" aria-label="ECAM upper and lower displays">
@@ -242,7 +244,7 @@ function buildEcam(){const home=$('#mcduHome');if(!home||$('#ecam'))return;const
       return`<button type="button" class="ecp-k" data-ecp="${k}" aria-label="${k.toUpperCase()}" style="left:${pc(x-w/2,526)};top:${pc(y-h/2,248)};width:${pc(w,526)};height:${pc(h,248)}"><i></i></button>`}).join('')}</div>
      <button type="button" class="ecp-btn" id="ecpBtn" aria-pressed="false" title="ECAM control panel on/off">ECP</button>`);
     $('#ecpBtn').addEventListener('click',()=>{EC.ecp=!EC.ecp;ecamUI()})}
-  $('#duToggle').addEventListener('click',()=>ecamShow(!EC.on));
+  $('#duToggle').addEventListener('click',()=>{const r=typeof POP!=='undefined'&&POP.wins.mcdu;if(r&&EC.on){try{r.w.focus()}catch(e){}return}ecamShow(!EC.on)});   /* MCDU in its own window: the button brings it to the front */
   document.querySelectorAll('[data-ecp]').forEach(b=>b.addEventListener('click',()=>ecpPress(b.dataset.ecp)));
   ['#ewd','#sd'].forEach(id=>{const c=$(id);new ResizeObserver(()=>{const d=devicePixelRatio||1,w=Math.round(c.clientWidth*d),h=Math.round(c.clientHeight*d);if(w&&(w!==c.width||h!==c.height)){c.width=w;c.height=h;drawEcam()}}).observe(c)})}
 buildEcam();

@@ -500,7 +500,10 @@ function flightTick(dtReal){
 }
 function refreshAll(){if(typeof render==='function')render();if(window.drawPFD2D)drawPFD2D();if(window.drawFcu)drawFcu();if(window.drawEcam)drawEcam();flightUI()}
 let _lastFrame=null,_acc=0;
-function frame(ts){if(FL.active&&FL.running){if(_lastFrame!=null){const d=Math.min(0.25,(ts-_lastFrame)/1000);_acc+=d;if(_acc>=0.1){flightTick(_acc);_acc=0}}}_lastFrame=ts;requestAnimationFrame(frame)}
+/* the flight advances on the animation frames of the page and of every pop-out window (flightPump), so it keeps running when the page
+   itself is covered or minimised and only a pop-out window is in view; the time comes from one clock, so several callers do not add up */
+function flightPump(){const ts=performance.now();if(FL.active&&FL.running){if(_lastFrame!=null){const d=Math.min(0.25,(ts-_lastFrame)/1000);_acc+=d;if(_acc>=0.1){flightTick(_acc);_acc=0}}}_lastFrame=ts}
+function frame(){flightPump();requestAnimationFrame(frame)}
 requestAnimationFrame(frame);
 function flightSkip(cond){if(!FL.active)return;cockpitAudio.cancelFlight();let n=0;while(!cond()&&FL.stage!=='STOP'&&n<40000){step(0.5);if(n%20===0)setFma();n++}setFma();refreshAll()}
 
