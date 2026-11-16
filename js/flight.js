@@ -136,7 +136,7 @@ function flightStart(){const miss=flightReady();if(miss.length)return miss;vFill
 function q2conf(){const f=S.perf.flaps;return f===1?'1+F':String(f||1)}
 
 /* ---------- LEVERS: thrust levers, flaps lever, landing gear lever, autobrake (the pilot's commands) ---------- */
-const LV={thr:'IDLE',flaps:0,spb:0,gear:'DOWN',abrk:null,fan:false,askid:true,decel:false,m1:false,m2:false};
+const LV={thr:'IDLE',flaps:0,spb:0,gsArm:false,gear:'DOWN',abrk:null,fan:false,askid:true,decel:false,m1:false,m2:false};
 const VFE={'0':999,'1':230,'1+F':215,'2':200,'3':185,'FULL':177},VLE=280;
 let PM_AUTO=false;   /* test hook: a pilot monitoring that moves the levers (off in the app) */
 function lever(k,v){
@@ -160,7 +160,8 @@ function lever(k,v){
       else if(v==='FLX'&&!['TO','GA SOFT'].includes(FL.thr))FL.thr='MCT';
     }}
   else if(k==='flaps'){const n=+v;if(n>=0&&n<=4)LV.flaps=n}
-  else if(k==='spb'){const n=+v;if([0,0.5,1].includes(n))LV.spb=n}   /* speed brake lever: RET, 1/2, FULL */
+  else if(k==='spb'){const n=+v;if(n>=0&&n<=1){LV.spb=n<0.03?0:n>0.97?1:n;if(LV.spb>0)LV.gsArm=false}}   /* speed brake lever: any position from RET (0) to FULL (1); out of RET the ground spoilers are not armed */
+  else if(k==='gsarm'){if(LV.spb===0)LV.gsArm=v==='toggle'?!LV.gsArm:v===true||v==='1'||v==='on'}   /* ground spoilers armed (lever pulled up), at RET only */
   else if(k==='gear'){if(v==='UP'&&FL.active&&FL.ground)return;LV.gear=v}   /* weight on wheels: no gear up on the ground */
   else if(k==='abrk')LV.abrk=LV.abrk===v?null:v;
   else if(k==='master'){if(FL.active)return;LV['m'+v]=!LV['m'+v]}

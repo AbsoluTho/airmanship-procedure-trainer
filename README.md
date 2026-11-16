@@ -35,6 +35,8 @@ Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator
   - Full speed brakes only with the autopilot off: with AP 1 or AP 2 engaged the lever can be at FULL but the extension stops at half (read-out "1/2 (AP ON)").
   - CONF FULL: the speed brakes do not extend (read-out "INHIBITED"), no effect on the drag.
   - EWD memo SPEED BRK in green while they are extended in flight.
+  - The speed brake lever travels freely: drag the handle along its slot (or tap the scale) to any position from RET to FULL. The drag added is proportional to the position (30 % of travel adds 30 % of the level deceleration: 13 kt per NM clean and level). The read-out gives the position in per cent.
+  - Ground spoilers: on the handle at RET, ARM arms them and DISARM disarms them (the GND SPLRS ARMED box lights green). Moving the lever out of RET disarms them. T.O and LDG memos: SPLRS ARM in green once armed, SPLRS ....ARM in blue until then (it was always green); memo GND SPLRS ARMED in green while armed, GND SPLRS on the landing roll if they were armed.
 - **v0.23.0**: flight physics.
   - Rotation: 3 degrees per second, 0 to 15 degrees of pitch in 5 s (it slowed to 2 degrees per second after lift-off).
   - Lift-off: the rate of climb builds up along an S curve (slow, faster in the middle, slow again) and reaches its target 5 s after lift-off. It rose at a constant 600 ft/min per second before. The target is limited while the gear is down (1200 ft/min, half the 2400 ft/min of SRS) and rises to the full rate as the gear retracts, so the rate of climb only ever increases.
