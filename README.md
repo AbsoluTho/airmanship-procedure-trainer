@@ -4,7 +4,7 @@ An unofficial A320 **procedure** trainer that runs in the browser (iPad first). 
 
 Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator manuals. The navigation data was typed from charts for training only and must never be used for navigation.
 
-## Status: Phase 3 prototype (v0.23.0)
+## Status: Phase 3 prototype (v0.24.0)
 
 - **MCDU** (Thales FMS2 layout, per FCOM DSC-22): keyboard and scratchpad, INIT A, F-PLN with TMPY (ERASE/INSERT), LAT REV, DEPARTURE, AIRWAYS (with airway-to-airway intersection), ARRIVAL, waypoint insertion, CLR of waypoints and discontinuities.
 - **Exercise** OEJN to OETB: RWY 16C MIGD2E, L677 WEJ, V54 TBK, ILS 31 via D179O, ALTN OEMA, FL340, CI 20, with automatic progress checks.
@@ -19,6 +19,22 @@ Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator
   - 11 approaches: ILS 16L (IMBF 111.7), 16R (IWSR 108.1), 34L (IWMR 108.9), 34R (IABF 110.7); RNP 16L, 16R, 34L, 34R; VOR 16R, 34L and 34R (KFA 112.3, the 34R final offset on 326°). Vias from the IAFs of the KFA 14 DME arc (LOPOD, RESAN, KEBAP, LOSAX, DASLA, KFA; DAXAR and KAVIV for the 16 runways) and from DF603, DF604 and RESAN for the RNP approaches; published missed approaches to the RESAN and LOSAX holds.
   - 32 RNAV SIDs: EMUSA, MIBRA, PUSRA, TAYMA 2E/2F/2G/2H and LADNA, METLA, ROTEL, RYDAN 1E/2E, 1F/2F, 1G/2G, 1H/2H (one set per runway).
   - Fix positions from KFA radial/DME, the extended centrelines and the chart tracks and distances; the same fix reached by different procedures agrees within 0.6 NM (36 cross-checks printed by the generator).
+- **v0.24.0**: speed brake lever, levers panel rearranged.
+  - LEVERS: speed brake lever on the left (cut from the cockpit photo; RET, 1/2 and FULL on the lever are the buttons), thrust levers and ENG MASTER panel in the centre with the thrust buttons on their left, flaps lever on the right. The position numbers on the flaps lever are the buttons; the separate 0 to FULL buttons are gone. A read-out under the flaps lever gives the configuration, the gear and the speed brakes.
+  - LDG GEAR: new button next to LEVERS. It opens the landing gear panel (gear lever and lights, AUTO BRK, BRK FAN, A/SKID) over the lower part of the upper ECAM, as the ECP opens over the ND. The panel is no longer inside LEVERS.
+  - Speed brake physics: speed brakes add drag to the deceleration rules of v0.23.0. Half adds 50 %, full adds 100 % of the level deceleration of the configuration:
+
+    | gear up | level | 1000 ft/min down | 2000 ft/min down | no deceleration at |
+    |---|---|---|---|---|
+    | no speed brake | 10 | 5 | 0 | 2000 ft/min |
+    | 1/2 | 15 | 10 | 5 | 3000 ft/min |
+    | FULL | 20 | 15 | 10 | 4000 ft/min |
+
+    Past the rate of the last column the speed increases (5 kt per NM, reached 500 ft/min further). Gear down: 15 becomes 22.5 (1/2) and 30 (FULL) in level flight.
+  - Idle descent (OP DES, EXP DES) on speed: 2000 ft/min clean, 3000 ft/min with half, 4000 ft/min with full speed brakes.
+  - Full speed brakes only with the autopilot off: with AP 1 or AP 2 engaged the lever can be at FULL but the extension stops at half (read-out "1/2 (AP ON)").
+  - CONF FULL: the speed brakes do not extend (read-out "INHIBITED"), no effect on the drag.
+  - EWD memo SPEED BRK in green while they are extended in flight.
 - **v0.23.0**: flight physics.
   - Rotation: 3 degrees per second, 0 to 15 degrees of pitch in 5 s (it slowed to 2 degrees per second after lift-off).
   - Lift-off: the rate of climb builds up along an S curve (slow, faster in the middle, slow again) and reaches its target 5 s after lift-off. It rose at a constant 600 ft/min per second before. The target is limited while the gear is down (1200 ft/min, half the 2400 ft/min of SRS) and rises to the full rate as the gear retracts, so the rate of climb only ever increases.

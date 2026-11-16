@@ -140,6 +140,22 @@ async def run(url,b):
       o.push([0,-1000,-2000,-2500,-3000].map(v=>idleDecel(v,200)).join('/'))}
       FL.gear=false;FL.conf='0';o.push(+idleDecel(-2385,450).toFixed(1),Math.round(idleVs(5,200)),Math.round(idleVs(0,200)),Math.round(idleVs(-5,200)));FL.gear=g;FL.conf=c;return o.join(' ')})()""")
     assert r=='10/5/0/-5/-5 10/5/0/-5/-5 15/10/5/-5/-5 20/15/10/-5/-5 20/15/10/-5/-5 3.4 1000 2000 2500',('idle deceleration rules',r)
+    # speed brakes: half 50 % more drag, full 100 % more; full only with the autopilot off; none in CONF FULL
+    r=await pg.evaluate("""(()=>{const k={g:FL.gear,c:FL.conf,a:FL.active,gr:FL.ground,ap1:FCU.ap1,ap2:FCU.ap2,sb:LV.spb},o=[];FL.active=true;FL.ground=false;FL.gear=false;FL.conf='0';FCU.ap2=false;
+      const row=()=>[0,-1000,-2000,-3000,-4000].map(v=>idleDecel(v,200)).join('/');
+      LV.spb=0.5;FCU.ap1=true;o.push(row());LV.spb=1;o.push(row());FCU.ap1=false;o.push(row(),Math.round(idleVs(0,200)));
+      FL.conf='FULL';FL.gear=true;o.push(row());FL.gear=k.g;FL.conf=k.c;FL.active=k.a;FL.ground=k.gr;FCU.ap1=k.ap1;FCU.ap2=k.ap2;
+      LV.spb=3;lever('spb','0.5');o.push(LV.spb);lever('spb','0.7');o.push(LV.spb);LV.spb=k.sb;return o.join(' ')})()""")
+    assert r=='15/10/5/0/-5 15/10/5/0/-5 20/15/10/5/0 4000 20/15/10/-5/-5 0.5 0.5',('speed brake rules',r)
+    # levers: speed brake marks and flap numbers are the buttons; the landing gear panel opens from LDG GEAR over the upper ECAM
+    await pg.evaluate("window.__ecam.show(true)");await pg.click('#lvBtn');await pg.click('#lgBtn')
+    r=await pg.evaluate("""(()=>{const q=s=>document.querySelector(s),o=[];
+      o.push(!!q('#lvPanel [data-lv="spb"]'),document.querySelectorAll('#lvPanel [data-lv="flaps"]').length,!q('#lvPanel [data-lv="gear"]'),!!q('#lgPanel [data-lv="gear"]'),!q('#lgPanel').hidden);
+      const f0=LV.flaps,s0=LV.spb;q('#lvPanel [data-lv="spb"][data-v="1"]').dispatchEvent(new MouseEvent('click',{bubbles:true}));o.push(LV.spb);
+      q('#lvPanel [data-lv="flaps"][data-v="2"]').dispatchEvent(new MouseEvent('click',{bubbles:true}));o.push(LV.flaps);lever('flaps',f0);lever('spb',s0);return o.join()})()""")
+    assert r=='true,5,true,true,true,1,2',('levers layout',r)
+    await pg.click('#lgBtn');await pg.click('#lvBtn');assert await pg.evaluate("document.querySelector('#lgPanel').hidden&&document.querySelector('#lvPanel').hidden")
+    await pg.evaluate("window.__ecam.show(false)")
     # RESET MCDU sits on the control bar and asks before clearing
     await pg.evaluate("window.__keep=S;S=Object.assign({},S,{sp:'TEST'});render()")
     await pg.click('#flight #reset')

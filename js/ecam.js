@@ -116,6 +116,7 @@ function drawEWD(c){const D=ecCtx(c,76,82,522,510),{g,T,L,R}=D,E=engStep(),q=S.p
   const rm=[];if(on&&(FL.thr==='TO'||(!FL.ground&&agl<1500&&S.phase==='TAKEOFF')))rm.push(['T.O INHIBIT','m']);
   if(on&&(!FL.ground&&S.phase==='APPR'&&agl<800||FL.stage==='ROLLOUT'))rm.push(['LDG INHIBIT','m']);
   if(on&&FL.stage==='ROLLOUT')rm.push(['GND SPLRS','g']);
+  if(on&&typeof spbEff==='function'&&spbEff()>0)rm.push(['SPEED BRK','g']);
   if(!on)rm.push(['PARK BRK','g']);
   if(on&&FCU.athr===false&&FL.stage==='AIR')rm.push(['A/THR OFF','a']);
   rm.forEach(([t,c],k)=>T(t,426,y0+k*dy,c,17))}

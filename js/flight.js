@@ -136,7 +136,7 @@ function flightStart(){const miss=flightReady();if(miss.length)return miss;vFill
 function q2conf(){const f=S.perf.flaps;return f===1?'1+F':String(f||1)}
 
 /* ---------- LEVERS: thrust levers, flaps lever, landing gear lever, autobrake (the pilot's commands) ---------- */
-const LV={thr:'IDLE',flaps:0,gear:'DOWN',abrk:null,fan:false,askid:true,decel:false,m1:false,m2:false};
+const LV={thr:'IDLE',flaps:0,spb:0,gear:'DOWN',abrk:null,fan:false,askid:true,decel:false,m1:false,m2:false};
 const VFE={'0':999,'1':230,'1+F':215,'2':200,'3':185,'FULL':177},VLE=280;
 let PM_AUTO=false;   /* test hook: a pilot monitoring that moves the levers (off in the app) */
 function lever(k,v){
@@ -160,6 +160,7 @@ function lever(k,v){
       else if(v==='FLX'&&!['TO','GA SOFT'].includes(FL.thr))FL.thr='MCT';
     }}
   else if(k==='flaps'){const n=+v;if(n>=0&&n<=4)LV.flaps=n}
+  else if(k==='spb'){const n=+v;if([0,0.5,1].includes(n))LV.spb=n}   /* speed brake lever: RET, 1/2, FULL */
   else if(k==='gear'){if(v==='UP'&&FL.active&&FL.ground)return;LV.gear=v}   /* weight on wheels: no gear up on the ground */
   else if(k==='abrk')LV.abrk=LV.abrk===v?null:v;
   else if(k==='master'){if(FL.active)return;LV['m'+v]=!LV['m'+v]}
@@ -202,13 +203,17 @@ const DECEL_NM=25;
    The rates of descent are those of a ground speed of 250 kt or less; faster, the same descent gradient counts
    (a 3 degree path gives the same deceleration at 250 kt and at cruise speed). In a climb the speed is lost faster. */
 function idleBase(){return 10+(FL.gear?(FL.conf==='3'||FL.conf==='FULL'?10:5):0)}
-function idleDecel(vs,gs){const base=idleBase(),v=-vs*Math.min(1,250/Math.max(1,gs));
-  if(v<=0)return Math.min(40,base-v/200);
-  if(v<=2000)return base-v/200;
-  return Math.max(-5,(base-10)-(v-2000)/500*(base-5))}
+/* speed brakes actually extended (0 to 1) for the lever position: not in CONF FULL (inhibited), half at the most with the autopilot engaged */
+function spbEff(){if(!FL.active||FL.ground||FL.conf==='FULL')return 0;return Math.min(LV.spb||0,FCU.ap1||FCU.ap2?0.5:1)}
+/* speed brakes add drag: half 50 % more, full 100 % more than the drag of the configuration (the level deceleration), so with full speed brakes
+   clean: level 20, 1000 ft/min down 15, 2000 ft/min down 10, no deceleration at 4000 ft/min; the 5 kt per NM increase starts past that rate */
+function idleDecel(vs,gs){const m=1+spbEff(),base=idleBase()*m,knee=2000*m,v=-vs*Math.min(1,250/Math.max(1,gs)),atK=base-knee/200;
+  if(v<=0)return Math.min(60,base-v/200);
+  if(v<=knee)return base-v/200;
+  return Math.max(-5,atK-(v-knee)/500*(atK+5))}
 /* the rate of descent (ft/min, positive down) that gives a deceleration of r kt per NM at idle */
-function idleVs(r,gs){const base=idleBase(),k=Math.max(1,gs/250);r=Math.max(-5,Math.min(base,r));
-  return(r>=base-10?(base-r)*200:2000+500*((base-10)-r)/(base-5))*k}
+function idleVs(r,gs){const m=1+spbEff(),base=idleBase()*m,knee=2000*m,atK=base-knee/200,k=Math.max(1,gs/250);r=Math.max(-5,Math.min(base,r));
+  return(r>=atK?(base-r)*200:knee+500*(atK-r)/(atK+5))*k}
 /* distance (NM) needed to lose dv kt at idle on the present path */
 function decelLead(dv){return Math.max(0,dv)/Math.max(2.5,idleDecel(Math.min(0,FL.vs),FL.gs))}
 function gaLeg(l){l.seg='ga';if(l.k==='hold'&&!l.fix)return null;return l}
