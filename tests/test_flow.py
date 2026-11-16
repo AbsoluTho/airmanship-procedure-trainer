@@ -135,6 +135,15 @@ async def run(url,b):
       S.active=A0;S.init=I0;S.page=pg0;S.sp=sp0;S.prog.to=pr0;S.fpOff=off0;S.msg='';S.tmpy=null;S.coRte=null;render();return out})()""")
     assert v22=={'prog':['OEDF34R',0],'bad':'OEDF34R','vor':[True,True,3],'lr':'ALTLR','aw':'ALTAWY','alt':'PEGUR SIGRO IVUDA WEJ LABUN NETOL DEMSU TBK|Z712V54','next':'PEGUR WEJ','cg':[True,True],'n1':[45,55,55,63]},f'v0.22 checks: {v22}'
     assert await pg.evaluate("[!document.querySelector('#v-mcdu .side'),!!document.querySelector('#v-mcdu #deck'),OFPS.length,AOC_OFP.FAD122.rte,buildRoute(CO_RTES.OERKOEJN1).star].join()")=='true,true,12,OEJNOERK1,VEME1A','MCDU tab without the Exercise and How to cards; 12 OFP flights'
+    # RESET MCDU sits on the control bar and asks before clearing
+    await pg.evaluate("window.__keep=S;S=Object.assign({},S,{sp:'TEST'});render()")
+    await pg.click('#flight #reset')
+    assert await pg.evaluate("document.querySelector('#askReset').classList.contains('on')&&S.sp==='TEST'"),'RESET MCDU asks first'
+    await pg.click('#askResetNo')
+    assert await pg.evaluate("!document.querySelector('#askReset').classList.contains('on')&&S.sp==='TEST'"),'CANCEL keeps the MCDU'
+    await pg.click('#flight #reset');await pg.click('#askResetYes')
+    assert await pg.evaluate("!document.querySelector('#askReset').classList.contains('on')&&S.sp!=='TEST'"),'confirm resets the MCDU'
+    await pg.evaluate("S=window.__keep;delete window.__keep;render()")
     # VERT REV at the origin (1R: CLB SPD LIM) and at the destination (6R: DES SPD LIM)
     await k('R1');x=await scr();assert 'VERT REV AT OEJN' in x and 'CLB SPD LIM' in x and 'SPD CSTR' not in x,('VERT REV at the origin',x)
     await t('250/FL120');await k('L2');assert await pg.evaluate('JSON.stringify(window.__S().spdLim.clb)')=='{"spd":250,"alt":12000}','CLB SPD LIM entry'

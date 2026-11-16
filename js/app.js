@@ -21,7 +21,13 @@ let lastT='';
 function tasks(){const h=TASKS.map(([t,f])=>{const d=f();return`<li class="${d?'done':''}"><span class="ck">${d?'✓':''}</span><span>${t}</span></li>`}).join('');
   const el=$('#tasks');if(el&&h!==lastT){el.innerHTML=h;lastT=h}}   /* the Exercise card is no longer on the page: the list is kept for the test */
 window.__tasksDone=()=>TASKS.filter(([,f])=>f()).length;
-{const rb=$('#reset');if(rb)rb.addEventListener('click',()=>{const e=S.elec;S=freshState();S.elec=e;render()})}
+function mcduReset(){const e=S.elec;S=freshState();S.elec=e;render()}
+{const rb=$('#reset'),dlg=$('#askReset'),shut=()=>dlg.classList.remove('on');
+  if(rb&&dlg){rb.addEventListener('click',()=>{dlg.classList.add('on');$('#askResetNo').focus()});
+    $('#askResetNo').addEventListener('click',shut);
+    $('#askResetYes').addEventListener('click',()=>{shut();mcduReset()});
+    dlg.addEventListener('click',ev=>{if(ev.target===dlg)shut()});
+    document.addEventListener('keydown',ev=>{if(ev.key==='Escape'&&dlg.classList.contains('on')){ev.stopPropagation();shut()}},true)}}
 
 /* ================= views / modal ================= */
 let view='mcdu';
