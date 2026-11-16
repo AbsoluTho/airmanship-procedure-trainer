@@ -20,9 +20,10 @@ Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator
   - 32 RNAV SIDs: EMUSA, MIBRA, PUSRA, TAYMA 2E/2F/2G/2H and LADNA, METLA, ROTEL, RYDAN 1E/2E, 1F/2F, 1G/2G, 1H/2H (one set per runway).
   - Fix positions from KFA radial/DME, the extended centrelines and the chart tracks and distances; the same fix reached by different procedures agrees within 0.6 NM (36 cross-checks printed by the generator).
 - **v0.25.0**: pop-out windows, first step (PFD and ND). PC browsers.
-  - POP OUT, top right of the PFD and of the ND: the display moves to a browser window of its own, to drag to another monitor or a television and resize freely. It is drawn at the size and pixel density of that window, so it stays sharp when large.
-  - FRAME OFF / FRAME ON in the window: the display with its cockpit frame, or the screen alone filling the window.
-  - DOCK (in the window, or in the place the display left in the page), or closing the window, puts the display back in the page.
+  - Pop-out button, top left of the PFD and of the ND (a square with an arrow leaving it; in the window, a square with an arrow entering it puts the display back): the display moves to a browser window of its own, to drag to another monitor or a television and resize freely. It is drawn at the size and pixel density of that window, so it stays sharp when large.
+  - The window keeps the shape of the display, so the display always fills it with no dark edges: after a resize the other side of the window follows, also when the browser's smallest window size is reached. A maximised or full-screen window cannot be reshaped; the display is then centred.
+  - FRAME OFF / FRAME ON (top right) in the window: the display with its cockpit frame, or the screen alone filling the window.
+  - The dock button in the window, DOCK in the place the display left in the page, or closing the window, puts the display back in the page.
   - One flight behind every window: the page keeps running the simulation and draws into the displays wherever they are. The flight also advances on the animation frames of the pop-out windows, so it keeps running when the page itself is covered or minimised.
   - The size, place and frame choice of each window are remembered for the next time (the browser may keep a new window on the screen of the page until it is dragged).
   - Not shown on phones and tablets. The browser must allow pop-ups for the site; inside the test page of the chat they are blocked.
