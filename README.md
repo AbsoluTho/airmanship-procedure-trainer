@@ -4,7 +4,7 @@ An unofficial A320 **procedure** trainer that runs in the browser (iPad first). 
 
 Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator manuals. The navigation data was typed from charts for training only and must never be used for navigation.
 
-## Status: Phase 3 prototype (v0.24.2)
+## Status: Phase 3 prototype (v0.25.0)
 
 - **MCDU** (Thales FMS2 layout, per FCOM DSC-22): keyboard and scratchpad, INIT A, F-PLN with TMPY (ERASE/INSERT), LAT REV, DEPARTURE, AIRWAYS (with airway-to-airway intersection), ARRIVAL, waypoint insertion, CLR of waypoints and discontinuities.
 - **Exercise** OEJN to OETB: RWY 16C MIGD2E, L677 WEJ, V54 TBK, ILS 31 via D179O, ALTN OEMA, FL340, CI 20, with automatic progress checks.
@@ -19,6 +19,14 @@ Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator
   - 11 approaches: ILS 16L (IMBF 111.7), 16R (IWSR 108.1), 34L (IWMR 108.9), 34R (IABF 110.7); RNP 16L, 16R, 34L, 34R; VOR 16R, 34L and 34R (KFA 112.3, the 34R final offset on 326°). Vias from the IAFs of the KFA 14 DME arc (LOPOD, RESAN, KEBAP, LOSAX, DASLA, KFA; DAXAR and KAVIV for the 16 runways) and from DF603, DF604 and RESAN for the RNP approaches; published missed approaches to the RESAN and LOSAX holds.
   - 32 RNAV SIDs: EMUSA, MIBRA, PUSRA, TAYMA 2E/2F/2G/2H and LADNA, METLA, ROTEL, RYDAN 1E/2E, 1F/2F, 1G/2G, 1H/2H (one set per runway).
   - Fix positions from KFA radial/DME, the extended centrelines and the chart tracks and distances; the same fix reached by different procedures agrees within 0.6 NM (36 cross-checks printed by the generator).
+- **v0.25.0**: pop-out windows, first step (PFD and ND). PC browsers.
+  - POP OUT, top right of the PFD and of the ND: the display moves to a browser window of its own, to drag to another monitor or a television and resize freely. It is drawn at the size and pixel density of that window, so it stays sharp when large.
+  - FRAME OFF / FRAME ON in the window: the display with its cockpit frame, or the screen alone filling the window.
+  - DOCK (in the window, or in the place the display left in the page), or closing the window, puts the display back in the page.
+  - One flight behind every window: the page keeps running the simulation and draws into the displays wherever they are. The flight also advances on the animation frames of the pop-out windows, so it keeps running when the page itself is covered or minimised.
+  - The size, place and frame choice of each window are remembered for the next time (the browser may keep a new window on the screen of the page until it is dragged).
+  - Not shown on phones and tablets. The browser must allow pop-ups for the site; inside the test page of the chat they are blocked.
+  - Next steps: FCU and EFIS panel, ECAM, MCDU, levers.
 - **v0.24.2**: ECAM slats and flaps, ENGINE page at the engine start (from the FlyByWire A32NX source, GPL-3.0).
   - Upper ECAM: the slat and flap indication is the FlyByWire one (`EWD/Slats.tsx`): grey wing box, green slat and flap surfaces that travel along their tracks, white position marks, S and F, the configuration (0, 1, 1+F, 2, 3, FULL). While the surfaces travel the configuration is cyan and a cyan mark shows the selected position; green once reached. Clean and retracted: the box and the surfaces only.
   - The surfaces take time to travel: clean to CONF 1 about 11 s for the slats and 16 s for the flaps to 1+F, CONF 3 to FULL about 11 s. The flight model still takes the configuration at once when the lever moves; only the indication travels.

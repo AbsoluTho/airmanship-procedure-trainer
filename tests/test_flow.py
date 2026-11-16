@@ -182,6 +182,20 @@ async def run(url,b):
     await pg.mouse.move(sx,sy(269));await pg.mouse.down();await pg.mouse.move(sx,sy(60),steps=6);await pg.mouse.up();assert await pg.evaluate("LV.spb")==0,'dragged back to RET'
     await pg.click('#lgBtn');await pg.click('#lvBtn');assert await pg.evaluate("document.querySelector('#lgPanel').hidden&&document.querySelector('#lvPanel').hidden")
     await pg.evaluate("window.__ecam.show(false)")
+    # pop-out windows: the PFD moves to its own window, is drawn at that window's size, and comes back when it is closed or docked
+    async with pg.expect_popup() as pi: await pg.click('.ndbezel:has(#pfd) .pop-btn')
+    pop=await pi.value;await pop.wait_for_timeout(500)
+    assert await pop.evaluate("!!document.querySelector('#pfd')") and await pg.evaluate("!document.querySelector('#pfd')&&!!document.querySelector('.pop-ph')&&$('#pfd')===pfdC"),'PFD moved to its window'
+    await pop.set_viewport_size({'width':900,'height':1100});await pop.wait_for_timeout(400)
+    w1=await pg.evaluate("pfdC.width");assert w1>700,('PFD drawn at the size of its window',w1)
+    await pop.click('.pop-frame');await pop.wait_for_timeout(300)
+    assert await pop.evaluate("document.querySelector('#pfd').clientWidth")==900,'FRAME OFF: the display fills the window'
+    await pop.click('.pop-btn:not(.pop-frame)');await pg.wait_for_timeout(500)
+    assert pop.is_closed() and await pg.evaluate("!!document.querySelector('#pfd')&&!document.querySelector('.pop-ph')&&!document.querySelector('.pop-frame')&&pfdC.width<700&&POPDOCS.length===0"),'DOCK puts the PFD back'
+    async with pg.expect_popup() as pi: await pg.click('.ndbezel:has(#nd) .pop-btn')
+    pop=await pi.value;await pop.wait_for_timeout(400);await pop.close();await pg.wait_for_timeout(1400)
+    assert await pg.evaluate("!!document.querySelector('#nd')&&!document.querySelector('.pop-ph')&&Object.keys(POP.wins).length===0"),'closing the window puts the ND back'
+    await pg.evaluate("localStorage.removeItem(POP.KEY)")
     # RESET MCDU sits on the control bar and asks before clearing
     await pg.evaluate("window.__keep=S;S=Object.assign({},S,{sp:'TEST'});render()")
     await pg.click('#flight #reset')

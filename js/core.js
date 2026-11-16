@@ -1,7 +1,9 @@
 'use strict';
 /* Shared helpers and image paths. */
 const IMG={cockpit:'img/cockpit.webp',elec:'img/ovhd_elec.webp',apu:'img/ovhd_apu.webp',mcdu:'img/mcdu_face.webp'};
-const $=(s,r)=>(r||document).querySelector(s);
+/* element lookup: the page, then the documents of the pop-out windows (a panel moved to its own window is still found) */
+const POPDOCS=[];
+const $=(s,r)=>{if(r)return r.querySelector(s);let e=document.querySelector(s);if(!e)for(const d of POPDOCS){try{e=d.querySelector(s)}catch(x){e=null}if(e)break}return e};
 
 /* ================= geo ================= */
 const D2R=Math.PI/180;

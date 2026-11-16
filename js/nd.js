@@ -216,8 +216,9 @@ const IMG_ND='img/nd-bezel.webp',IMG_EFIS='img/efis.webp';
 const ndC=$('#nd'),ndG=ndC?ndC.getContext('2d'):null;
 if($('#ndBezel'))$('#ndBezel').src=IMG_ND;
 function drawND2D(){if(!ndG)return;drawND(ndG,ndC.width,ndC.height,true);efisUI()}
-if(ndC)new ResizeObserver(()=>{const d=devicePixelRatio||1,w=Math.round(ndC.clientWidth*d),h=Math.round(ndC.clientHeight*d);
-  if(w&&(w!==ndC.width||h!==ndC.height)){ndC.width=w;ndC.height=h;drawND2D()}}).observe(ndC);
+function ndFit(){if(!ndC)return;const v=ndC.ownerDocument.defaultView||window,d=v.devicePixelRatio||1,w=Math.round(ndC.clientWidth*d),h=Math.round(ndC.clientHeight*d);
+  if(w&&(w!==ndC.width||h!==ndC.height)){ndC.width=w;ndC.height=h;drawND2D()}}
+if(ndC)new ResizeObserver(ndFit).observe(ndC);
 
 /* ---------- EFIS control panel (photo 676 x 401, live buttons and knobs) ---------- */
 const EW=676,EH=401;

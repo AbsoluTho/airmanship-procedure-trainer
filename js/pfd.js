@@ -176,5 +176,7 @@ function drawPFD(g,W,H,powered){g.save();g.setTransform(1,0,0,1,0,0);g.fillStyle
 const pfdC=$('#pfd'),pfdG=pfdC?pfdC.getContext('2d'):null;
 if($('#pfdBezel'))$('#pfdBezel').src=IMG_ND;
 function drawPFD2D(){if(!pfdG)return;drawPFD(pfdG,pfdC.width,pfdC.height,true)}
-if(pfdC)new ResizeObserver(()=>{const d=devicePixelRatio||1,w=Math.round(pfdC.clientWidth*d),h=Math.round(pfdC.clientHeight*d);
-  if(w&&(w!==pfdC.width||h!==pfdC.height)){pfdC.width=w;pfdC.height=h;drawPFD2D()}}).observe(pfdC);
+/* the canvas takes the size and pixel density of the window it is shown in (the page, or its own pop-out window) */
+function pfdFit(){if(!pfdC)return;const v=pfdC.ownerDocument.defaultView||window,d=v.devicePixelRatio||1,w=Math.round(pfdC.clientWidth*d),h=Math.round(pfdC.clientHeight*d);
+  if(w&&(w!==pfdC.width||h!==pfdC.height)){pfdC.width=w;pfdC.height=h;drawPFD2D()}}
+if(pfdC)new ResizeObserver(pfdFit).observe(pfdC);
