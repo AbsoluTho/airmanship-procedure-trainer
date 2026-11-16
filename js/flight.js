@@ -131,7 +131,7 @@ function flightStart(){const miss=flightReady();if(miss.length)return miss;vFill
   const P=buildPath(),o=DB.apt[orig()],r=o.rwy[S.active.rwy],tr=r.crs+(o.var||0);
   Object.assign(FL,{active:true,running:true,t:0,utc0:Date.now(),path:P,s:0,seg:1,xtk:0,pos:r.pos,hdgT:tr,trkT:tr,roll:0,pitch:0,alt:r.tdze??o.elev,vs:0,ias:0,tas:0,gs:0,mach:0,
     ground:true,lat:'RWY',latArm:FCU.hdgMgd&&!S.active.noSid&&!(S.active.legs[1]&&S.active.legs[1].k==='disc')?'NAV':null,ver:'SRS',verArm:[FCU.lvlch?'CLB':'OP CLB'],thr:'IDLE',conf:['0','1+F','2','3','FULL'][LV.flaps],gear:true,gearPos:1,gaFlap:false,pmGearT:null,pmF3T:null,revDone:false,
-    fob:S.fuel.block-(S.fuel.taxi??0.2),fromIx:0,eoEng:null,crzDes:false,ldgSeq:0,gearT:null,f3T:null,inHold:null,holdExit:null,hsActive:null,cst:null,acc:0,accT:0,soe:false,opSmall:false,spdIsMach:false,capAlt:null,altHold:null,fmaT:{},loc:false,gsCap:false,tdReached:false,stage:'LINEUP',lvrT:null});LV.thr='IDLE';LV.gear='DOWN';LV.decel=false;LV.m1=LV.m2=true;
+    fob:S.fuel.block-(S.fuel.taxi??0.2),fromIx:0,loT:null,spdLimOn:false,eoEng:null,crzDes:false,ldgSeq:0,gearT:null,f3T:null,inHold:null,holdExit:null,hsActive:null,cst:null,acc:0,accT:0,soe:false,opSmall:false,spdIsMach:false,capAlt:null,altHold:null,fmaT:{},loc:false,gsCap:false,tdReached:false,stage:'LINEUP',lvrT:null});LV.thr='IDLE';LV.gear='DOWN';LV.decel=false;LV.m1=LV.m2=true;
   FCU.athr=true;FL.td=P.sThr-tdDist();FL.sig=planSig();S.phase='TAKEOFF';setFma();flightTick(0);return[]}
 function q2conf(){const f=S.perf.flaps;return f===1?'1+F':String(f||1)}
 
@@ -195,6 +195,22 @@ function flightReset(){S.eo=false;Object.assign(FL,{active:false,running:false,e
    MAN TOGA, SRS, GA TRK with NAV armed; GA phase. The missed approach becomes the active route (green) from the go-around point,
    and the approach is strung again after it (behind a discontinuity), to be flown once the approach phase is activated again. */
 const DECEL_NM=25;
+/* ---- deceleration at idle (kt lost per NM flown), from the configuration and the rate of descent ----
+   gear up (clean, CONF 1, CONF 2): level 10, 1000 ft/min down 5, 2000 ft/min down 0;
+   gear down: 5 more (15, 10, 5); landing configuration (CONF 3 or FULL with the gear down): 10 more (20, 15, 10);
+   steeper than 2000 ft/min the speed increases even at idle, 5 kt per NM (reached at 2500 ft/min).
+   The rates of descent are those of a ground speed of 250 kt or less; faster, the same descent gradient counts
+   (a 3 degree path gives the same deceleration at 250 kt and at cruise speed). In a climb the speed is lost faster. */
+function idleBase(){return 10+(FL.gear?(FL.conf==='3'||FL.conf==='FULL'?10:5):0)}
+function idleDecel(vs,gs){const base=idleBase(),v=-vs*Math.min(1,250/Math.max(1,gs));
+  if(v<=0)return Math.min(40,base-v/200);
+  if(v<=2000)return base-v/200;
+  return Math.max(-5,(base-10)-(v-2000)/500*(base-5))}
+/* the rate of descent (ft/min, positive down) that gives a deceleration of r kt per NM at idle */
+function idleVs(r,gs){const base=idleBase(),k=Math.max(1,gs/250);r=Math.max(-5,Math.min(base,r));
+  return(r>=base-10?(base-r)*200:2000+500*((base-10)-r)/(base-5))*k}
+/* distance (NM) needed to lose dv kt at idle on the present path */
+function decelLead(dv){return Math.max(0,dv)/Math.max(2.5,idleDecel(Math.min(0,FL.vs),FL.gs))}
 function gaLeg(l){l.seg='ga';if(l.k==='hold'&&!l.fix)return null;return l}
 function goAround(){if(!FL.active||FL.ground||FL.stage!=='AIR'||!['APPR','DES'].includes(S.phase))return false;
   cockpitAudio.reset();
@@ -294,7 +310,7 @@ function step(dt){if(S.tmpy&&typeof ppHoldSync==='function')ppHoldSync(S.tmpy);c
   for(const pt of P.pts)if(pt.ix!=null&&pt.s<=FL.s+0.05&&pt.ix>FL.fromIx)FL.fromIx=pt.ix;
   if(FL.fromIx!==fi&&S.page==='FPLN'&&!S.secMode)S.fpOff=0;   /* waypoint sequenced: the F-PLN starts again at the FROM line */
 
-  if(FL.stage==='ROLL'){FL.ias+=(LV.thr==='TOGA'?4.94:4.37)*dt;if(FL.ias>=q.vr){FL.pitch=Math.min(15,FL.pitch+3*dt);if(FL.ias>=q.vr+4){FL.ground=false;FL.stage='AIR'}}}
+  if(FL.stage==='ROLL'){FL.ias+=(LV.thr==='TOGA'?4.94:4.37)*dt;if(FL.ias>=q.vr){FL.pitch=Math.min(15,FL.pitch+3*dt);if(FL.ias>=q.vr+4){FL.ground=false;FL.stage='AIR';FL.loT=FL.t}}}
   const ga=S.phase==='GA',thrRed=ga?(p2.gaThr??defGa()):(q.thr??defRed()),acc=ga?(p2.gaAcc??defGa()):(q.acc??defRed());
   if(FL.thr==='GA SOFT'&&FL.eoEng)FL.thr='TO';
   if((FL.thr==='TO'||FL.thr==='GA SOFT')&&!FL.ground&&FL.alt>=thrRed){FL.thr='LVR';FL.lvrT=FL.t}
@@ -323,7 +339,7 @@ function step(dt){if(S.tmpy&&typeof ppHoldSync==='function')ppHoldSync(S.tmpy);c
     else if(['LOC*','LOC','LAND'].includes(FL.lat)&&lg){const d=destRwy(),Ll=Math.max(0.5,Math.min(2,FL.gs*12/3600)),tgt=dst(d.r.pos,lg.crs+180,Math.max(-2,lg.along-Ll));trkT=brg(FL.pos,tgt)}   /* tighter than NAV: 12 s ahead on the course */
     /* ---- vertical ---- */
     const capBand=Math.max(80,Math.abs(FL.vs)*0.12),CK=cstrNow();FL.cst=CK;
-    const gp=!FL.ground&&(['TAKEOFF','CLB','GA'].includes(S.phase)||CLIMBING.includes(FL.ver)||FL.ver==='SRS')?1-0.5*(FL.gearPos??1):1;FL.gp=gp;   /* gear drag follows the gear position: half rate down, full rate up and locked, gradual in transit */   /* gear left down in the climb: half the climb rate and acceleration */
+    const gp=!FL.ground&&(['TAKEOFF','CLB','GA'].includes(S.phase)||CLIMBING.includes(FL.ver)||FL.ver==='SRS')?(LV.gear==='UP'||(FL.loT!=null&&FL.t-FL.loT<5&&S.phase!=='GA')?1:1-0.5*(FL.gearPos??1)):1;FL.gp=gp;   /* gear lever left DOWN in the climb: half the climb rate and acceleration (not in the 5 s after lift-off, nor once the lever is UP) */   /* gear drag follows the gear position: half rate down, full rate up and locked, gradual in transit */   /* gear left down in the climb: half the climb rate and acceleration */
     if(FL.ver==='SRS'){const rate=FL.thr==='GA SOFT'?2000:2400;
       spdT=ga?FL.gaSpd:q.v2+10;vsT=(ga?Math.min(rate,FL.vs+600):rate)*gp;
       if(FL.alt>=acc){FL.opSmall=false;if(A>FL.alt+capBand){FL.ver=FL.verArm.includes('OP CLB')?'OP CLB':'CLB';FL.verArm=['ALT']}else{FL.ver='ALT*';FL.verArm=[]}if(!ga)S.phase='CLB'}}
@@ -381,7 +397,9 @@ function step(dt){if(S.tmpy&&typeof ppHoldSync==='function')ppHoldSync(S.tmpy);c
         /* managed: the target is the programmed speed until it equals the programmed Mach, then the Mach (and the reverse in the descent) */
         if(S.phase==='CLB'||S.phase==='TAKEOFF'){const v=FL.alt<lim.alt?lim.spd:mgd.clb();mm=FL.ver!=='EXP CLB'&&mmo<v;spdT=FL.ver==='EXP CLB'?sp.GD:Math.min(v,mmo)}
         else if(S.phase==='CRZ'){spdT=mmo;mm=true;const rm=typeof rtaMach==='function'?rtaMach(FL.alt):null;if(rm){spdT=iasOf(rm*sos(FL.alt),FL.alt);mm=true}}
-        else if(S.phase==='DES'){const em=iasOf(0.80*sos(FL.alt),FL.alt),v=FL.ver==='EXP DES'?340:FL.alt<dl.alt+1000?dl.spd:mgd.des();
+        else if(S.phase==='DES'){const em=iasOf(0.80*sos(FL.alt),FL.alt);/* the speed limit is started early enough to be met at the limit altitude, and kept once started (a level-off on the way does not cancel it) */
+          if(FL.alt<dl.alt+Math.max(1000,decelLead(FL.ias-dl.spd)*Math.max(0,-FL.vs)*60/Math.max(100,FL.gs)+300))FL.spdLimOn=true;else if(FL.alt>dl.alt+6000)FL.spdLimOn=false;
+          const v=FL.ver==='EXP DES'?340:FL.spdLimOn?dl.spd:mgd.des();
           mm=FL.ver==='EXP DES'?em<340:mmo<v;spdT=FL.ver==='EXP DES'?Math.min(340,em):Math.min(v,mmo)}
         else if(S.phase==='GA')spdT=sp.GD;
         else if(S.phase==='APPR')spdT=apprCfgSpd(sp,p2)}   /* the speed of the configuration actually set */
@@ -389,7 +407,7 @@ function step(dt){if(S.tmpy&&typeof ppHoldSync==='function')ppHoldSync(S.tmpy);c
       /* clean: green dot (hold speed); flaps extended: the speed of the configuration. After the exit the speed of the phase comes back
          (in the approach phase, green dot clean) */
       {const hs=FL.conf==='0'?holdSpd():apprCfgSpd(sp,p2);
-        const nh=(P.holds||[]).find(h=>FL.holdExit!==h.ix&&h.s1>FL.s);if(nh&&(FL.inHold===nh.ix||FL.s>=nh.sE-0.05||nh.sE-FL.s<=Math.max(0,FL.ias-hs)*0.07+2)){FL.hsActive=nh.ix;if(FCU.spdMgd||FCU.spd==null){spdT=Math.min(spdT,hs);mm=false}}else FL.hsActive=null}
+        const nh=(P.holds||[]).find(h=>FL.holdExit!==h.ix&&h.s1>FL.s);if(nh&&(FL.inHold===nh.ix||FL.s>=nh.sE-0.05||nh.sE-FL.s<=decelLead(FL.ias-hs)+2)){FL.hsActive=nh.ix;if(FCU.spdMgd||FCU.spd==null){spdT=Math.min(spdT,hs);mm=false}}else FL.hsActive=null}
       /* engine out (FMGC EO condition): managed speed green dot in climb and cruise */
       if(FL.eoEng&&S.eo&&(FCU.spdMgd||FCU.spd==null)&&['CLB','CRZ'].includes(S.phase)){spdT=sp.GD;mm=false}
       FL.spdIsMach=!FCU.spdMgd&&FCU.spd!=null?FCU.mach:mm;if(FCU.spdMgd)FCU.mach=mm;
@@ -421,11 +439,19 @@ function step(dt){if(S.tmpy&&typeof ppHoldSync==='function')ppHoldSync(S.tmpy);c
   if(FL.stage==='AIR'&&FL.soe){const gw=gwNowF(),cfgD=({'0':0,'1':1,'1+F':1.3,'2':2,'3':3,'FULL':4}[FL.conf]||0)*220+(FL.gear?500:0),climb=CLIMBING.includes(FL.ver),k=Math.max(150,FL.tas)*5.3;
     const cap=climb?Math.max(400,(3300-FL.alt*0.06)*(64/gw))*(FL.eoEng?0.42:1)-cfgD:-(600+Math.max(0,FL.ias-200)*12+FL.alt*0.035)-cfgD;
     const g2=FL.gp||1,cap2=climb?cap*g2:cap;let a=Math.max(-1,Math.min(1,(spdT-FL.ias)*0.12))*(climb?g2:1),v=cap2-k*a;
-    if(climb&&v<0){v=0;a=cap2/k}if(!climb&&v>0){v=0;a=cap/k}
+    if(climb&&v<0){v=0;a=cap2/k}
+    /* idle descent: the rate of descent that gives the deceleration (or acceleration) wanted; the speed then follows the rate actually flown */
+    if(!climb){v=-idleVs(FL.ias-spdT,FL.gs);a=-idleDecel(FL.vs,FL.gs)*FL.gs/3600}
     FL.accT=a;vsT=v}
   FL.spdT=spdT;vsT=Math.max(-6000,Math.min(6000,vsT));
   /* ---- dynamics ---- */
-  if(FL.stage==='AIR'){const g3=FL.gp||1;FL.ias+=FL.soe?FL.accT*dt:Math.max(-1.6*dt,Math.min(1.6*g3*dt,spdT-FL.ias));FL.vs+=Math.max(-600*dt,Math.min(600*dt,vsT-FL.vs));FL.alt+=FL.vs/60*dt}
+  if(FL.stage==='AIR'){const g3=FL.gp||1;/* thrust at idle sets how fast the speed can come back: never faster than the idle deceleration of the configuration and rate of descent */
+    const idle=FL.ver==='FLARE'||FL.ver==='SRS'?-9:-idleDecel(FL.vs,FL.gs)*FL.gs/3600;
+    FL.ias+=FL.soe?FL.accT*dt:Math.max(idle*dt,Math.max(-1.6*dt,Math.min(1.6*g3*dt,spdT-FL.ias)));
+    /* lift-off: the rate of climb builds up along an S curve (slow, faster, slow) and reaches its target 5 s after lift-off */
+    const lo=FL.ver==='SRS'&&S.phase!=='GA'&&FL.loT!=null?(FL.t-FL.loT)/5:1;
+    if(lo<1){const x=Math.max(0,lo);FL.vs=vsT*x*x*(3-2*x)}else FL.vs+=Math.max(-600*dt,Math.min(600*dt,vsT-FL.vs));
+    FL.alt+=FL.vs/60*dt}
   else if(FL.ground)FL.alt=gnd;
   FL.tas=tasOf(FL.ias,FL.alt);FL.gs=FL.ground?FL.ias:FL.tas;FL.mach=FL.tas/sos(FL.alt);
   const dh=((trkT-FL.trkT+540)%360)-180,rate=Math.max(-3,Math.min(3,dh*0.6));FL.trkT=(FL.trkT+rate*dt+360)%360;
@@ -434,7 +460,8 @@ function step(dt){if(S.tmpy&&typeof ppHoldSync==='function')ppHoldSync(S.tmpy);c
   const bank=FL.ground?0:Math.max(-30,Math.min(30,Math.atan(rate*D2R*FL.tas*0.5144/9.81)/D2R));FL.roll+=Math.max(-5*dt,Math.min(5*dt,bank-FL.roll));
   FL.pos=dst(FL.pos,FL.trkT,FL.gs*KT2NMS*dt);
   if(FL.stage==='AIR'){const fpa=Math.atan2(FL.vs,Math.max(60,FL.gs)*101.27)/D2R,aoa=FL.conf==='0'?2.5:FL.conf==='FULL'?4:3.5;
-    FL.pitch+=Math.max(-2*dt,Math.min(2*dt,(FL.ver==='SRS'?15:fpa+aoa)-FL.pitch))}
+    {const pr=FL.ver==='SRS'&&S.phase!=='GA'?3:2;   /* rotation: 3 degrees per second, 0 to 15 degrees in 5 s */
+    FL.pitch+=Math.max(-2*dt,Math.min(pr*dt,(FL.ver==='SRS'?15:fpa+aoa)-FL.pitch))}}
   const ff=FL.stage==='ROLL'||FL.thr==='TO'?5.6:CLIMBING.includes(FL.ver)||FL.ver==='SRS'?3.2:DESCENDING.includes(FL.ver)?0.7:FL.ground?0.4:FL.alt>20000?PM.ff(I().crz,I().ci)*PM.wf(gwNowF()):2.4;
   FL.fob=Math.max(0,FL.fob-ff*dt/3600);FL.t+=dt;
   /* speed trend (kt/s), smoothed, for the PFD trend arrow */

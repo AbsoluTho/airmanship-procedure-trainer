@@ -135,6 +135,11 @@ async def run(url,b):
       S.active=A0;S.init=I0;S.page=pg0;S.sp=sp0;S.prog.to=pr0;S.fpOff=off0;S.msg='';S.tmpy=null;S.coRte=null;render();return out})()""")
     assert v22=={'prog':['OEDF34R',0],'bad':'OEDF34R','vor':[True,True,3],'lr':'ALTLR','aw':'ALTAWY','alt':'PEGUR SIGRO IVUDA WEJ LABUN NETOL DEMSU TBK|Z712V54','next':'PEGUR WEJ','cg':[True,True],'n1':[45,55,55,63]},f'v0.22 checks: {v22}'
     assert await pg.evaluate("[!document.querySelector('#v-mcdu .side'),!!document.querySelector('#v-mcdu #deck'),OFPS.length,AOC_OFP.FAD122.rte,buildRoute(CO_RTES.OERKOEJN1).star].join()")=='true,true,12,OEJNOERK1,VEME1A','MCDU tab without the Exercise and How to cards; 12 OFP flights'
+    # idle deceleration rules (kt per NM): gear up 10/5/0, gear down 15/10/5, landing configuration 20/15/10, steeper than 2000 ft/min -5
+    r=await pg.evaluate("""(()=>{const g=FL.gear,c=FL.conf,o=[];for(const [gear,conf] of [[false,'0'],[false,'2'],[true,'2'],[true,'3'],[true,'FULL']]){FL.gear=gear;FL.conf=conf;
+      o.push([0,-1000,-2000,-2500,-3000].map(v=>idleDecel(v,200)).join('/'))}
+      FL.gear=false;FL.conf='0';o.push(+idleDecel(-2385,450).toFixed(1),Math.round(idleVs(5,200)),Math.round(idleVs(0,200)),Math.round(idleVs(-5,200)));FL.gear=g;FL.conf=c;return o.join(' ')})()""")
+    assert r=='10/5/0/-5/-5 10/5/0/-5/-5 15/10/5/-5/-5 20/15/10/-5/-5 20/15/10/-5/-5 3.4 1000 2000 2500',('idle deceleration rules',r)
     # RESET MCDU sits on the control bar and asks before clearing
     await pg.evaluate("window.__keep=S;S=Object.assign({},S,{sp:'TEST'});render()")
     await pg.click('#flight #reset')

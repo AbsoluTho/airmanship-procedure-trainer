@@ -4,7 +4,7 @@ An unofficial A320 **procedure** trainer that runs in the browser (iPad first). 
 
 Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator manuals. The navigation data was typed from charts for training only and must never be used for navigation.
 
-## Status: Phase 3 prototype (v0.22.4)
+## Status: Phase 3 prototype (v0.23.0)
 
 - **MCDU** (Thales FMS2 layout, per FCOM DSC-22): keyboard and scratchpad, INIT A, F-PLN with TMPY (ERASE/INSERT), LAT REV, DEPARTURE, AIRWAYS (with airway-to-airway intersection), ARRIVAL, waypoint insertion, CLR of waypoints and discontinuities.
 - **Exercise** OEJN to OETB: RWY 16C MIGD2E, L677 WEJ, V54 TBK, ILS 31 via D179O, ALTN OEMA, FL340, CI 20, with automatic progress checks.
@@ -19,6 +19,21 @@ Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator
   - 11 approaches: ILS 16L (IMBF 111.7), 16R (IWSR 108.1), 34L (IWMR 108.9), 34R (IABF 110.7); RNP 16L, 16R, 34L, 34R; VOR 16R, 34L and 34R (KFA 112.3, the 34R final offset on 326°). Vias from the IAFs of the KFA 14 DME arc (LOPOD, RESAN, KEBAP, LOSAX, DASLA, KFA; DAXAR and KAVIV for the 16 runways) and from DF603, DF604 and RESAN for the RNP approaches; published missed approaches to the RESAN and LOSAX holds.
   - 32 RNAV SIDs: EMUSA, MIBRA, PUSRA, TAYMA 2E/2F/2G/2H and LADNA, METLA, ROTEL, RYDAN 1E/2E, 1F/2F, 1G/2G, 1H/2H (one set per runway).
   - Fix positions from KFA radial/DME, the extended centrelines and the chart tracks and distances; the same fix reached by different procedures agrees within 0.6 NM (36 cross-checks printed by the generator).
+- **v0.23.0**: flight physics.
+  - Rotation: 3 degrees per second, 0 to 15 degrees of pitch in 5 s (it slowed to 2 degrees per second after lift-off).
+  - Lift-off: the rate of climb builds up along an S curve (slow, faster in the middle, slow again) and reaches the SRS target (2400 ft/min) 5 s after lift-off. It rose at a constant 600 ft/min per second before, and stopped at half the target while the gear was still travelling. The half climb rate with the gear down now applies only when the gear lever is left DOWN more than 5 s after lift-off.
+  - Deceleration at idle, in kt lost per NM flown. The speed follows these rates while it goes to its target, in every mode:
+
+    | | level | 1000 ft/min down | 2000 ft/min down | steeper |
+    |---|---|---|---|---|
+    | gear up (clean, CONF 1, CONF 2) | 10 | 5 | 0 | speed increases 5 kt per NM |
+    | gear down | 15 | 10 | 5 | speed increases 5 kt per NM |
+    | CONF 3 or FULL with the gear down | 20 | 15 | 10 | speed increases 5 kt per NM |
+
+    Between the columns the rate changes in proportion; past 2000 ft/min it goes to the 5 kt per NM increase over the next 500 ft/min. CONF 3 or FULL with the gear up counts as gear up. In a climb the speed is lost faster (5 kt per NM more for each 1000 ft/min).
+  - Above a ground speed of 250 kt the rule is applied to the descent gradient instead of the rate (rate x 250 / ground speed), so a 3 degree descent path decelerates the same at 250 kt as at cruise speed. Taken literally, the 2400 ft/min of a 3 degree path at 450 kt would make the speed increase all the way down.
+  - OP DES and EXP DES (idle, speed on elevator) fly the rate of descent of the table: 2000 ft/min clean on speed, shallower to decelerate, level at the most.
+  - Managed descent plans its decelerations with the same rates: the speed limit, speed constraints and the hold speed are started earlier (about 15 NM for 300 to 250 kt on the descent path, against 4 NM before).
 - **v0.22.4**:
   - RESET FLIGHT asks for confirmation, like RESET MCDU (CANCEL or RESET FLIGHT; Esc or a click outside cancels).
   - LOAD (saved set-up) asks for confirmation when a flight is in progress, since it stops that flight. On the ground before START it loads at once, as before.
