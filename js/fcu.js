@@ -131,8 +131,9 @@ function openKnob(k,anchor){closeKnob();padKnob=k;const pad=document.createEleme
    <div class="kp-r"><button type="button" class="kp" data-kt="-1">− turn</button><button type="button" class="kp" data-kt="1">turn +</button></div>
    <div class="kp-r"><button type="button" class="kp pp" data-kp="pull">PULL<small>${k==='baro'?'STD':k==='alt'?'open climb/descent':k==='vs'?'V/S selected':k==='hdg'?'heading selected':'speed selected'}</small></button><button type="button" class="kp pp" data-kp="push">PUSH<small>${k==='baro'?'QNH':k==='alt'?'managed climb/descent':k==='vs'?'level off':k==='hdg'?'NAV (managed)':'managed speed'}</small></button></div>
    ${k==='alt'?'<div class="kp-r"><button type="button" class="kp sm" data-ki="100">STEP 100</button><button type="button" class="kp sm" data-ki="1000">STEP 1000</button></div>':''}${k==='baro'?'<div class="kp-r"><button type="button" class="kp sm" data-ku="1">in Hg</button><button type="button" class="kp sm" data-ku="0">hPa</button></div>':''}`;
-  document.body.appendChild(pad);const r=anchor.getBoundingClientRect(),pw=pad.offsetWidth,ph=pad.offsetHeight;
-  let x=r.left+r.width/2-pw/2,y=r.bottom+8;if(y+ph>innerHeight-8)y=r.top-ph-8;x=Math.max(8,Math.min(innerWidth-pw-8,x));pad.style.left=x+'px';pad.style.top=Math.max(8,y)+'px';
+  const D=anchor.ownerDocument||document,V=D.defaultView||window;   /* the window the knob is in (the page or a pop-out window) */
+  D.body.appendChild(pad);const r=anchor.getBoundingClientRect(),pw=pad.offsetWidth,ph=pad.offsetHeight;
+  let x=r.left+r.width/2-pw/2,y=r.bottom+8;if(y+ph>V.innerHeight-8)y=r.top-ph-8;x=Math.max(8,Math.min(V.innerWidth-pw-8,x));pad.style.left=x+'px';pad.style.top=Math.max(8,y)+'px';
   pad.querySelector('.kp-x').onclick=closeKnob;
   pad.querySelectorAll('[data-kt]').forEach(b=>{let t1=null,t2=null,n=0;const stop=()=>{clearTimeout(t1);clearInterval(t2)};
     b.addEventListener('pointerdown',e=>{e.preventDefault();n=0;fcuTurn(k,+b.dataset.kt);kpUpd();t1=setTimeout(()=>{t2=setInterval(()=>{n++;fcuTurn(k,+b.dataset.kt,n>12);kpUpd()},90)},380)});
@@ -140,9 +141,9 @@ function openKnob(k,anchor){closeKnob();padKnob=k;const pad=document.createEleme
   pad.querySelectorAll('[data-kp]').forEach(b=>b.onclick=()=>{fcuPush(k,b.dataset.kp==='pull');kpUpd()});
   pad.querySelectorAll('[data-ki]').forEach(b=>b.onclick=()=>{fcuButton(b.dataset.ki==='100'?'inc100':'inc1000');kpUpd()});
   pad.querySelectorAll('[data-ku]').forEach(b=>b.onclick=()=>{EFIS.inhg=b.dataset.ku==='1';fcuRefresh();kpUpd()});
-  kpUpd();setTimeout(()=>document.addEventListener('pointerdown',outside,true),0)}
+  kpUpd();setTimeout(()=>D.addEventListener('pointerdown',outside,true),0)}
 function outside(e){const p=$('#knobpad');if(p&&!p.contains(e.target)&&!e.target.closest('[data-knob]'))closeKnob()}
-function closeKnob(){const p=$('#knobpad');if(p)p.remove();padKnob=null;document.removeEventListener('pointerdown',outside,true)}
+function closeKnob(){const p=$('#knobpad');if(p){p.ownerDocument.removeEventListener('pointerdown',outside,true);p.remove()}padKnob=null;document.removeEventListener('pointerdown',outside,true)}
 function kpUpd(){const v=$('#kpVal');if(v&&padKnob)v.textContent=knobValue(padKnob)}
 buildFcu();
 window.__FCU=FCU;window.__fcuTurn=fcuTurn;window.__fcuPush=fcuPush;window.__fcuButton=fcuButton;

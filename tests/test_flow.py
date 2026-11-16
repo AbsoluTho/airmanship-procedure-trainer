@@ -182,19 +182,31 @@ async def run(url,b):
     await pg.mouse.move(sx,sy(269));await pg.mouse.down();await pg.mouse.move(sx,sy(60),steps=6);await pg.mouse.up();assert await pg.evaluate("LV.spb")==0,'dragged back to RET'
     await pg.click('#lgBtn');await pg.click('#lvBtn');assert await pg.evaluate("document.querySelector('#lgPanel').hidden&&document.querySelector('#lvPanel').hidden")
     await pg.evaluate("window.__ecam.show(false)")
-    # pop-out windows: the PFD moves to its own window, is drawn at that window's size, and comes back when it is closed or docked
-    async with pg.expect_popup() as pi: await pg.click('.ndbezel:has(#pfd) .pop-btn')
+    # pop-out windows: the MCDU, the levers and the landing gear panel each open in a window of their own; the displays stay in the page
+    assert await pg.evaluate("[...document.querySelectorAll('.pop-main')].map(b=>b.dataset.pop).sort().join()")=='gear,levers,mcdu','pop-out buttons'
+    e0=await pg.evaluate("EC.on")
+    async with pg.expect_popup() as pi: await pg.click('.pop-main[data-pop="mcdu"]')
     pop=await pi.value;await pop.wait_for_timeout(500)
-    assert await pop.evaluate("!!document.querySelector('#pfd')") and await pg.evaluate("!document.querySelector('#pfd')&&!!document.querySelector('.pop-ph')&&$('#pfd')===pfdC"),'PFD moved to its window'
-    await pop.set_viewport_size({'width':900,'height':1100});await pop.wait_for_timeout(400)
-    w1=await pg.evaluate("pfdC.width");assert w1>700,('PFD drawn at the size of its window',w1)
-    await pop.click('.pop-frame');await pop.wait_for_timeout(300)
-    assert await pop.evaluate("document.querySelector('#pfd').clientWidth")==900,'FRAME OFF: the display fills the window'
-    await pop.click('.pop-btn:not(.pop-frame)');await pg.wait_for_timeout(500)
-    assert pop.is_closed() and await pg.evaluate("!!document.querySelector('#pfd')&&!document.querySelector('.pop-ph')&&!document.querySelector('.pop-frame')&&pfdC.width<700&&POPDOCS.length===0"),'DOCK puts the PFD back'
-    async with pg.expect_popup() as pi: await pg.click('.ndbezel:has(#nd) .pop-btn')
-    pop=await pi.value;await pop.wait_for_timeout(400);await pop.close();await pg.wait_for_timeout(1400)
-    assert await pg.evaluate("!!document.querySelector('#nd')&&!document.querySelector('.pop-ph')&&Object.keys(POP.wins).length===0"),'closing the window puts the ND back'
+    assert await pop.evaluate("!!document.querySelector('#mcdu')") and await pg.evaluate("!document.querySelector('#mcdu')&&$('#mcdu')!=null&&EC.on===true"),'MCDU in its window, the page shows the ECAM'
+    await pop.set_viewport_size({'width':640,'height':1000});await pop.wait_for_timeout(400)
+    assert await pop.evaluate("document.querySelector('#mcdu').clientWidth")>=638,'MCDU fills its window'
+    sp0=await pg.evaluate("S.sp");await pop.keyboard.type('AB');assert await pg.evaluate("S.sp")==sp0+'AB','the keyboard of the MCDU window types on the MCDU'
+    await pg.evaluate("S.sp=%r;render()"%sp0)
+    async with pg.expect_popup() as pi: await pg.click('.pop-main[data-pop="levers"]')
+    lv=await pi.value;await lv.wait_for_timeout(400)
+    async with pg.expect_popup() as pi: await pg.click('.pop-main[data-pop="gear"]')
+    lg=await pi.value;await lg.wait_for_timeout(400)
+    assert await pg.evaluate("!document.querySelector('#lvPanel')&&!document.querySelector('#lgPanel')&&!$('#lvPanel').hidden&&!$('#lgPanel').hidden&&LVP.on===false"),'levers and gear panels in their windows, the ECAM displays free'
+    f0=await pg.evaluate("LV.flaps")
+    await lv.evaluate("document.querySelector('[data-lv=\"flaps\"][data-v=\"3\"]').dispatchEvent(new MouseEvent('click',{bubbles:true}))")
+    assert await pg.evaluate("LV.flaps")==3 and await lv.evaluate("document.querySelector('#lvPanel svg')!=null"),'flaps lever works in its window'
+    await pg.evaluate("lever('flaps',%d)"%f0)
+    a0=await pg.evaluate("LV.abrk")
+    await lg.evaluate("document.querySelector('[data-lv=\"abrk\"][data-v=\"LO\"]').dispatchEvent(new MouseEvent('click',{bubbles:true}))")
+    assert await pg.evaluate("LV.abrk")==('LO' if a0!='LO' else None) or await pg.evaluate("LV.abrk")!=a0,'AUTO BRK works in its window'
+    await pg.evaluate("LV.abrk=%s;LV.decel=false"%('null' if a0 is None else repr(a0)))
+    await pop.click('.pop-dock');await lv.close();await lg.click('.pop-dock');await pg.wait_for_timeout(1500)
+    assert pop.is_closed() and await pg.evaluate("!!document.querySelector('#mcdu')&&!document.querySelector('.pop-ph')&&POPDOCS.length===0&&Object.keys(POP.wins).length===0&&!!document.querySelector('.sdu #lvPanel')&&!!document.querySelector('.ewd #lgPanel')&&document.querySelector('#lvPanel').hidden&&document.querySelector('#lgPanel').hidden&&EC.on===%s"%('true' if e0 else 'false')),'everything back in the page'
     await pg.evaluate("localStorage.removeItem(POP.KEY)")
     # RESET MCDU sits on the control bar and asks before clearing
     await pg.evaluate("window.__keep=S;S=Object.assign({},S,{sp:'TEST'});render()")

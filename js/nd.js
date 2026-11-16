@@ -252,7 +252,7 @@ function buildEfis(){const host=$('#efis');if(!host)return;
   $('#efis-baro').addEventListener('wheel',e=>{e.preventDefault();fcuTurn('baro',e.deltaY<0?1:-1)},{passive:false});
   host.querySelectorAll('[data-efis]').forEach(b=>b.addEventListener('click',()=>{const[k,v]=b.dataset.efis.split(':');efisSet(k,v)}));
   host.querySelectorAll('[data-turn]').forEach(b=>b.addEventListener('click',()=>{const[k,d]=b.dataset.turn.split(':');efisTurn(k,+d)}))}
-function drawQnh(){const c=document.querySelector('#efis .qnh-disp');if(!c)return;const g=c.getContext('2d'),k=c.width/131;g.setTransform(k,0,0,k,0,0);
+function drawQnh(){const c=$('#efis .qnh-disp');if(!c)return;const g=c.getContext('2d'),k=c.width/131;g.setTransform(k,0,0,k,0,0);
   g.fillStyle='#0b0a08';g.fillRect(0,0,131,64);g.fillStyle='#fde990';g.textBaseline='alphabetic';
   if(EFIS.std){g.font='34px AirbusFCU,monospace';g.textAlign='center';g.fillText('Std',65,52)}
   else{g.font='600 13px "Helvetica Neue",Arial,sans-serif';g.textAlign='right';g.fillText('QNH',124,16);g.font='34px AirbusFCU,monospace';g.textAlign='center';
