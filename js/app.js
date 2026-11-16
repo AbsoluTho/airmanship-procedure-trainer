@@ -22,10 +22,14 @@ function tasks(){const h=TASKS.map(([t,f])=>{const d=f();return`<li class="${d?'
   const el=$('#tasks');if(el&&h!==lastT){el.innerHTML=h;lastT=h}}   /* the Exercise card is no longer on the page: the list is kept for the test */
 window.__tasksDone=()=>TASKS.filter(([,f])=>f()).length;
 function mcduReset(){const e=S.elec;S=freshState();S.elec=e;render()}
-{const rb=$('#reset'),dlg=$('#askReset'),shut=()=>dlg.classList.remove('on');
-  if(rb&&dlg){rb.addEventListener('click',()=>{dlg.classList.add('on');$('#askResetNo').focus()});
+/* confirmation pop-up shared by RESET MCDU and RESET FLIGHT */
+let askYes=null;
+function askConfirm(title,text,yes,fn){const dlg=$('#askReset');if(!dlg){fn();return}
+  $('#askResetT').textContent=title;$('#askResetP').textContent=text;$('#askResetYes').textContent=yes;askYes=fn;dlg.classList.add('on');$('#askResetNo').focus()}
+{const rb=$('#reset'),dlg=$('#askReset'),shut=()=>{dlg.classList.remove('on');askYes=null};
+  if(dlg){if(rb)rb.addEventListener('click',()=>askConfirm('Reset the MCDU?','Everything entered in the MCDU will be cleared.','RESET MCDU',mcduReset));
     $('#askResetNo').addEventListener('click',shut);
-    $('#askResetYes').addEventListener('click',()=>{shut();mcduReset()});
+    $('#askResetYes').addEventListener('click',()=>{const f=askYes;shut();if(f)f()});
     dlg.addEventListener('click',ev=>{if(ev.target===dlg)shut()});
     document.addEventListener('keydown',ev=>{if(ev.key==='Escape'&&dlg.classList.contains('on')){ev.stopPropagation();shut()}},true)}}
 

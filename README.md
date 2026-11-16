@@ -4,7 +4,7 @@ An unofficial A320 **procedure** trainer that runs in the browser (iPad first). 
 
 Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator manuals. The navigation data was typed from charts for training only and must never be used for navigation.
 
-## Status: Phase 3 prototype (v0.22.3)
+## Status: Phase 3 prototype (v0.22.4)
 
 - **MCDU** (Thales FMS2 layout, per FCOM DSC-22): keyboard and scratchpad, INIT A, F-PLN with TMPY (ERASE/INSERT), LAT REV, DEPARTURE, AIRWAYS (with airway-to-airway intersection), ARRIVAL, waypoint insertion, CLR of waypoints and discontinuities.
 - **Exercise** OEJN to OETB: RWY 16C MIGD2E, L677 WEJ, V54 TBK, ILS 31 via D179O, ALTN OEMA, FL340, CI 20, with automatic progress checks.
@@ -19,6 +19,9 @@ Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator
   - 11 approaches: ILS 16L (IMBF 111.7), 16R (IWSR 108.1), 34L (IWMR 108.9), 34R (IABF 110.7); RNP 16L, 16R, 34L, 34R; VOR 16R, 34L and 34R (KFA 112.3, the 34R final offset on 326°). Vias from the IAFs of the KFA 14 DME arc (LOPOD, RESAN, KEBAP, LOSAX, DASLA, KFA; DAXAR and KAVIV for the 16 runways) and from DF603, DF604 and RESAN for the RNP approaches; published missed approaches to the RESAN and LOSAX holds.
   - 32 RNAV SIDs: EMUSA, MIBRA, PUSRA, TAYMA 2E/2F/2G/2H and LADNA, METLA, ROTEL, RYDAN 1E/2E, 1F/2F, 1G/2G, 1H/2H (one set per runway).
   - Fix positions from KFA radial/DME, the extended centrelines and the chart tracks and distances; the same fix reached by different procedures agrees within 0.6 NM (36 cross-checks printed by the generator).
+- **v0.22.4**:
+  - RESET FLIGHT asks for confirmation, like RESET MCDU (CANCEL or RESET FLIGHT; Esc or a click outside cancels).
+  - LOAD (saved set-up) asks for confirmation when a flight is in progress, since it stops that flight. On the ground before START it loads at once, as before.
 - **v0.22.3**:
   - Cockpit sound on iPad and iPhone. Safari plays this kind of sound on the ringer channel, so a muted device (Control Centre bell, or the side switch) stayed silent while the PC played normally. COCKPIT SOUND now declares the page as media playback (Safari 16.4 and later; a silent looping audio element on earlier versions), so the sounds play with the device muted, at the media volume.
   - Sound comes back after an interruption (screen lock, another app, a call): the audio is resumed at the next touch or when the page is shown again. Before, it stayed silent until COCKPIT SOUND was switched off and on.
