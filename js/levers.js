@@ -26,29 +26,29 @@ function leversSvg(){const G='#3cff3c',R='#ff3b30',ln='#e8eef5',t=lvT,hit=lvHit;
     const y=(SPB_Y.find(p=>p[0]===LV.spb)||SPB_Y[0])[1];
     s+=`<image href="${IMG_LVSK}" x="73" y="${y-63}" width="125" height="127"/>`;
     SPB_Y.forEach(([v,yy])=>{s+=hit(0,yy-43,233,86,'spb',v)});s+=`</g>`;
-    s+=t(75,17,'SPEED BRAKE',13,ln)}
-  /* ---- centre: thrust quadrant (image 316 x 563, 381 high) with its buttons on its left; ENG MASTER panel under it ---- */
-  THR_POS.forEach(([k,l],i)=>{s+=btn(152,2+i*54.3,52,48,'thr',k,l.replace('FLX/MCT','FLX MCT').replace('50% N1','50%N1'),LV.thr===k,k.startsWith('REV')?'#ff9a55':null,12)});
-  {const k=381/563;s+=`<g transform="translate(207,0) scale(${k})"><image href="${IMG_LVT}" x="0" y="0" width="316" height="563"/>`;
+    s+=t(75,264,'SPEED BRAKE',13,ln)}
+  /* ---- centre: thrust quadrant (image 316 x 563, 328 high) with its buttons on its left; ENG MASTER panel under it ---- */
+  THR_POS.forEach(([k,l],i)=>{s+=btn(160,2+i*46.6,54,42,'thr',k,l.replace('FLX/MCT','FLX MCT').replace('50% N1','50%N1'),LV.thr===k,k.startsWith('REV')?'#ff9a55':null,12)});
+  {const k=328/563;s+=`<g transform="translate(222,0) scale(${k})"><image href="${IMG_LVT}" x="0" y="0" width="316" height="563"/>`;
     const y=THR_POS.find(p=>p[0]===LV.thr)[2]-58;   /* handle images 117 high: centre on the mark */
     s+=`<image href="${IMG_LVTL}" x="34" y="${y}" width="128" height="117"/><image href="${IMG_LVTR}" x="170" y="${y}" width="128" height="117"/></g>`}
-  /* ENG MASTER panel (image 563 x 392): master levers OFF (down) or ON (up); always ON while the engines run (flight) */
-  {const k=214/563;s+=`<g transform="translate(207,381) scale(${k})"><image href="${IMG_LVE}" x="0" y="0" width="563" height="392"/>`;
+  /* ENG MASTER panel (image 563 x 392, drawn 290 wide so its labels can be read): master levers OFF (down) or ON (up); always ON while the engines run (flight) */
+  {const k=290/563;s+=`<g transform="translate(169,328) scale(${k})"><image href="${IMG_LVE}" x="0" y="0" width="563" height="392"/>`;
     /* MODE selector: the knob turned (panel image rotated inside a circle around the knob) CRANK -50, NORM 0, IGN START +50 deg */
     {const ang={CRANK:-50,NORM:0,IGN:50}[ENG.mode];if(ang)s+=`<clipPath id="lvKnob"><circle cx="282" cy="300" r="60"/></clipPath><circle cx="282" cy="300" r="60" fill="#14171b"/><g clip-path="url(#lvKnob)"><image href="${IMG_LVE}" x="0" y="0" width="563" height="392" transform="rotate(${ang} 282 300)"/></g>`;
       s+=hit(160,200,80,170,'mode','CRANK')+hit(240,200,84,170,'mode','NORM')+hit(324,200,80,170,'mode','IGN')}
     [[1,108,80,IMG_LVM1],[2,384,84,IMG_LVM2]].forEach(([n,x,w,im])=>{const on=LV['m'+n];s+=`<image href="${im}" x="${x}" y="${on?74:162}" width="${w}" height="89"/>`+hit(x-20,60,w+40,200,'master',n)});
     s+=`</g>`}
   /* ---- right: flaps lever (image 240 x 302): the position numbers on the lever are the buttons ---- */
-  {const k=220/302,x0=424,y0=24;s+=t(512,17,'FLAPS',13,ln);s+=`<g transform="translate(${x0},${y0}) scale(${k})"><image href="${IMG_LVF}" x="0" y="0" width="240" height="302"/>`;
+  {const k=220/302,x0=424,y0=24;s+=`<g transform="translate(${x0},${y0}) scale(${k})"><image href="${IMG_LVF}" x="0" y="0" width="240" height="302"/>`;
     const y=FLP_Y[LV.flaps]-20;s+=`<image href="${IMG_LVFK}" x="${128-70}" y="${y-53}" width="140" height="107"/>`;
     FLP_Y.forEach((yy,i)=>{s+=hit(0,yy-20-28,240,56,'flaps',i)});s+=`</g>`;
     /* read-out: configuration, landing gear, speed brakes */
     const cf=flying()?FL.conf:['0','1+F','2','3','FULL'][LV.flaps],gp=flying()?(FL.gearPos??1):1,e=typeof spbEff==='function'?spbEff():0,sp=LV.spb||0;
     const sbTxt=sp===0?'RET':e===0?(flying()&&!FL.ground?'INHIBITED':sp===1?'FULL':'1/2'):e<sp?'1/2 (AP ON)':sp===1?'FULL':'1/2';
-    s+=`<rect x="426" y="256" width="172" height="126" rx="8" fill="#1d232b" stroke="#55606c"/>`+t(436,286,'FLAPS',13,ln,'start')+t(588,286,cf==='0'?'CLEAN':'CONF '+cf,15,'#ffd9a0','end');
-    s+=t(436,326,'LDG GEAR',13,ln,'start')+t(588,326,gp>=1?'DOWN':gp<=0?'UP':'IN TRANSIT',14,gp>=1?G:gp<=0?ln:R,'end');
-    s+=t(436,366,'SPD BRK',13,ln,'start')+t(588,366,sbTxt,14,sp===0?ln:e===0||e<sp?'#ffb000':G,'end')}
+    s+=`<rect x="426" y="250" width="172" height="74" rx="8" fill="#1d232b" stroke="#55606c"/>`+t(436,271,'FLAPS',12,ln,'start')+t(588,271,cf==='0'?'CLEAN':'CONF '+cf,13,'#ffd9a0','end');
+    s+=t(436,293,'LDG GEAR',12,ln,'start')+t(588,293,gp>=1?'DOWN':gp<=0?'UP':'IN TRANSIT',13,gp>=1?G:gp<=0?ln:R,'end');
+    s+=t(436,315,'SPD BRK',12,ln,'start')+t(588,315,sbTxt,13,sp===0?ln:e===0||e<sp?'#ffb000':G,'end')}
   return s}
 /* landing gear panel (image 676 x 333, frame trimmed: x 10..660): LDG GEAR lights, AUTO BRK, BRK FAN, A/SKID and the gear lever */
 function gearSvg(){const G='#3cff3c',B='#3ad7ff',R='#ff3b30',t=lvT,hit=lvHit;let s=`<image href="${IMG_LVG}" x="0" y="0" width="676" height="333"/>`;
