@@ -4,7 +4,7 @@ An unofficial A320 **procedure** trainer that runs in the browser (iPad first). 
 
 Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator manuals. The navigation data was typed from charts for training only and must never be used for navigation.
 
-## Status: Phase 3 prototype (v0.24.1)
+## Status: Phase 3 prototype (v0.24.2)
 
 - **MCDU** (Thales FMS2 layout, per FCOM DSC-22): keyboard and scratchpad, INIT A, F-PLN with TMPY (ERASE/INSERT), LAT REV, DEPARTURE, AIRWAYS (with airway-to-airway intersection), ARRIVAL, waypoint insertion, CLR of waypoints and discontinuities.
 - **Exercise** OEJN to OETB: RWY 16C MIGD2E, L677 WEJ, V54 TBK, ILS 31 via D179O, ALTN OEMA, FL340, CI 20, with automatic progress checks.
@@ -19,6 +19,13 @@ Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator
   - 11 approaches: ILS 16L (IMBF 111.7), 16R (IWSR 108.1), 34L (IWMR 108.9), 34R (IABF 110.7); RNP 16L, 16R, 34L, 34R; VOR 16R, 34L and 34R (KFA 112.3, the 34R final offset on 326°). Vias from the IAFs of the KFA 14 DME arc (LOPOD, RESAN, KEBAP, LOSAX, DASLA, KFA; DAXAR and KAVIV for the 16 runways) and from DF603, DF604 and RESAN for the RNP approaches; published missed approaches to the RESAN and LOSAX holds.
   - 32 RNAV SIDs: EMUSA, MIBRA, PUSRA, TAYMA 2E/2F/2G/2H and LADNA, METLA, ROTEL, RYDAN 1E/2E, 1F/2F, 1G/2G, 1H/2H (one set per runway).
   - Fix positions from KFA radial/DME, the extended centrelines and the chart tracks and distances; the same fix reached by different procedures agrees within 0.6 NM (36 cross-checks printed by the generator).
+- **v0.24.2**: ECAM slats and flaps, ENGINE page at the engine start (from the FlyByWire A32NX source, GPL-3.0).
+  - Upper ECAM: the slat and flap indication is the FlyByWire one (`EWD/Slats.tsx`): grey wing box, green slat and flap surfaces that travel along their tracks, white position marks, S and F, the configuration (0, 1, 1+F, 2, 3, FULL). While the surfaces travel the configuration is cyan and a cyan mark shows the selected position; green once reached. Clean and retracted: the box and the surfaces only.
+  - The surfaces take time to travel: clean to CONF 1 about 11 s for the slats and 16 s for the flaps to 1+F, CONF 3 to FULL about 11 s. The flight model still takes the configuration at once when the lever moves; only the indication travels.
+  - ENGINE page (`SD/Pages/Eng/Eng.tsx`): with the ENG MODE selector at IGN START the page shows IGN, the igniter in use (A or B, alternating from one start to the next) from 16 to 50 % N2, the start valve (line across: closed; in line: open, from MASTER ON to 50 % N2) and the bleed pressure (34 psi, 28 while the starter draws air, 40 with the engine running).
+  - FADEC not powered (MODE NORM, MASTER OFF, engine stopped): oil quantity, pressure, temperature and vibrations are amber XX, as on the aircraft before the start.
+  - Oil pressure in steps of 2 psi, red at 12 or less (0 with the engine stopped, rising with N2 during the start); oil temperature in steps of 5, amber below 38 (cold engine) and from 155.
+  - The SD shows the ENGINE page by itself while the ENG MODE selector is at IGN START or an engine is starting on the ground.
 - **v0.24.1**: OP DES and EXPED.
   - Idle descent steeper than the no-deceleration rate: the speed now increases in proportion to the rate of descent, 5 kt per NM for each further 1000 ft/min (gear up: 5 at 3000 ft/min, 10 at 4000 ft/min). It was a fixed 5 kt per NM past 2500 ft/min.
   - OP DES with the speed selected up: the nose goes down, the rate of descent increases and the speed increases with it, up to 10 kt per NM (4000 ft/min clean at 250 kt ground speed or less, the same gradient faster), then eases back to the on-speed descent as the target is reached. EXP DES: up to 15 kt per NM.
