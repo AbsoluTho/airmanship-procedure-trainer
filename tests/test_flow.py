@@ -557,6 +557,12 @@ async def check_audio(url,b):
     pg.on('pageerror',lambda e:errors.append(str(e)))
     await pg.add_init_script("""(() => {
       window.startedSounds = [];
+      window.audioContexts = [];
+      const NativeContext = window.AudioContext;
+      window.AudioContext = function (...args) { const c = new NativeContext(...args); audioContexts.push(c); return c; };
+      window.AudioContext.prototype = NativeContext.prototype;
+      // stand-in for Safari's audio session, to check the page asks for media playback
+      Object.defineProperty(navigator, 'audioSession', {value: {type: 'auto'}, configurable: true});
       const create = AudioContext.prototype.createBufferSource;
       AudioContext.prototype.createBufferSource = function () {
         const source = create.call(this);
@@ -564,7 +570,7 @@ async def check_audio(url,b):
         const start = source.start.bind(source);
         source.start = (...args) => {
           start(...args);
-          startedSounds.push(source);
+          if (source.buffer && source.buffer.length > 1) startedSounds.push(source); // not the one-sample unlock sound
         };
         return source;
       };
@@ -572,6 +578,12 @@ async def check_audio(url,b):
     await pg.goto(url)
     await pg.click('#cockpitSound')
     await pg.wait_for_function("document.querySelector('#cockpitSound').getAttribute('aria-pressed') === 'true'")
+    assert await pg.evaluate("navigator.audioSession.type")=='playback','iPad: sound is routed as media playback, not on the ringer channel'
+    # an interruption (lock, other app) suspends the context: the next touch brings it back
+    await pg.evaluate("audioContexts[0].suspend()")
+    assert await pg.evaluate("audioContexts[0].state")=='suspended'
+    await pg.mouse.click(5,5)
+    await pg.wait_for_function("audioContexts[0].state === 'running'")
     await pg.click('#cabinCall')
     assert await pg.evaluate('startedSounds.length')==1, 'cabin call plays a decoded WAV'
     result=await pg.evaluate("""async () => {

@@ -16,11 +16,58 @@ const cockpitAudio = (() => {
   const priority = name => priorities[name] ?? 1;
   const buffers = {};
   const called = new Set();
-  let context, output, loading, current, candidate, primedMinimum;
+  let context, output, loading, current, candidate, primedMinimum, keepAlive;
   let enabled = false;
   const toggle = document.getElementById('cockpitSound');
   const cabin = document.getElementById('cabinCall');
   const status = document.getElementById('cockpitSoundStatus');
+
+  // iPad and iPhone: Web Audio follows the silent/mute setting and stays quiet when the device
+  // is muted. Declaring the page as media playback (Safari 16.4 and later), or keeping a silent
+  // <audio> element playing (earlier versions), routes it like music, which mute does not silence.
+  function silentWav() {
+    const n = 800, b = new Uint8Array(44 + n), v = new DataView(b.buffer);
+    const tag = (o, t) => { for (let i = 0; i < 4; i++) b[o + i] = t.charCodeAt(i); };
+    tag(0, 'RIFF'); v.setUint32(4, 36 + n, true); tag(8, 'WAVE'); tag(12, 'fmt ');
+    v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+    v.setUint32(24, 8000, true); v.setUint32(28, 8000, true); v.setUint16(32, 1, true);
+    v.setUint16(34, 8, true); tag(36, 'data'); v.setUint32(40, n, true); b.fill(128, 44);
+    let t = ''; for (let i = 0; i < b.length; i++) t += String.fromCharCode(b[i]);
+    return 'data:audio/wav;base64,' + btoa(t);
+  }
+
+  function mediaRoute(on) {
+    try {
+      if (navigator.audioSession) { navigator.audioSession.type = on ? 'playback' : 'auto'; return; }
+      const apple = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      if (!apple) return;
+      if (on) {
+        if (!keepAlive) {
+          keepAlive = new Audio(silentWav());
+          keepAlive.loop = true;
+          keepAlive.setAttribute('playsinline', '');
+        }
+        const p = keepAlive.play();
+        if (p && p.catch) p.catch(() => {});
+      } else if (keepAlive) keepAlive.pause();
+    } catch (error) { console.warn('Cockpit audio route:', error); }
+  }
+
+  // Safari suspends ("interrupted") the context after a call, a lock or a switch to another app.
+  function wake() {
+    if (!enabled || !context || context.state === 'running') return;
+    try { const p = context.resume(); if (p && p.catch) p.catch(() => {}); } catch (error) {}
+    mediaRoute(true);
+  }
+
+  // Older Safari only has the callback form of decodeAudioData.
+  function decode(data) {
+    return new Promise((resolve, reject) => {
+      const p = context.decodeAudioData(data, resolve, reject);
+      if (p && p.catch) p.catch(reject);
+    });
+  }
 
   function stop() {
     const playing = current;
@@ -37,6 +84,7 @@ const cockpitAudio = (() => {
     if (enabled) {
       enabled = false;
       stop();
+      mediaRoute(false);
       updateControls();
       status.textContent = '';
       return;
@@ -52,17 +100,24 @@ const cockpitAudio = (() => {
         output.connect(context.destination);
       }
       // Resume during the click to satisfy browser autoplay rules.
+      mediaRoute(true);
       const resumed = context.resume();
+      // A sound started inside the tap itself unlocks playback on iPad and iPhone.
+      { const blip = context.createBufferSource();
+        blip.buffer = context.createBuffer(1, 1, 22050);
+        blip.connect(context.destination); blip.start(0); }
       if (!loading) {
         loading = Promise.all(Object.entries(files).map(async ([name, path]) => {
           const url = new URL(path, document.baseURI);
           if (url.protocol !== 'data:') url.searchParams.set('v', audioVersion);
           const response = await fetch(url);
           if (!response.ok) throw new Error('Could not load ' + name);
-          buffers[name] = await context.decodeAudioData(await response.arrayBuffer());
+          buffers[name] = await decode(await response.arrayBuffer());
         }));
       }
-      await Promise.all([resumed, loading]);
+      // Do not wait for resume(): on iPad it can stay pending and would leave the button locked.
+      if (resumed && resumed.catch) resumed.catch(() => {});
+      await loading;
       enabled = true;
       status.textContent = '';
     } catch (error) {
@@ -76,7 +131,8 @@ const cockpitAudio = (() => {
   }
 
   function play(name) {
-    if (!enabled || context.state !== 'running') return;
+    if (!enabled) return;
+    if (context.state !== 'running') { wake(); if (context.state === 'closed') return; }
     if (current && priority(current.name) >= priority(name)) return;
     stop();
     const source = context.createBufferSource();
@@ -150,6 +206,9 @@ const cockpitAudio = (() => {
     candidate = null;
   }
 
+  ['pointerdown', 'touchend', 'keydown'].forEach(ev =>
+    document.addEventListener(ev, wake, {capture: true, passive: true}));
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) wake(); });
   toggle.addEventListener('click', toggleSound);
   cabin.addEventListener('click', () => play('cabin'));
   return {play, reset, cancelFlight, readFlight, sample, flush};
