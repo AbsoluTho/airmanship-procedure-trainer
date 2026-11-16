@@ -265,3 +265,13 @@ body.fs #v-ofp{display:none}
 .sec-t:hover,.sec-t:focus-visible{border-color:var(--accent);outline:none}
 .sec-all{margin-left:auto;display:flex;gap:6px}
 .ofp-grid{align-items:start}
+
+/* confirmation before RESET MCDU */
+.ask{position:fixed;inset:0;background:rgba(3,6,9,.72);display:none;align-items:center;justify-content:center;z-index:40;padding:16px}
+.ask.on{display:flex}
+.ask-box{background:var(--sunk);border:1px solid var(--line);border-radius:10px;padding:18px 20px;max-width:340px;width:100%;box-shadow:0 12px 40px rgba(0,0,0,.5)}
+.ask-t{font:600 16px/1.2 var(--f-display);letter-spacing:.06em;color:var(--ink);margin-bottom:8px}
+.ask-p{font-size:13px;color:var(--ink2);margin-bottom:16px}
+.ask-row{display:flex;gap:10px;justify-content:flex-end}
+.ask-row .fb{padding:9px 14px}
+.fb.warn{background:#3a1c1c;border-color:#8f3a2f;color:#ffb4a8}
