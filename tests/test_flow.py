@@ -557,6 +557,12 @@ async def check_audio(url,b):
     pg.on('pageerror',lambda e:errors.append(str(e)))
     await pg.add_init_script("""(() => {
       window.startedSounds = [];
+      window.audioContexts = [];
+      const NativeContext = window.AudioContext;
+      window.AudioContext = function (...args) { const c = new NativeContext(...args); audioContexts.push(c); return c; };
+      window.AudioContext.prototype = NativeContext.prototype;
+      // stand-in for Safari's audio session, to check the page asks for media playback
+      Object.defineProperty(navigator, 'audioSession', {value: {type: 'auto'}, configurable: true});
       const create = AudioContext.prototype.createBufferSource;
       AudioContext.prototype.createBufferSource = function () {
         const source = create.call(this);
@@ -564,7 +570,7 @@ async def check_audio(url,b):
         const start = source.start.bind(source);
         source.start = (...args) => {
           start(...args);
-          startedSounds.push(source);
+          if (source.buffer && source.buffer.length > 1) startedSounds.push(source); // not the one-sample unlock sound
         };
         return source;
       };
@@ -572,6 +578,12 @@ async def check_audio(url,b):
     await pg.goto(url)
     await pg.click('#cockpitSound')
     await pg.wait_for_function("document.querySelector('#cockpitSound').getAttribute('aria-pressed') === 'true'")
+    assert await pg.evaluate("navigator.audioSession.type")=='playback','iPad: sound is routed as media playback, not on the ringer channel'
+    # an interruption (lock, other app) suspends the context: the next touch brings it back
+    await pg.evaluate("audioContexts[0].suspend()")
+    assert await pg.evaluate("audioContexts[0].state")=='suspended'
+    await pg.mouse.click(5,5)
+    await pg.wait_for_function("audioContexts[0].state === 'running'")
     await pg.click('#cabinCall')
     assert await pg.evaluate('startedSounds.length')==1, 'cabin call plays a decoded WAV'
     result=await pg.evaluate("""async () => {
@@ -617,7 +629,26 @@ async def check_audio(url,b):
     }""")
     assert result==[2,2,3,3,3,4,5,6,7], result
     await pg.click('#cockpitSound')
-    assert await pg.locator('#cabinCall').is_disabled(), 'mute disables the cabin call'
+    assert await pg.evaluate("document.querySelector('#cockpitSound').getAttribute('aria-pressed')")=='false'
+    n=await pg.evaluate('startedSounds.length')
+    # CABIN CALL is the sound check: with the sound off it switches it on and plays
+    await pg.click('#cabinCall')
+    await pg.wait_for_function("startedSounds.length === %d"%(n+1))
+    assert await pg.evaluate("document.querySelector('#cockpitSound').getAttribute('aria-pressed')")=='true','CABIN CALL switches the sound on'
+    # Web Audio not running (as on an iPad that keeps it suspended): the spare <audio> element plays the file
+    spare=await pg.evaluate("""async () => {
+      const made = [];
+      const play = HTMLMediaElement.prototype.play;
+      HTMLMediaElement.prototype.play = function () { made.push(this.src.slice(0, 60)); return play.call(this); };
+      startedSounds.at(-1).stop();
+      await new Promise(r => setTimeout(r, 50));
+      const c = audioContexts[0];
+      await c.suspend();
+      c.resume = () => Promise.resolve();
+      cockpitAudio.play('cabin');
+      return [startedSounds.length, made.at(-1)];
+    }""")
+    assert spare[0]==n+1 and ('cabin-call.wav' in spare[1] or spare[1].startswith('data:audio/wav')), ('spare player',spare)
     assert not errors, errors
     print('PASS cockpit audio',url)
     await pg.close()
