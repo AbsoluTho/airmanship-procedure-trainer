@@ -4,7 +4,7 @@ An unofficial A320 **procedure** trainer that runs in the browser (iPad first). 
 
 Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator manuals. The navigation data was typed from charts for training only and must never be used for navigation.
 
-## Status: Phase 3 prototype (v0.22.0)
+## Status: Phase 3 prototype (v0.22.1)
 
 - **MCDU** (Thales FMS2 layout, per FCOM DSC-22): keyboard and scratchpad, INIT A, F-PLN with TMPY (ERASE/INSERT), LAT REV, DEPARTURE, AIRWAYS (with airway-to-airway intersection), ARRIVAL, waypoint insertion, CLR of waypoints and discontinuities.
 - **Exercise** OEJN to OETB: RWY 16C MIGD2E, L677 WEJ, V54 TBK, ILS 31 via D179O, ALTN OEMA, FL340, CI 20, with automatic progress checks.
@@ -19,6 +19,9 @@ Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator
   - 11 approaches: ILS 16L (IMBF 111.7), 16R (IWSR 108.1), 34L (IWMR 108.9), 34R (IABF 110.7); RNP 16L, 16R, 34L, 34R; VOR 16R, 34L and 34R (KFA 112.3, the 34R final offset on 326°). Vias from the IAFs of the KFA 14 DME arc (LOPOD, RESAN, KEBAP, LOSAX, DASLA, KFA; DAXAR and KAVIV for the 16 runways) and from DF603, DF604 and RESAN for the RNP approaches; published missed approaches to the RESAN and LOSAX holds.
   - 32 RNAV SIDs: EMUSA, MIBRA, PUSRA, TAYMA 2E/2F/2G/2H and LADNA, METLA, ROTEL, RYDAN 1E/2E, 1F/2F, 1G/2G, 1H/2H (one set per runway).
   - Fix positions from KFA radial/DME, the extended centrelines and the chart tracks and distances; the same fix reached by different procedures agrees within 0.6 NM (36 cross-checks printed by the generator).
+- **v0.22.1**:
+  - Two more OFPs on the FLIGHT PLANS tab: FAD122 OEJN - OERK (EGRE2F, T532 to ORDEM, ORDE1A, ILS Y 15L, FL350; company route OEJNOERK1) and FAD139 OERK - OEJN (UMAS1E, Y155 to VEMEM, VEME1A, ILS 34L, FL340; company route OERKOEJN1). Twelve flights. Both city pairs fly their OFP winds.
+  - MCDU tab: the Exercise and How to cards are removed; the tab shows the displays and the simulator bar only. The RESET MCDU button went with the Exercise card: reload the page to start again.
 - **v0.22.0**:
   - HOLD at PPOS: the hold was neither drawn nor flown once inserted if the HOLD page had been open for a while (the fix stayed where the key was pressed, behind the aircraft). While the hold is temporary its fix now follows the aircraft, so the inserted hold starts at the present position and is drawn on the ND and flown.
   - N1 on the approach in landing configuration, stabilised on the glide path: CONF 3 45 to 55 %, CONF FULL 55 to 63 %, rising with the gross weight (50 t to 66 t). Idle in the flare, less while still decelerating, more on a shallower path.

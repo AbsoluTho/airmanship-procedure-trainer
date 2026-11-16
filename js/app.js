@@ -19,8 +19,9 @@ const TASKS=[
  ['PERF TAKE OFF: FLAPS/THS 1/UP0.4, FLEX 54',()=>{const q=S.perf;return q.flaps===1&&q.ths==='UP0.4'&&q.flex===54}]];
 let lastT='';
 function tasks(){const h=TASKS.map(([t,f])=>{const d=f();return`<li class="${d?'done':''}"><span class="ck">${d?'✓':''}</span><span>${t}</span></li>`}).join('');
-  if(h!==lastT){$('#tasks').innerHTML=h;lastT=h}}
-$('#reset').addEventListener('click',()=>{const e=S.elec;S=freshState();S.elec=e;render()});
+  const el=$('#tasks');if(el&&h!==lastT){el.innerHTML=h;lastT=h}}   /* the Exercise card is no longer on the page: the list is kept for the test */
+window.__tasksDone=()=>TASKS.filter(([,f])=>f()).length;
+{const rb=$('#reset');if(rb)rb.addEventListener('click',()=>{const e=S.elec;S=freshState();S.elec=e;render()})}
 
 /* ================= views / modal ================= */
 let view='mcdu';

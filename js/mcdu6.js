@@ -20,11 +20,15 @@ const CO_RTES={
   OEABOEJN1:{from:'OEAB',to:'OEJN',altn:'OEMA',rwy:'13',sid:'RWYHDG',route:[['DCT','ABH'],['B544','BOSUT']],star:'BOSU2R',appr:'ILS16RY',via:'SOGER'},
   OEJNOEAH1:{from:'OEJN',to:'OEAH',altn:'OEMA',rwy:'16R',sid:'EGRE2F',route:[['T532','KSA'],['H976','MUSRI'],['L604','KFA'],['N687','DEMKA'],['DCT','HSA']],appr:'ILS34Y',via:'HSA'},
   OEAHOEJN1:{from:'OEAH',to:'OEJN',altn:'OEMA',rwy:'34',sid:'RWYHDG',route:[['DCT','HSA'],['DCT','DEMKA'],['N687','KFA'],['A776','OTISU'],['N112','GETOT'],['Q212','KSA'],['G782','VEMEM']],star:'VEME1A',appr:'ILS34L',via:'ITUXI'},
-  OETBOEJN1:{from:'OETB',to:'OEJN',altn:'OEMA',rwy:'24',route:[['DCT','TBK'],['V54','WEJ'],['T510','RBG'],['B544','NOMDA']],star:'NOMD1A',appr:'ILS34L',via:'ITUXI'}};
+  OETBOEJN1:{from:'OETB',to:'OEJN',altn:'OEMA',rwy:'24',route:[['DCT','TBK'],['V54','WEJ'],['T510','RBG'],['B544','NOMDA']],star:'NOMD1A',appr:'ILS34L',via:'ITUXI'},
+  OEJNOERK1:{from:'OEJN',to:'OERK',altn:'OEJN',rwy:'16R',sid:'EGRE2F',route:[['T532','ORDEM']],star:'ORDE1A',appr:'ILS15LY',via:'RK621'},
+  OERKOEJN1:{from:'OERK',to:'OEJN',altn:'OEMA',rwy:'15L',sid:'UMAS1E',route:[['Y155','VEMEM']],star:'VEME1A',appr:'ILS34L',via:'ITUXI'}};
 /* AOC answers to INIT REQUEST, by flight number (company route and INIT A data) */
 const AOC_OFP={TRN385:{rte:'OEJNOETB1',ci:20,crz:340,temp:-46,tropo:36000},
   FAD385:{rte:'OEJNOETB1',ci:20,crz:340,temp:-45,tropo:36090},
   FAD386:{rte:'OETBOEJN1',ci:20,crz:330,temp:-41,tropo:36090},
+  FAD122:{rte:'OEJNOERK1',ci:15,crz:350,temp:-47,tropo:36090},
+  FAD139:{rte:'OERKOEJN1',ci:15,crz:340,temp:-45,tropo:36090},
   FAD225:{rte:'OERKOEMA1',ci:15,crz:340,temp:-44,tropo:36090},
   FAD226:{rte:'OEMAOERK1',ci:15,crz:350,temp:-47,tropo:36090},
   FAD309:{rte:'OEJNOEDF1',ci:15,crz:350,temp:-46,tropo:36090},
