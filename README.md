@@ -4,7 +4,7 @@ An unofficial A320 **procedure** trainer that runs in the browser (iPad first). 
 
 Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator manuals. The navigation data was typed from charts for training only and must never be used for navigation.
 
-## Status: Phase 3 prototype (v0.24.0)
+## Status: Phase 3 prototype (v0.24.1)
 
 - **MCDU** (Thales FMS2 layout, per FCOM DSC-22): keyboard and scratchpad, INIT A, F-PLN with TMPY (ERASE/INSERT), LAT REV, DEPARTURE, AIRWAYS (with airway-to-airway intersection), ARRIVAL, waypoint insertion, CLR of waypoints and discontinuities.
 - **Exercise** OEJN to OETB: RWY 16C MIGD2E, L677 WEJ, V54 TBK, ILS 31 via D179O, ALTN OEMA, FL340, CI 20, with automatic progress checks.
@@ -19,6 +19,11 @@ Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator
   - 11 approaches: ILS 16L (IMBF 111.7), 16R (IWSR 108.1), 34L (IWMR 108.9), 34R (IABF 110.7); RNP 16L, 16R, 34L, 34R; VOR 16R, 34L and 34R (KFA 112.3, the 34R final offset on 326°). Vias from the IAFs of the KFA 14 DME arc (LOPOD, RESAN, KEBAP, LOSAX, DASLA, KFA; DAXAR and KAVIV for the 16 runways) and from DF603, DF604 and RESAN for the RNP approaches; published missed approaches to the RESAN and LOSAX holds.
   - 32 RNAV SIDs: EMUSA, MIBRA, PUSRA, TAYMA 2E/2F/2G/2H and LADNA, METLA, ROTEL, RYDAN 1E/2E, 1F/2F, 1G/2G, 1H/2H (one set per runway).
   - Fix positions from KFA radial/DME, the extended centrelines and the chart tracks and distances; the same fix reached by different procedures agrees within 0.6 NM (36 cross-checks printed by the generator).
+- **v0.24.1**: OP DES and EXPED.
+  - Idle descent steeper than the no-deceleration rate: the speed now increases in proportion to the rate of descent, 5 kt per NM for each further 1000 ft/min (gear up: 5 at 3000 ft/min, 10 at 4000 ft/min). It was a fixed 5 kt per NM past 2500 ft/min.
+  - OP DES with the speed selected up: the nose goes down, the rate of descent increases and the speed increases with it, up to 10 kt per NM (4000 ft/min clean at 250 kt ground speed or less, the same gradient faster), then eases back to the on-speed descent as the target is reached. EXP DES: up to 15 kt per NM.
+  - EXPED: the light is on only while EXP CLB or EXP DES is the active vertical mode, as in the FlyByWire FCU (light = expedite mode reported active by the FMGC). It goes off when V/S or FPA is pulled or pushed, the ALT knob pulled or pushed, a speed selected (back to OP CLB / OP DES), at the altitude capture, and on any other mode change. It stayed on before.
+  - EXPED pressed in level flight with the FCU altitude changed engages EXP CLB or EXP DES directly; pressed at the FCU altitude it does nothing.
 - **v0.24.0**: speed brake lever, levers panel rearranged.
   - LEVERS: speed brake lever on the left (cut from the cockpit photo; RET, 1/2 and FULL on the lever are the buttons), thrust levers and ENG MASTER panel in the centre with the thrust buttons on their left, flaps lever on the right. The position numbers on the flaps lever are the buttons; the separate 0 to FULL buttons are gone. A read-out under the flaps lever gives the configuration, the gear and the speed brakes. The speed brake and flaps levers are drawn the same height, level with each other. The ENG MASTER panel is drawn larger (290 instead of 214 units wide, the thrust quadrant a little smaller) and its images are re-encoded from the photo at a higher quality.
   - LDG GEAR: new button next to LEVERS. It opens the landing gear panel (gear lever and lights, AUTO BRK, BRK FAN, A/SKID) over the lower part of the upper ECAM, as the ECP opens over the ND. The panel is no longer inside LEVERS.
