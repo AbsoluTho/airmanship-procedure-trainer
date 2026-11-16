@@ -152,6 +152,14 @@ async def run(url,b):
     assert await pg.evaluate("window.__rfConfirmed===0&&!document.querySelector('#askReset').classList.contains('on')"),'CANCEL keeps the flight'
     await pg.evaluate(tap);await pg.click('#askResetYes')
     assert await pg.evaluate("window.__rfConfirmed===1"),'confirm resets the flight'
+    # LOAD during a flight asks too; before START it loads at once
+    r=await pg.evaluate("""(()=>{const b0=flightBtn,calls=[];flightBtn=k=>{calls.push(k)};const ld=document.querySelector('#flight [data-fl="setup:load"]'),dis=ld.disabled,act=FL.active,dlg=document.querySelector('#askReset');
+      ld.disabled=false;FL.active=false;ld.click();const a=[calls.length,dlg.classList.contains('on')];
+      FL.active=true;ld.click();const b=[calls.length,dlg.classList.contains('on'),document.querySelector('#askResetT').textContent];
+      document.querySelector('#askResetNo').click();const c=[calls.length,dlg.classList.contains('on')];
+      ld.click();document.querySelector('#askResetYes').click();const d=[calls.join(),dlg.classList.contains('on')];
+      FL.active=act;ld.disabled=dis;flightBtn=b0;return JSON.stringify([a,b,c,d])})()""")
+    assert r=='[[1,false],[1,true,"Load the saved set-up?"],[1,false],["setup:load,setup:load",false]]',('LOAD confirmation',r)
     await pg.evaluate("flightReset=window.__keepR;document.querySelector('#flight [data-fl=\\'reset\\']').hidden=!FL.active;0")
     await pg.evaluate("S=window.__keep;delete window.__keep;render()")
     # VERT REV at the origin (1R: CLB SPD LIM) and at the destination (6R: DES SPD LIM)

@@ -21,6 +21,7 @@ Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator
   - Fix positions from KFA radial/DME, the extended centrelines and the chart tracks and distances; the same fix reached by different procedures agrees within 0.6 NM (36 cross-checks printed by the generator).
 - **v0.22.4**:
   - RESET FLIGHT asks for confirmation, like RESET MCDU (CANCEL or RESET FLIGHT; Esc or a click outside cancels).
+  - LOAD (saved set-up) asks for confirmation when a flight is in progress, since it stops that flight. On the ground before START it loads at once, as before.
 - **v0.22.3**:
   - Cockpit sound on iPad and iPhone. Safari plays this kind of sound on the ringer channel, so a muted device (Control Centre bell, or the side switch) stayed silent while the PC played normally. COCKPIT SOUND now declares the page as media playback (Safari 16.4 and later; a silent looping audio element on earlier versions), so the sounds play with the device muted, at the media volume.
   - Sound comes back after an interruption (screen lock, another app, a call): the audio is resumed at the next touch or when the page is shown again. Before, it stayed silent until COCKPIT SOUND was switched off and on.

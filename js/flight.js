@@ -494,5 +494,7 @@ function flightBtn(k){
   else if(k==='appr')flightSkip(()=>FL.path.sThr-FL.s<=30);
   refreshAll()}
 {const host=$('#flight');if(host)host.querySelectorAll('[data-fl]').forEach(b=>b.addEventListener('click',()=>{const k=b.dataset.fl;
-  if(k==='reset'&&typeof askConfirm==='function')askConfirm('Reset the flight?','The flight in progress will be stopped. The MCDU set-up is kept.','RESET FLIGHT',()=>flightBtn(k));else flightBtn(k)}))}
+  if(k==='reset'&&typeof askConfirm==='function')askConfirm('Reset the flight?','The flight in progress will be stopped. The MCDU set-up is kept.','RESET FLIGHT',()=>flightBtn(k));
+  else if(k==='setup:load'&&FL.active&&typeof askConfirm==='function')askConfirm('Load the saved set-up?','The flight in progress will be stopped and replaced by the saved set-up.','LOAD SET-UP',()=>flightBtn(k));
+  else flightBtn(k)}))}
 window.__FL=FL;window.__flight=flightBtn;window.__flSkip=flightSkip;
