@@ -135,18 +135,23 @@ async def run(url,b):
       S.active=A0;S.init=I0;S.page=pg0;S.sp=sp0;S.prog.to=pr0;S.fpOff=off0;S.msg='';S.tmpy=null;S.coRte=null;render();return out})()""")
     assert v22=={'prog':['OEDF34R',0],'bad':'OEDF34R','vor':[True,True,3],'lr':'ALTLR','aw':'ALTAWY','alt':'PEGUR SIGRO IVUDA WEJ LABUN NETOL DEMSU TBK|Z712V54','next':'PEGUR WEJ','cg':[True,True],'n1':[45,55,55,63]},f'v0.22 checks: {v22}'
     assert await pg.evaluate("[!document.querySelector('#v-mcdu .side'),!!document.querySelector('#v-mcdu #deck'),OFPS.length,AOC_OFP.FAD122.rte,buildRoute(CO_RTES.OERKOEJN1).star].join()")=='true,true,12,OEJNOERK1,VEME1A','MCDU tab without the Exercise and How to cards; 12 OFP flights'
-    # idle deceleration rules (kt per NM): gear up 10/5/0, gear down 15/10/5, landing configuration 20/15/10, steeper than 2000 ft/min -5
+    # idle deceleration rules (kt per NM): gear up 10/5/0, gear down 15/10/5, landing configuration 20/15/10, 5 less for each further 1000 ft/min (the speed increases)
     r=await pg.evaluate("""(()=>{const g=FL.gear,c=FL.conf,o=[];for(const [gear,conf] of [[false,'0'],[false,'2'],[true,'2'],[true,'3'],[true,'FULL']]){FL.gear=gear;FL.conf=conf;
       o.push([0,-1000,-2000,-2500,-3000].map(v=>idleDecel(v,200)).join('/'))}
       FL.gear=false;FL.conf='0';o.push(+idleDecel(-2385,450).toFixed(1),Math.round(idleVs(5,200)),Math.round(idleVs(0,200)),Math.round(idleVs(-5,200)));FL.gear=g;FL.conf=c;return o.join(' ')})()""")
-    assert r=='10/5/0/-5/-5 10/5/0/-5/-5 15/10/5/-5/-5 20/15/10/-5/-5 20/15/10/-5/-5 3.4 1000 2000 2500',('idle deceleration rules',r)
+    assert r=='10/5/0/-2.5/-5 10/5/0/-2.5/-5 15/10/5/2.5/0 20/15/10/7.5/5 20/15/10/7.5/5 3.4 1000 2000 3000',('idle deceleration rules',r)
+    # EXPED light: on only while EXP CLB or EXP DES is the active vertical mode
+    r=await pg.evaluate("""(()=>{const k={a:FL.active,g:FL.ground,v:FL.ver,e:FCU.exped},o=[];FL.active=true;FL.ground=false;
+      for(const v of ['EXP DES','V/S','EXP CLB','ALT*','OP DES','DES']){FL.ver=v;FCU.exped=true;expedSync();o.push(FCU.exped?1:0)}
+      FL.ver='EXP DES';FL.ground=true;expedSync();o.push(FCU.exped?1:0);FL.active=k.a;FL.ground=k.g;FL.ver=k.v;FCU.exped=k.e;return o.join('')})()""")
+    assert r=='1010000',('EXPED light follows the mode',r)
     # speed brakes: half 50 % more drag, full 100 % more; full only with the autopilot off; none in CONF FULL
     r=await pg.evaluate("""(()=>{const k={g:FL.gear,c:FL.conf,a:FL.active,gr:FL.ground,ap1:FCU.ap1,ap2:FCU.ap2,sb:LV.spb},o=[];FL.active=true;FL.ground=false;FL.gear=false;FL.conf='0';FCU.ap2=false;
       const row=()=>[0,-1000,-2000,-3000,-4000].map(v=>idleDecel(v,200)).join('/');
       LV.spb=0.5;FCU.ap1=true;o.push(row());LV.spb=1;o.push(row());FCU.ap1=false;o.push(row(),Math.round(idleVs(0,200)));
       FL.conf='FULL';FL.gear=true;o.push(row());FL.gear=k.g;FL.conf=k.c;FL.active=k.a;FL.ground=k.gr;FCU.ap1=k.ap1;FCU.ap2=k.ap2;
       LV.spb=0;lever('spb','0.7');o.push(LV.spb);lever('spb','1.4');o.push(LV.spb);lever('spb',0.01);o.push(LV.spb);LV.spb=k.sb;return o.join(' ')})()""")
-    assert r=='15/10/5/0/-5 15/10/5/0/-5 20/15/10/5/0 4000 20/15/10/-5/-5 0.7 0.7 0',('speed brake rules',r)
+    assert r=='15/10/5/0/-5 15/10/5/0/-5 20/15/10/5/0 4000 20/15/10/5/0 0.7 0.7 0',('speed brake rules',r)
     # levers: speed brake marks and flap numbers are the buttons; the landing gear panel opens from LDG GEAR over the upper ECAM
     await pg.evaluate("window.__ecam.show(true)");await pg.click('#lvBtn');await pg.click('#lgBtn')
     r=await pg.evaluate("""(()=>{const q=s=>document.querySelector(s),o=[];

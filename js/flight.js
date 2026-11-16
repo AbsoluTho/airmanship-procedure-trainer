@@ -200,21 +200,20 @@ const DECEL_NM=25;
 /* ---- deceleration at idle (kt lost per NM flown), from the configuration and the rate of descent ----
    gear up (clean, CONF 1, CONF 2): level 10, 1000 ft/min down 5, 2000 ft/min down 0;
    gear down: 5 more (15, 10, 5); landing configuration (CONF 3 or FULL with the gear down): 10 more (20, 15, 10);
-   steeper than 2000 ft/min the speed increases even at idle, 5 kt per NM (reached at 2500 ft/min).
+   steeper, the speed increases even at idle, in proportion to the rate of descent: 5 kt per NM for each 1000 ft/min more
+   (gear up: 5 at 3000 ft/min, 10 at 4000 ft/min).
    The rates of descent are those of a ground speed of 250 kt or less; faster, the same descent gradient counts
    (a 3 degree path gives the same deceleration at 250 kt and at cruise speed). In a climb the speed is lost faster. */
 function idleBase(){return 10+(FL.gear?(FL.conf==='3'||FL.conf==='FULL'?10:5):0)}
 /* speed brakes actually extended (0 to 1) for the lever position: not in CONF FULL (inhibited), half at the most with the autopilot engaged */
 function spbEff(){if(!FL.active||FL.ground||FL.conf==='FULL')return 0;return Math.min(LV.spb||0,FCU.ap1||FCU.ap2?0.5:1)}
 /* speed brakes add drag: half 50 % more, full 100 % more than the drag of the configuration (the level deceleration), so with full speed brakes
-   clean: level 20, 1000 ft/min down 15, 2000 ft/min down 10, no deceleration at 4000 ft/min; the 5 kt per NM increase starts past that rate */
-function idleDecel(vs,gs){const m=1+spbEff(),base=idleBase()*m,knee=2000*m,v=-vs*Math.min(1,250/Math.max(1,gs)),atK=base-knee/200;
-  if(v<=0)return Math.min(60,base-v/200);
-  if(v<=knee)return base-v/200;
-  return Math.max(-5,atK-(v-knee)/500*(atK+5))}
-/* the rate of descent (ft/min, positive down) that gives a deceleration of r kt per NM at idle */
-function idleVs(r,gs){const m=1+spbEff(),base=idleBase()*m,knee=2000*m,atK=base-knee/200,k=Math.max(1,gs/250);r=Math.max(-5,Math.min(base,r));
-  return(r>=atK?(base-r)*200:knee+500*(atK-r)/(atK+5))*k}
+   clean: level 20, 1000 ft/min down 15, 2000 ft/min down 10, no deceleration at 4000 ft/min; the speed increases past that rate */
+function idleDecel(vs,gs){const base=idleBase()*(1+spbEff()),v=-vs*Math.min(1,250/Math.max(1,gs));
+  return Math.max(-30,Math.min(60,base-v/200))}
+/* the rate of descent (ft/min, positive down) that gives a deceleration of r kt per NM at idle (r negative: an acceleration) */
+function idleVs(r,gs){const base=idleBase()*(1+spbEff()),k=Math.max(1,gs/250);r=Math.max(-30,Math.min(base,r));
+  return(base-r)*200*k}
 /* distance (NM) needed to lose dv kt at idle on the present path */
 function decelLead(dv){return Math.max(0,dv)/Math.max(2.5,idleDecel(Math.min(0,FL.vs),FL.gs))}
 function gaLeg(l){l.seg='ga';if(l.k==='hold'&&!l.fix)return null;return l}
@@ -234,8 +233,8 @@ function goAround(){if(!FL.active||FL.ground||FL.stage!=='AIR'||!['APPR','DES'].
 /* ---------- FCU actions arriving in flight ---------- */
 const CLIMBING=['CLB','OP CLB','EXP CLB'],DESCENDING=['DES','OP DES','EXP DES'];
 function fcuEvent(ev){if(!FL.active)return;const A=FCU.alt;
-  FL.opSmall=Math.abs(A-FL.alt)<1200;   /* level change under 1200 ft: V/S 1000 ft/min with A/THR on speed (Airbus OPEN mode logic) */
-  if(ev==='alt-pull'){if(FL.ground)return;if(Math.abs(A-FL.alt)<250)return;FL.ver=A>FL.alt?(FCU.exped?'EXP CLB':'OP CLB'):(FCU.exped?'EXP DES':'OP DES');FL.verArm=['ALT']}
+  if(ev!=='spd-pull')FL.opSmall=Math.abs(A-FL.alt)<1200;   /* level change under 1200 ft: V/S 1000 ft/min with A/THR on speed (Airbus OPEN mode logic) */
+  if(ev==='alt-pull'){if(FL.ground)return;if(Math.abs(A-FL.alt)<250)return;FL.ver=A>FL.alt?'OP CLB':'OP DES';FL.verArm=['ALT']}
   if(ev==='alt-push'){if(FL.ground){FL.verArm=['CLB'];return}if(Math.abs(A-FL.alt)<250)return;
     if(A>FL.alt){FL.ver='CLB';FL.verArm=['ALT']}else{FL.ver='DES';FL.verArm=['ALT']}}   /* before T/D: early descent at 1000 ft/min until the path */
   if(ev==='vs-pull'){if(FL.ground)return;FL.ver=FCU.trkFpa?'FPA':'V/S';FL.verArm=['ALT']}
@@ -243,8 +242,15 @@ function fcuEvent(ev){if(!FL.active)return;const A=FCU.alt;
   if(ev==='hdg-pull'){if(FL.ground){FL.latArm=null;return}FL.lat=FCU.trkFpa?'TRK':'HDG';FL.latArm=null}
   if(ev==='hdg-push'){if(FL.ground){FL.latArm='NAV';return}const pr=project(FL.path,FL.pos,1,FL.path.pts.length-1);
     if(pr&&pr.d<0.3){FL.lat='NAV';FL.latArm=null;FL.seg=pr.i;FL.s=pr.s}else FL.latArm='NAV'}
-  if(ev==='exped'){if(CLIMBING.includes(FL.ver))FL.ver=FCU.exped?'EXP CLB':'OP CLB';if(DESCENDING.includes(FL.ver))FL.ver=FCU.exped?'EXP DES':'OP DES'}
-  setFma();refreshAll()}
+  /* EXPED: engages EXP CLB or EXP DES toward the FCU altitude; pressed again, back to OP CLB or OP DES */
+  if(ev==='exped'){if(FL.ground)return;if(FL.ver==='EXP CLB')FL.ver='OP CLB';else if(FL.ver==='EXP DES')FL.ver='OP DES';
+    else if(Math.abs(A-FL.alt)>=250){FL.ver=A>FL.alt?'EXP CLB':'EXP DES';FL.verArm=['ALT'];FL.opSmall=false}}
+  /* selecting a speed leaves the expedite mode (its speed target is fixed): OP CLB or OP DES */
+  if(ev==='spd-pull'){if(FL.ver==='EXP CLB')FL.ver='OP CLB';else if(FL.ver==='EXP DES')FL.ver='OP DES'}
+  expedSync();setFma();refreshAll()}
+/* the EXPED light is on only while EXP CLB or EXP DES is the active vertical mode (FlyByWire FcuComputer: exped_light_on = expedite mode
+   reported active by the FMGC), so it goes off as soon as any other vertical mode takes over */
+function expedSync(){FCU.exped=FL.active&&!FL.ground&&(FL.ver==='EXP CLB'||FL.ver==='EXP DES')}
 
 /* ---------- FMA (mode strings from the FlyByWire A32NX FMA) ---------- */
 function setFma(){const st=FL.stage,a=S.perf,fx=a.flex!=null&&S.phase!=='GA'?'FLX '+a.flex:'TOGA',f={c1:[],c2:[],c3:[],c4:[],c5:[]};
@@ -447,9 +453,11 @@ function step(dt){if(S.tmpy&&typeof ppHoldSync==='function')ppHoldSync(S.tmpy);c
     const g2=FL.gp||1,cap2=climb?cap*g2:cap;let a=Math.max(-1,Math.min(1,(spdT-FL.ias)*0.12))*(climb?g2:1),v=cap2-k*a;
     if(climb&&v<0){v=0;a=cap2/k}
     /* idle descent: the rate of descent that gives the deceleration (or acceleration) wanted; the speed then follows the rate actually flown */
-    if(!climb){v=-idleVs(FL.ias-spdT,FL.gs);a=-idleDecel(FL.vs,FL.gs)*FL.gs/3600}
+    /* speed target above the speed (speed selected up, EXP DES): the nose goes down, the rate of descent increases and the speed increases in
+       proportion to it; OP DES up to 10 kt per NM (4000 ft/min clean), EXP DES up to 15 kt per NM (5000 ft/min clean) */
+    if(!climb){v=-idleVs(Math.max(FL.ver==='EXP DES'?-15:-10,FL.ias-spdT),FL.gs);a=-idleDecel(FL.vs,FL.gs)*FL.gs/3600}
     FL.accT=a;vsT=v}
-  FL.spdT=spdT;vsT=Math.max(-6000,Math.min(6000,vsT));
+  expedSync();FL.spdT=spdT;vsT=Math.max(-6000,Math.min(6000,vsT));
   /* ---- dynamics ---- */
   if(FL.stage==='AIR'){const g3=FL.gp||1;/* thrust at idle sets how fast the speed can come back: never faster than the idle deceleration of the configuration and rate of descent */
     const idle=FL.ver==='FLARE'||FL.ver==='SRS'?-9:-idleDecel(FL.vs,FL.gs)*FL.gs/3600;
