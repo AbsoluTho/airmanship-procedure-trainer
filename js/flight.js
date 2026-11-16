@@ -339,7 +339,7 @@ function step(dt){if(S.tmpy&&typeof ppHoldSync==='function')ppHoldSync(S.tmpy);c
     else if(['LOC*','LOC','LAND'].includes(FL.lat)&&lg){const d=destRwy(),Ll=Math.max(0.5,Math.min(2,FL.gs*12/3600)),tgt=dst(d.r.pos,lg.crs+180,Math.max(-2,lg.along-Ll));trkT=brg(FL.pos,tgt)}   /* tighter than NAV: 12 s ahead on the course */
     /* ---- vertical ---- */
     const capBand=Math.max(80,Math.abs(FL.vs)*0.12),CK=cstrNow();FL.cst=CK;
-    const gp=!FL.ground&&(['TAKEOFF','CLB','GA'].includes(S.phase)||CLIMBING.includes(FL.ver)||FL.ver==='SRS')?(LV.gear==='UP'||(FL.loT!=null&&FL.t-FL.loT<5&&S.phase!=='GA')?1:1-0.5*(FL.gearPos??1)):1;FL.gp=gp;   /* gear lever left DOWN in the climb: half the climb rate and acceleration (not in the 5 s after lift-off, nor once the lever is UP) */   /* gear drag follows the gear position: half rate down, full rate up and locked, gradual in transit */   /* gear left down in the climb: half the climb rate and acceleration */
+    const gp=!FL.ground&&(['TAKEOFF','CLB','GA'].includes(S.phase)||CLIMBING.includes(FL.ver)||FL.ver==='SRS')?1-0.5*(FL.gearPos??1):1;FL.gp=gp;   /* gear drag follows the gear position: half the climb rate and acceleration with the gear down, full once up and locked, gradual in transit */
     if(FL.ver==='SRS'){const rate=FL.thr==='GA SOFT'?2000:2400;
       spdT=ga?FL.gaSpd:q.v2+10;vsT=(ga?Math.min(rate,FL.vs+600):rate)*gp;
       if(FL.alt>=acc){FL.opSmall=false;if(A>FL.alt+capBand){FL.ver=FL.verArm.includes('OP CLB')?'OP CLB':'CLB';FL.verArm=['ALT']}else{FL.ver='ALT*';FL.verArm=[]}if(!ga)S.phase='CLB'}}

@@ -21,7 +21,7 @@ Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator
   - Fix positions from KFA radial/DME, the extended centrelines and the chart tracks and distances; the same fix reached by different procedures agrees within 0.6 NM (36 cross-checks printed by the generator).
 - **v0.23.0**: flight physics.
   - Rotation: 3 degrees per second, 0 to 15 degrees of pitch in 5 s (it slowed to 2 degrees per second after lift-off).
-  - Lift-off: the rate of climb builds up along an S curve (slow, faster in the middle, slow again) and reaches the SRS target (2400 ft/min) 5 s after lift-off. It rose at a constant 600 ft/min per second before, and stopped at half the target while the gear was still travelling. The half climb rate with the gear down now applies only when the gear lever is left DOWN more than 5 s after lift-off.
+  - Lift-off: the rate of climb builds up along an S curve (slow, faster in the middle, slow again) and reaches its target 5 s after lift-off. It rose at a constant 600 ft/min per second before. The target is limited while the gear is down (1200 ft/min, half the 2400 ft/min of SRS) and rises to the full rate as the gear retracts, so the rate of climb only ever increases.
   - Deceleration at idle, in kt lost per NM flown. The speed follows these rates while it goes to its target, in every mode:
 
     | | level | 1000 ft/min down | 2000 ft/min down | steeper |
