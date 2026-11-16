@@ -40,8 +40,20 @@ for (const [from, to, pos, phase] of [
 state.active.legs = [{id: 'EEEE'}, {k: 'dest', id: 'FFFF'}];
 assert.equal(windAt([40, 40], 3500, 500, 'TO').spd, 11, 'surface wind without an OFP');
 assert.equal(windAt([40, 40], 6000, 3000, 'TO').spd, 0, 'calm aloft without an OFP');
+WX.frozenWind = {dir: 270, spd: 60};
+assert.equal(windAt([40, 40], 6000, 3000, 'DES').spd, 60, 'diversion keeps the previous in-flight wind');
+assert.equal(windAt([40, 40], 4500, 1500, 'APPR').spd, 11, 'new destination keeps the low-altitude surface rule');
+assert.ok(Math.abs(windAt([40, 40], 5250, 2250, 'APPR').spd - Math.hypot(30, 5.5)) < 1e-9,
+  'wind blends from the new airport surface wind to the frozen wind');
+state.active.legs = [{id: 'CCCC'}, {k: 'dest', id: 'DDDD'}];
+assert.equal(windAt([20, 20], 6000, 3000, 'CLB').spd, 60, 'a later route change does not replace the frozen wind');
+WX.on = false;
+assert.equal(windAt([20, 20], 6000, 3000, 'CLB').spd, 0, 'the wind-off control still works');
+WX.on = true;
+WX.frozenWind = null;
 WX.surface = {};
 randomMath.random = () => 0.25;
+state.active.legs = [{id: 'EEEE'}, {k: 'dest', id: 'FFFF'}];
 assert.equal(windAt([40, 40], 3500, 500, 'TO').spd, 7, 'new flight gets a fresh surface wind');
 WX.on = false;
 assert.equal(windAt([40, 40], 3500, 500, 'TO').spd, 0);
