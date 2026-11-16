@@ -22,6 +22,9 @@ Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator
 - **v0.22.3**:
   - Cockpit sound on iPad and iPhone. Safari plays this kind of sound on the ringer channel, so a muted device (Control Centre bell, or the side switch) stayed silent while the PC played normally. COCKPIT SOUND now declares the page as media playback (Safari 16.4 and later; a silent looping audio element on earlier versions), so the sounds play with the device muted, at the media volume.
   - Sound comes back after an interruption (screen lock, another app, a call): the audio is resumed at the next touch or when the page is shown again. Before, it stayed silent until COCKPIT SOUND was switched off and on.
+  - Second way of playing: when the browser's Web Audio is not running, or a file cannot be decoded, the sound is played by an ordinary audio element started with the same tap.
+  - CABIN CALL is the sound check: it is always available and switches the sound on if it is off. If something still stops the sound, the reason is written next to the buttons (for example "Sound on · audio suspended" or "Sound blocked: NotAllowedError").
+  - Sound files: the tag chunks after the samples are removed (fmt and data only).
   - COCKPIT SOUND no longer waits for the browser to confirm the audio start (it could stay on "Loading audio…" on iPad), and audio decoding also works on older Safari versions.
 - **v0.22.2**:
   - RESET MCDU is on the simulator bar, next to RESET FLIGHT. It opens a confirmation (CANCEL or RESET MCDU; Esc or a click outside cancels) so a slip of the finger does not clear the MCDU.

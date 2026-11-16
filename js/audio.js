@@ -12,11 +12,12 @@ const cockpitAudio = (() => {
     apDisconnect: 'audio/ap-disconnect.wav', warning: 'audio/master-warning.wav'
   };
   const priorities = {cabin: 0, above: 2, minimums: 3, retard: 4, apDisconnect: 5, warning: 6};
-  const audioVersion = 'fbw-20261116';
+  const audioVersion = 'fbw-20261116b';
   const priority = name => priorities[name] ?? 1;
   const buffers = {};
   const called = new Set();
-  let context, output, loading, current, candidate, primedMinimum, keepAlive;
+  let context, output, loading, current, candidate, primedMinimum, keepAlive, spare;
+  const urls = {};
   let enabled = false;
   const toggle = document.getElementById('cockpitSound');
   const cabin = document.getElementById('cabinCall');
@@ -77,20 +78,36 @@ const cockpitAudio = (() => {
 
   function updateControls() {
     toggle.setAttribute('aria-pressed', String(enabled));
-    cabin.disabled = !enabled;
   }
 
-  async function toggleSound() {
+  const say = text => { status.textContent = text; };
+
+  // Second way of playing, used when Web Audio is not running or a file could not be decoded:
+  // one <audio> element, started inside the tap so the browser lets it play later on.
+  function primeSpare() {
+    try {
+      if (!spare) { spare = new Audio(); spare.setAttribute('playsinline', ''); spare.preload = 'auto'; }
+      spare.src = silentWav();
+      const p = spare.play();
+      if (p && p.catch) p.catch(() => {});
+    } catch (error) { console.warn('Cockpit audio spare:', error); }
+  }
+
+  function toggleSound() {
     if (enabled) {
       enabled = false;
       stop();
       mediaRoute(false);
       updateControls();
-      status.textContent = '';
-      return;
+      say('');
+      return Promise.resolve(false);
     }
+    return turnOn();
+  }
 
+  async function turnOn() {
     toggle.disabled = true;
+    primeSpare();
     status.textContent = 'Loading audio…';
     try {
       if (!context) {
@@ -110,19 +127,27 @@ const cockpitAudio = (() => {
         loading = Promise.all(Object.entries(files).map(async ([name, path]) => {
           const url = new URL(path, document.baseURI);
           if (url.protocol !== 'data:') url.searchParams.set('v', audioVersion);
-          const response = await fetch(url);
-          if (!response.ok) throw new Error('Could not load ' + name);
-          buffers[name] = await decode(await response.arrayBuffer());
+          urls[name] = url.href;
+          try {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error('HTTP ' + response.status);
+            buffers[name] = await decode(await response.arrayBuffer());
+          } catch (error) {
+            // Left to the spare <audio> element, which loads the file by itself.
+            console.warn('Cockpit audio: ' + name + ' not decoded:', error);
+          }
         }));
       }
       // Do not wait for resume(): on iPad it can stay pending and would leave the button locked.
       if (resumed && resumed.catch) resumed.catch(() => {});
       await loading;
       enabled = true;
-      status.textContent = '';
+      const missing = Object.keys(files).length - Object.keys(buffers).length;
+      say(context.state === 'running' && !missing ? '' :
+        'Sound on · audio ' + context.state + (missing ? ' · ' + missing + ' files on spare player' : ''));
     } catch (error) {
       loading = null;
-      status.textContent = 'Audio unavailable. Try again.';
+      say('Audio unavailable: ' + (error && error.message || error));
       console.warn('Cockpit audio:', error);
     } finally {
       toggle.disabled = false;
@@ -132,9 +157,10 @@ const cockpitAudio = (() => {
 
   function play(name) {
     if (!enabled) return;
-    if (context.state !== 'running') { wake(); if (context.state === 'closed') return; }
+    if (context.state !== 'running') wake();
     if (current && priority(current.name) >= priority(name)) return;
     stop();
+    if (context.state !== 'running' || !buffers[name]) return playSpare(name);
     const source = context.createBufferSource();
     source.buffer = buffers[name];
     source.connect(output);
@@ -144,6 +170,20 @@ const cockpitAudio = (() => {
     };
     current = {name, source};
     source.start();
+  }
+
+  function playSpare(name) {
+    if (!spare || !urls[name]) return;
+    const handle = {stop() { try { spare.pause(); } catch (error) {} }};
+    current = {name, source: handle};
+    const done = () => { if (current && current.source === handle) current = null; };
+    spare.onended = done;
+    try {
+      spare.src = urls[name];
+      spare.volume = 0.65;
+      const p = spare.play();
+      if (p && p.catch) p.catch(error => { done(); say('Sound blocked: ' + (error && error.name || error)); });
+    } catch (error) { done(); say('Sound blocked: ' + (error && error.name || error)); }
   }
 
   function reset() {
@@ -210,6 +250,10 @@ const cockpitAudio = (() => {
     document.addEventListener(ev, wake, {capture: true, passive: true}));
   document.addEventListener('visibilitychange', () => { if (!document.hidden) wake(); });
   toggle.addEventListener('click', toggleSound);
-  cabin.addEventListener('click', () => play('cabin'));
+  // CABIN CALL is the sound check: it also switches the sound on when it is off.
+  cabin.addEventListener('click', async () => {
+    if (!enabled) await turnOn();
+    play('cabin');
+  });
   return {play, reset, cancelFlight, readFlight, sample, flush};
 })();
