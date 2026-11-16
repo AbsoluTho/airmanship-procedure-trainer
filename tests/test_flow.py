@@ -143,6 +143,16 @@ async def run(url,b):
     assert await pg.evaluate("!document.querySelector('#askReset').classList.contains('on')&&S.sp==='TEST'"),'CANCEL keeps the MCDU'
     await pg.click('#flight #reset');await pg.click('#askResetYes')
     assert await pg.evaluate("!document.querySelector('#askReset').classList.contains('on')&&S.sp!=='TEST'"),'confirm resets the MCDU'
+    # RESET FLIGHT asks too (the reset itself is replaced by a counter so the test flight set-up stays as it is)
+    tap="(()=>{const b=document.querySelector('#flight [data-fl=\\'reset\\']');b.hidden=false;b.click()})()"
+    await pg.evaluate("window.__keepR=flightReset;window.__rfConfirmed=0;flightReset=()=>{window.__rfConfirmed++};0")
+    await pg.evaluate(tap)
+    assert await pg.evaluate("document.querySelector('#askReset').classList.contains('on')&&document.querySelector('#askResetT').textContent==='Reset the flight?'&&window.__rfConfirmed===0"),'RESET FLIGHT asks first'
+    await pg.click('#askResetNo')
+    assert await pg.evaluate("window.__rfConfirmed===0&&!document.querySelector('#askReset').classList.contains('on')"),'CANCEL keeps the flight'
+    await pg.evaluate(tap);await pg.click('#askResetYes')
+    assert await pg.evaluate("window.__rfConfirmed===1"),'confirm resets the flight'
+    await pg.evaluate("flightReset=window.__keepR;document.querySelector('#flight [data-fl=\\'reset\\']').hidden=!FL.active;0")
     await pg.evaluate("S=window.__keep;delete window.__keep;render()")
     # VERT REV at the origin (1R: CLB SPD LIM) and at the destination (6R: DES SPD LIM)
     await k('R1');x=await scr();assert 'VERT REV AT OEJN' in x and 'CLB SPD LIM' in x and 'SPD CSTR' not in x,('VERT REV at the origin',x)
@@ -197,7 +207,7 @@ async def run(url,b):
     assert r==['altorig:OETB altwpt:DEMSU altdisc altn:OEMA','altorig altwpt altn','CLR',''],f'ALTN route and CLR: {r}'
     # ---- automatic flight, flown with the FCU ----
     assert 'FCU' in (await pg.evaluate('flightReady().join()')),'FCU altitude required before takeoff'
-    await pg.evaluate("window.__FCU.alt=7000;window.__efis('ls')")
+    await pg.evaluate("window.__FCU.alt=7000;window.__efis('ls');refreshAll()")
     assert await pg.evaluate('flightReady().length')==0,await pg.evaluate('flightReady()')
     # ---- SAVE SETUP once START is possible ----
     await pg.evaluate("localStorage.removeItem('airmanship.setup.v1')");await pg.click('[data-fl="setup:save"]')
