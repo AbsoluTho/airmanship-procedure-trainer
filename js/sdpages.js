@@ -27,27 +27,44 @@ function sdData(){const on=flying(),E=engStep(),blk=S.fuel.block,tx_=S.fuel.taxi
   const air=on&&!FL.ground,gear=on?FL.gear:true,agl=on?FL.alt-groundElev():0;
   return{on,E,fu,used,air,gear,agl,cab:cabin(),kg:fobKg()||0,run:true}}
 
-/* ---------- ENGINE (SD/Pages/Eng, 600 units) ---------- */
-function pgEng(D){const col=(i)=>{const x=i?420:180,e=D.E[i],y=80;
-    const oilQ=i?14.0:14.5,psi=Math.round(Math.max(20,(e.n2-55)*1.9+28)),otmp=Math.round(70+e.n2*0.35),qx=x,qy=y+85,px=x,py=y+110;
-    const q=split1(oilQ),v1=split1(i?0.9:0.8),v2=split1(i?1.2:1.1);
-    return tx(x,y,String(D.fu[i]),'FillGreen FontLarge TextCenter')+
+/* ---------- ENGINE (FlyByWire SD/Pages/Eng/Eng.tsx, 600 units) ----------
+   Oil quantity (step 0.5), pressure (step 2, red at 12 psi or less), temperature (step 5, amber below 38 or at 155 and above), vibrations.
+   With the ENG MODE selector at IGN START: IGN, the igniter in use (A or B), the start valve (line across: closed, in line: open) and the
+   bleed pressure. FADEC not powered (MODE NORM, MASTER OFF, engine stopped): amber XX. */
+function pgEng(D){const mode=typeof ENG!=='undefined'?ENG.mode:'NORM',ignSel=mode==='IGN';
+  const col=(i)=>{const x=i?420:180,e=D.E[i],y=80,I=typeof engStartInfo==='function'?engStartInfo(i):{st:'run',n2:60,valve:false,ign:null,fadec:true,psi:44};
+    const n2=e.n2||0,run=I.st==='run',amb=Math.round(typeof satC==='function'?satC():25);
+    const oilQ=i?14.0:14.5,psiRaw=n2<3?0:run?Math.max(30,(n2-55)*1.9+38):Math.min(60,n2*1.1),psi=Math.round(psiRaw/2)*2;
+    const otRaw=run?70+n2*0.35:Math.max(amb,amb+(n2/60)*40),otmp=Math.round(otRaw/5)*5,qx=x,qy=y+85,px=x,py=y+110;
+    const q=split1(oilQ),v1=split1(run?(i?0.9:0.8):n2>20?0.3:0),v2=split1(run?(i?1.2:1.1):n2>20?0.4:0);
+    const XX=(xx,yy,c)=>tx(xx,yy,'XX',(c||'FontLarge')+' TextCenter FillAmber');
+    const pRed=psi<=12,tAmb=otmp>=155||otRaw<38;
+    let o=tx(x,y,String(D.fu[i]),'FillGreen FontLarge TextCenter')+
       /* oil quantity */
       ln(qx-51,qy,qx-45,qy,'GaugeMarking')+ln(qx,qy-50,qx,qy-45,'GaugeMarking')+ln(qx+45,qy,qx+51,qy,'GaugeMarking')+arc(qx,qy,50,100,100,'WhiteLine NoFill')+
-      needle(qx,qy,60,oilQ/24.25*100,100,'NoFill GreenLine',-40)+needle(qx,qy,60,1.35/24.25*100-3,100,'NoFill AmberHeavy',-50)+needle(qx,qy,50,1.35/24.25*100-2,100,'NoFill AmberLine',-45)+
-      `<text x="${qx+5}" y="${qy}" class="FontLarge TextCenter FillGreen"><tspan class="FontLarge">${q[0]}</tspan><tspan class="FontSmall">.</tspan><tspan class="FontSmall">${q[1]}</tspan></text>`+
+      (I.fadec?needle(qx,qy,60,oilQ/24.25*100,100,'NoFill GreenLine',-40)+needle(qx,qy,60,1.35/24.25*100-3,100,'NoFill AmberHeavy',-50)+needle(qx,qy,50,1.35/24.25*100-2,100,'NoFill AmberLine',-45)+
+        `<text x="${qx+5}" y="${qy}" class="FontLarge TextCenter FillGreen"><tspan class="FontLarge">${q[0]}</tspan><tspan class="FontSmall">.</tspan><tspan class="FontSmall">${q[1]}</tspan></text>`:XX(qx,qy))+
       /* oil pressure */
-      ln(px,py,px,py+5,'GaugeMarking')+ln(px+45,py+50,px+51,py+50,'GaugeMarking')+arc(px,py+50,50,100,100,'WhiteLine NoFill')+arc(px,py+50,50,12,100,'RedLine NoFill')+
-      needle(px,py+50,60,Math.min(100,psi/130*100),100,'NoFill GreenLine',-40)+tx(px,py+45,String(psi),'FontLarge TextCenter FillGreen')+
-      tx(x,y+220,String(otmp),'FontLarge TextCenter FillGreen')+
+      ln(px,py,px,py+5,'GaugeMarking')+ln(px+45,py+50,px+51,py+50,'GaugeMarking')+arc(px,py+50,50,100,100,'WhiteLine NoFill')+
+      (I.fadec?(run||I.st==='start'?arc(px,py+50,50,12,100,'RedLine NoFill'):'')+needle(px,py+50,60,Math.min(100,psiRaw/130*100),100,'NoFill '+(pRed?'RedLine':'GreenLine'),-40)+tx(px,py+45,String(psi),'FontLarge TextCenter '+(pRed?'FillRed':'FillGreen')):XX(px,py+45));
+    /* oil temperature, vibrations */
+    o+=I.fadec?tx(x,y+220,String(otmp),'FontLarge TextCenter '+(tAmb?'FillAmber':'FillGreen'))+
       `<text x="${x}" y="${y+270}" class="FillGreen TextCenter"><tspan class="FontLarge">${v1[0]}</tspan><tspan class="FontSmall">.</tspan><tspan class="FontSmall">${v1[1]}</tspan></text>`+
-      `<text x="${x}" y="${y+300}" class="FillGreen TextCenter"><tspan class="FontLarge">${v2[0]}</tspan><tspan class="FontSmall">.</tspan><tspan class="FontSmall">${v2[1]}</tspan></text>`};
+      `<text x="${x}" y="${y+300}" class="FillGreen TextCenter"><tspan class="FontLarge">${v2[0]}</tspan><tspan class="FontSmall">.</tspan><tspan class="FontSmall">${v2[1]}</tspan></text>`
+      :XX(x,y+220)+XX(x,y+270)+XX(x,y+300);
+    /* start: igniter, start valve, bleed pressure (ENG MODE at IGN START only) */
+    if(ignSel){const vy=y+331,   /* 14 units higher than FlyByWire: this display keeps its status area lower down */amber=I.psi<21&&n2>=10&&I.valve;
+      if(I.ign)o+=tx(I.ign==='A'?x-7:x+7,vy,I.ign,'FillGreen FontMedium TextCenter');
+      o+=`<g class="StartValveDiagram"><circle r="14" cx="${x}" cy="${vy+30}"/>`+(I.fadec?(I.valve?ln(x,vy+10,x,vy+43,''):ln(x-14,vy+30,x+14,vy+30,'')):tx(x+1,vy+31,'XX','FillAmber FontSmall TextCenter','stroke="none"'))+ln(x,vy+43,x,vy+50,'')+`</g>`+
+        tx(x,vy+65,String(2*Math.round(I.psi/2)),(amber?'FillAmber':'FillGreen')+' FontLarge TextCenter')}
+    return o};
   return`<g class="p-eng">`+tx(6,18,'ENGINE','PageTitle','dominant-baseline="central"')+col(0)+
     ln(250,75,225,77,'Indicator')+tx(300,75,'F.USED','FillWhite FontMedium TextCenter')+tx(300,97,'KG','FillCyan FontSmall TextCenter')+ln(350,75,375,77,'Indicator')+
     tx(300,135,'OIL','FillWhite FontMedium TextCenter')+tx(300,160,'QT','FillCyan FontSmall TextCenter')+tx(300,235,'PSI','FillCyan FontSmall TextCenter')+
     ln(250,292,225,294,'Indicator')+tx(300,290,'°C','FillCyan FontSmall TextCenter')+ln(350,292,375,294,'Indicator')+
     ln(250,340,225,342,'Indicator')+tx(300,340,'VIB N1','FillWhite FontSmall TextCenter')+ln(350,340,375,342,'Indicator')+
-    ln(250,370,225,372,'Indicator')+tx(300,370,'    N2','FillWhite FontSmall TextCenter','xml:space="preserve"')+ln(350,370,375,372,'Indicator')+col(1)+`</g>`}
+    ln(250,370,225,372,'Indicator')+tx(300,370,'    N2','FillWhite FontSmall TextCenter','xml:space="preserve"')+ln(350,370,375,372,'Indicator')+
+    (ignSel?tx(300,411,'IGN','FillWhite FontSmall TextCenter')+ln(250,474,225,476,'Indicator')+tx(300,476,'PSI','FillCyan FontSmall TextCenter')+ln(350,474,375,476,'Indicator'):'')+col(1)+`</g>`}
 
 /* ---------- CRUISE (SD/Pages/Crz, 600 units) ---------- */
 function pgCrz(D){const c=D.cab,dp=split1(c.dp),o1=split1(14.5),o2=split1(14.0),v=[split1(0.8),split1(0.9)],vs=Math.round(c.vs/50)*50,ca=Math.max(0,Math.round(c.alt/50)*50);

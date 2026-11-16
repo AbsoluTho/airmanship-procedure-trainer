@@ -281,3 +281,7 @@ body.fs #v-ofp{display:none}
 .lg-panel{position:absolute;z-index:2;left:3%;width:94%;bottom:7%;aspect-ratio:650/333;border-radius:6px;overflow:hidden;box-shadow:0 4px 14px rgba(0,0,0,.6);background:#3b4656;touch-action:manipulation}
 .lg-panel[hidden]{display:none}
 .lg-panel svg{width:100%;height:100%;display:block;user-select:none;-webkit-user-select:none}
+
+/* SD ENG page: start valve and red indications (FlyByWire Eng.scss) */
+#sdsvg .p-eng .StartValveDiagram{stroke:#00ff00;stroke-width:2}#sdsvg .p-eng .StartValveDiagram circle{fill:rgba(4,4,4,1)}
+#sdsvg .p-eng .FillRed{fill:#ff0000}

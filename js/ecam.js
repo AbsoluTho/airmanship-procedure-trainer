@@ -44,8 +44,17 @@ function cabin(){const on=flying()&&!FL.ground,alt=on?FL.alt:elevO(),o=elevO(),d
   const ca=Math.max(Math.min(o,d)-200,Math.min(8000,alt*0.19+(S.phase==='CLB'||S.phase==='TAKEOFF'?o*0.5:d*0.6)));
   const dp=Math.max(0,(14.7*Math.exp(-ca/27000))-(14.7*Math.exp(-alt/27000)));return{alt:Math.round(ca/10)*10,vs:Math.round(FL.vs*0.15/10)*10,dp,ldg:d}}
 
+/* ---------- slats and flaps position (SFCC synchro angles, as read by the FlyByWire EWD) ---------- */
+/* configuration to position: slats 0 / 222.2 (CONF 1) / 271.7 (CONF 2 and 3) / 333.4 (FULL); flaps 0 / 117.7 (1+F) / 145 (2) / 167.7 (3) / 252 (FULL).
+   Travel: slats 20 units a second (clean to CONF 1 in 11 s), flaps 7.5 units a second (0 to 1+F in 16 s, CONF 3 to FULL in 11 s). */
+const SF={s:0,f:0,t:null,raf:false,S:{'0':0,'1':222.2,'1+F':222.2,'2':271.7,'3':271.7,'FULL':333.4},F:{'0':0,'1':0,'1+F':117.7,'2':145,'3':167.7,'FULL':252}};
+function sfConf(){return flying()?(FL.conf||lvConf()):['0','1+F','2','3','FULL'][LV.flaps]}
+function sfTick(){const now=flying()?FL.t:performance.now()/1000,key=flying()?'f':'g';if(SF.key!==key){SF.key=key;SF.t=now}
+  const dt=Math.max(0,Math.min(600,now-(SF.t??now)))*(flying()?1:(FL.rate||1));SF.t=now;const cf=sfConf(),ts=SF.S[cf]??0,tf=SF.F[cf]??0;
+  SF.s+=Math.max(-20*dt,Math.min(20*dt,ts-SF.s));SF.f+=Math.max(-7.5*dt,Math.min(7.5*dt,tf-SF.f))}
+
 /* ---------- automatic SD page (flight phase) ---------- */
-function autoPage(){if(!flying())return'wheel';
+function autoPage(){if(!flying())return typeof ENG!=='undefined'&&(ENG.mode==='IGN'||ENG.e.some(e=>e.st==='start'))?'eng':'wheel';   /* ENGINE page during the engine start */
   const agl=FL.alt-groundElev();if(FL.stage==='ROLL'||FL.thr==='TO'||(!FL.ground&&agl<1500&&S.phase==='TAKEOFF'))return'eng';
   if(FL.ground)return'wheel';if(FL.gear&&S.phase==='APPR')return'wheel';return'crz'}
 const sdPage=()=>EC.page||autoPage();
@@ -97,13 +106,29 @@ function drawEWD(c){const D=ecCtx(c,76,82,522,510),{g,T,L,R}=D,E=engStep(),q=S.p
   T('FF',330,323,'w',18,'center');T('KG/H',330,341,'b',15,'center');L([[281,337],[311,329]],'w',1.8);L([[350,329],[380,337]],'w',1.8);
   /* thrust limit */
   T(tl,515,97,'b',18);T(n1l.toFixed(1).slice(0,-1),556,117,'g',18,'right');T(n1l.toFixed(1).slice(-1),557,118,'g',14);T('%',566,117,'b',15);if(tl==='FLX')T(q.flex+'°C',575,137,'b',15,'right');
-  /* slats and flaps */
-  const cf=on?lvConf():['0','1+F','2','3','FULL'][LV.flaps],   /* the position of the FLAPS lever, at once: on the ground, lined up, paused or stopped too */
-    si={'0':0,'1':1,'1+F':1,'2':2,'3':2,'FULL':3}[cf]??0,fi={'0':0,'1':0,'1+F':1,'2':2,'3':3,'FULL':4}[cf]??0;
-  const wx=440,wy=380;g.lineWidth=2;g.strokeStyle=EC_C.g;g.beginPath();g.moveTo(wx-18,wy+6);g.lineTo(wx-12,wy-4);g.lineTo(wx+14,wy-4);g.lineTo(wx+20,wy+6);g.closePath();g.stroke();
-  L([[wx-26,wy+8],[wx-18,wy+6]],cf==='0'?'g':'w',2);L([[wx+20,wy+6],[wx+28,wy+8]],cf==='0'?'g':'w',2);
-  if(cf!=='0'){for(let k=1;k<=3;k++){g.fillStyle=EC_C.w;g.beginPath();g.arc(wx-26-k*10,wy+8+k*6,2,0,7);g.fill()}for(let k=1;k<=4;k++){g.fillStyle=EC_C.w;g.beginPath();g.arc(wx+28+k*9,wy+8+k*6,2,0,7);g.fill()}
-    L([[wx-26,wy+8],[wx-26-si*10,wy+8+si*6]],'g',4);L([[wx+28,wy+8],[wx+28+fi*9,wy+8+fi*6]],'g',4);T('S',wx-70,wy+10,'w',15,'center');T('F',wx+80,wy+10,'w',15,'center');T(cf,wx,wy+28,'g',18,'center')}
+  /* slats and flaps: FlyByWire A32NX EWD/Slats.tsx (GPL-3.0), drawn in its own units (768-wide display, origin at the wing tip box)
+     and scaled to this display. Positions are the SFCC synchro angles: the surfaces travel to the position of the configuration; in transit
+     the configuration is cyan with a cyan target mark, green once there. Nothing but the grey wing box and the surfaces when clean. */
+  {sfTick();const cf=sfConf(),sl=SF.s,fl=SF.f,P=d=>new Path2D(d);
+    const cClean=cf==='0',c1=cf==='1'||cf==='1+F',auto=cf==='1',c2=cf==='2',c3=cf==='3',cFull=cf==='FULL';
+    /* slats */
+    let so=0,pf=0.43,po=0;if(sl>=222.8&&sl<272.8){so=18;pf=1.8;po=7.71}else if(sl>=272.8){so=22;pf=1.44;po=14.92}
+    const sv=(sl*0.081-so)*pf+po,sx=-4.5766*sv-18,sy=1.519*sv;
+    const sT=cClean&&sl>6.1?'M -26,23 l -7,2 l -1,4 l 7,-2 Z':c1&&(sl<209.9||sl>234.6)?'M -63,34 l -7,2 l -1,4 l 7,-2 Z':(c2||c3)&&(sl<259.3||sl>284)?'M -96,45 l -7,2 l -1,4 l 7,-2 Z':cFull&&(sl<327.2||sl>339.5)?'M -129,56 l -7,2 l -1,4 l 7,-2 Z':'';
+    /* flaps */
+    let fo=0,ff=0.97,fp=0;if(fl>=120.5&&fl<145.5){fo=10.63;ff=1.4;fp=10.34}else if(fl>=145.5&&fl<168.3){fo=16.3;ff=1.62;fp=18.27}else if(fl>=168.3){fo=21.19;ff=0.43;fp=26.21}
+    const fv=Math.max((fl*0.22-15.88-fo)*ff+fp,0),fx=4.71*fv,fy=0.97*fv+1;
+    const fT=(cClean||auto)&&fl>73.1?'M 12,23 l 3,5 l 5,1 l 0,-4 Z':c1&&!auto&&(fl<113.1||fl>122.2)?'M 58,32 l 3,5 l 5,1 l 0,-4 Z':c2&&(fl<140.4||fl>149.5)?'M 95,40 l 3,5 l 5,1 l 0,-4 Z':c3&&(fl<163.1||fl>172.2)?'M 133,48 l 3,5 l 5,1 l 0,-4 Z':cFull&&(fl<246.8||fl>257.2)?'M 170,56 l 3,5 l 5,1 l 0,-4 Z':'';
+    const vis=sl>6.1||fl>73.1||!cClean,moving=sT!==''||fT!=='';
+    g.save();g.translate(442,375.5);g.scale(0.68,0.68);g.lineJoin='bevel';g.lineCap='butt';g.lineWidth=2;
+    g.strokeStyle='#787878';g.stroke(P('M0,0 l -18,0 l -4,14 l 28,1 Z'));
+    if(vis){g.fillStyle=moving?EC_C.b:EC_C.g;g.font=`500 30px "Helvetica Neue",Helvetica,Arial,sans-serif`;g.textAlign='center';g.textBaseline='alphabetic';g.fillText(auto?'1':cf,-3,59);
+      g.fillStyle=EC_C.w;g.font=`500 22px "Helvetica Neue",Helvetica,Arial,sans-serif`;g.fillText('S',-101,15);g.fillText('F',105,15);
+      g.strokeStyle=EC_C.w;['M -63,19 l -7,2 l -1,4 l 7,-2 Z','M -96,30 l -7,2 l -1,4 l 7,-2 Z','M -129,41 l -7,2 l -1,4 l 7,-2 Z','M 58,17 l 3,5 l 5,1 l 0,-4 Z','M 95,25 l 3,5 l 5,1 l 0,-4 Z','M 133,33 l 3,5 l 5,1 l 0,-4 Z','M 170,41 l 3,5 l 5,1 l 0,-4 Z'].forEach(d=>g.stroke(P(d)));
+      g.strokeStyle=EC_C.b;if(sT)g.stroke(P(sT));if(fT)g.stroke(P(fT))}
+    g.strokeStyle=EC_C.g;g.stroke(P(`M ${sx},${sy} l -22,7 l -5,14 l 23,-8 Z`));g.beginPath();g.moveTo(-18,0);g.lineTo(sx,sy);g.stroke();
+    g.stroke(P(`M${fx},${fy} l 24.5,6 l 0,13.5 l -18,-4 Z`));g.beginPath();g.moveTo(0,0);g.lineTo(fx,fy);g.stroke();
+    g.restore();if(moving&&!SF.raf){SF.raf=true;setTimeout(()=>{SF.raf=false;if(window.drawEcam)drawEcam()},120)}}   /* keeps drawing while the surfaces travel on the ground */
   /* FOB */
   const fob=fobKg(),ok=fob!=null&&!isNaN(fob);T('FOB :',84,406,'w',18);T(ok?String(Math.round(fob/10)*10):'XX',210,406,ok?'g':'a',19,'right');T('KG',232,407,'b',16);
   /* memo area */

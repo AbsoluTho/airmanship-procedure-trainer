@@ -140,6 +140,19 @@ async def run(url,b):
       o.push([0,-1000,-2000,-2500,-3000].map(v=>idleDecel(v,200)).join('/'))}
       FL.gear=false;FL.conf='0';o.push(+idleDecel(-2385,450).toFixed(1),Math.round(idleVs(5,200)),Math.round(idleVs(0,200)),Math.round(idleVs(-5,200)));FL.gear=g;FL.conf=c;return o.join(' ')})()""")
     assert r=='10/5/0/-2.5/-5 10/5/0/-2.5/-5 15/10/5/2.5/0 20/15/10/7.5/5 20/15/10/7.5/5 3.4 1000 2000 3000',('idle deceleration rules',r)
+    # EWD slats and flaps (FlyByWire Slats.tsx): the surfaces travel to the position of the configuration
+    r=await pg.evaluate("""(()=>{const f0=LV.flaps,k={s:SF.s,f:SF.f,t:SF.t,key:SF.key},o=[];LV.flaps=2;SF.s=0;SF.f=0;SF.key='g';
+      SF.t=performance.now()/1000-5/(FL.rate||1);sfTick();o.push(Math.round(SF.s),Math.round(SF.f));      // 5 s of travel
+      SF.t=performance.now()/1000-60/(FL.rate||1);sfTick();o.push(SF.s,SF.f);LV.flaps=4;SF.t=performance.now()/1000-60/(FL.rate||1);sfTick();o.push(SF.s,SF.f);
+      LV.flaps=f0;Object.assign(SF,k);return o.join()})()""")
+    assert r=='100,38,271.7,145,333.4,252',('slats and flaps travel',r)
+    # SD ENG page at the engine start (FlyByWire Eng.tsx): FADEC, IGN, igniter, start valve, bleed pressure
+    r=await pg.evaluate("""(()=>{const E=window.__eng,m=ENG.mode,o=[],e=ENG.e[0],k=Object.assign({},e),m1=LV.m1,pg0=EC.page;EC.page=null;
+      const snap=()=>{const i=E.info(0),h=pgEng(sdData());return[i.fadec?'F':'x',i.valve?'open':'shut',i.ign||'-',i.psi,/>IGN</.test(h)?'IGN':'',autoPage()].join(':')};
+      ENG.mode='NORM';LV.m1=false;Object.assign(e,{st:'off',n2:0});o.push(snap());ENG.mode='IGN';o.push(snap());
+      Object.assign(e,{st:'start',n2:10,ign:'A'});LV.m1=true;o.push(snap());e.n2=30;o.push(snap());e.n2=52;o.push(snap());Object.assign(e,{st:'run',n2:58.9});o.push(snap());
+      ENG.mode=m;LV.m1=m1;Object.assign(e,k);EC.page=pg0;return o.join(' ')})()""")
+    assert r=='x:shut:-:34::wheel F:shut:-:34:IGN:eng F:open:-:28:IGN:eng F:open:A:28:IGN:eng F:shut:-:34:IGN:eng F:shut:-:40:IGN:eng',('ENG page at the start',r)
     # EXPED light: on only while EXP CLB or EXP DES is the active vertical mode
     r=await pg.evaluate("""(()=>{const k={a:FL.active,g:FL.ground,v:FL.ver,e:FCU.exped},o=[];FL.active=true;FL.ground=false;
       for(const v of ['EXP DES','V/S','EXP CLB','ALT*','OP DES','DES']){FL.ver=v;FCU.exped=true;expedSync();o.push(FCU.exped?1:0)}

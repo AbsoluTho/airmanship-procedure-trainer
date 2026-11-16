@@ -5,14 +5,14 @@
    closes at 50 % N2; the engine stabilizes at idle (N1 19.6, N2 58.9, EGT 395, FF 290) in about 45 s. MASTER ON with
    MODE NORM does not start the engine. MASTER OFF shuts the engine down (N2 and N1 run down, fuel off, EGT cools).
    START FLIGHT starts both engines at once if they are not running; in flight the masters stay ON. */
-const ENG={mode:'NORM',e:[null,null],last:null};
+const ENG={mode:'NORM',e:[null,null],last:null,ignN:[0,0]};
 const IDLE_E={n1:19.6,n2:58.9,egt:395,ff:290};
 function engInit(i,run){const amb=Math.round(typeof satC==='function'?satC():25);ENG.e[i]=run?Object.assign({st:'run'},IDLE_E):{st:'off',n1:0,n2:0,egt:amb,ff:0}}
 engInit(0,false);engInit(1,false);
 const engRun=i=>ENG.e[i].st==='run';
 function engTick(dt){const amb=typeof satC==='function'?satC():25;let busy=false;
   ENG.e.forEach((e,i)=>{const m=LV['m'+(i+1)];
-    if(m&&e.st==='off'&&ENG.mode==='IGN'&&!flying())e.st='start';
+    if(m&&e.st==='off'&&ENG.mode==='IGN'&&!flying()){e.st='start';ENG.ignN[i]=(ENG.ignN[i]||0)+1;e.ign=ENG.ignN[i]%2?'A':'B'}   /* igniter A and B on alternate starts */
     if(!m&&(e.st==='run'||e.st==='start'))e.st='stop';
     if(e.st==='start'){const r=e.n2<16?1.6:e.n2<50?1.4:0.6;e.n2=Math.min(IDLE_E.n2,e.n2+r*dt);
       const lit=e.n2>=16;e.ff=lit?Math.min(IDLE_E.ff,250+(e.n2-16)):0;
@@ -31,4 +31,12 @@ function engMode(v){if(!['CRANK','NORM','IGN'].includes(v))return;ENG.mode=v;if(
 /* ground timing: real time while a start or a shutdown is in progress */
 setInterval(()=>{const t=performance.now()/1000,dt=ENG.last==null?0:Math.min(0.5,t-ENG.last);ENG.last=t;
   if(flying())return;if(engTick(dt*(FL.rate||1))&&window.drawEcam)drawEcam()},100);
-window.__eng={ENG,tick:engTick,mode:engMode,init:engInit};
+/* ENGINE page during the start (FlyByWire SD ENG page: IGN, igniter, start valve, bleed pressure; FADEC not powered: amber XX) */
+function engStartInfo(i){const e=ENG.e[i],fl=flying(),st=fl?'run':e.st,n2=fl?60:e.n2;
+  const valve=st==='start'&&n2<50,ign=st==='start'&&n2>=16&&n2<50?(e.ign||'A'):null;
+  /* FADEC powered: ENG MODE at IGN START or CRANK, MASTER ON, or the engine running */
+  const fadec=fl||ENG.mode!=='NORM'||LV['m'+(i+1)]||st==='run'||st==='start';
+  /* bleed pressure at the start valve: APU bleed about 34 psi, lower while the starter draws air, the engine's own bleed once running */
+  const psi=st==='run'?(fl?44:40):valve?28:34;
+  return{st,n2,valve,ign,fadec,psi}}
+window.__eng={ENG,tick:engTick,mode:engMode,init:engInit,info:engStartInfo};
