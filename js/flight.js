@@ -214,11 +214,20 @@ function idleBase(){return(10+(FL.gear?(FL.conf==='3'||FL.conf==='FULL'?10:5):0)
 function spbEff(){if(!FL.active||FL.ground||FL.conf==='FULL')return 0;return Math.min(LV.spb||0,FCU.ap1||FCU.ap2?0.5:1)}
 /* speed brakes add drag: half 50 % more, full 100 % more than the drag of the configuration (the level deceleration), so with full speed brakes
    clean: level 20, 1000 ft/min down 15, 2000 ft/min down 10, no deceleration at 4000 ft/min; the speed increases past that rate */
-function idleDecel(vs,gs){const base=idleBase()*(1+spbEff()),v=-vs*Math.min(1,250/Math.max(1,gs));
-  return Math.max(-30,Math.min(60,base-v/200))}
+/* idle descent rate on speed (no deceleration), ft/min: clean 1300 at green dot rising to 2200 at 250 kt (and on, faster); CONF 1 and 2
+   (S speed) 1300; CONF 3 (F speed) 1500; gear down 2300. Less when lighter (64 t reference), a little more high up (true airspeed),
+   more with the speed brakes (half 50 %, full 100 %). */
+function idleR0(){const gw=gwNowF(),kw=0.6+0.4*gw/64,ias=Math.max(100,FL.ias||200),c=FL.conf;let R;
+  if(FL.gear)R=2300;else if(c==='3'||c==='FULL')R=1500;else if(c&&c!=='0')R=1300;
+  else{const gd=2*gw+85;R=ias>gd?1300+(ias-gd)/Math.max(10,250-gd)*900:1300}
+  const fa=Math.max(0.9,Math.min(1.25,((FL.tas||ias)/ias)/1.16));return R*kw*fa*(1+spbEff())}
+/* deceleration at idle (kt per NM) at a vertical speed: the level deceleration of the configuration, falling to none at the idle descent
+   rate on speed, and the speed increasing beyond it at the same slope; in a climb 5 kt per NM more for each 1000 ft/min */
+function idleDecel(vs,gs){const base=idleBase()*(1+spbEff()),v=-vs;
+  if(v<=0)return Math.min(60,base-v/200);return Math.max(-30,base*(1-v/idleR0()))}
 /* the rate of descent (ft/min, positive down) that gives a deceleration of r kt per NM at idle (r negative: an acceleration) */
-function idleVs(r,gs){const base=idleBase()*(1+spbEff()),k=Math.max(1,gs/250);r=Math.max(-30,Math.min(base,r));
-  return(base-r)*200*k}
+function idleVs(r,gs){const base=idleBase()*(1+spbEff());r=Math.max(-30,Math.min(base,r));
+  return idleR0()*(1-r/base)}
 /* distance (NM) needed to lose dv kt at idle on the present path */
 function decelLead(dv){return Math.max(0,dv)/Math.max(2.5,idleDecel(Math.min(0,FL.vs),FL.gs))}
 function gaLeg(l){l.seg='ga';if(l.k==='hold'&&!l.fix)return null;return l}
