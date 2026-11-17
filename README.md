@@ -4,7 +4,7 @@ An unofficial A320 **procedure** trainer that runs in the browser (iPad first). 
 
 Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator manuals. The navigation data was typed from charts for training only and must never be used for navigation.
 
-## Status: Phase 3 prototype (v0.25.11)
+## Status: Phase 3 prototype (v0.25.12)
 
 - **MCDU** (Thales FMS2 layout, per FCOM DSC-22): keyboard and scratchpad, INIT A, F-PLN with TMPY (ERASE/INSERT), LAT REV, DEPARTURE, AIRWAYS (with airway-to-airway intersection), ARRIVAL, waypoint insertion, CLR of waypoints and discontinuities.
 - **Exercise** OEJN to OETB: RWY 16C MIGD2E, L677 WEJ, V54 TBK, ILS 31 via D179O, ALTN OEMA, FL340, CI 20, with automatic progress checks.
@@ -19,6 +19,8 @@ Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator
   - 11 approaches: ILS 16L (IMBF 111.7), 16R (IWSR 108.1), 34L (IWMR 108.9), 34R (IABF 110.7); RNP 16L, 16R, 34L, 34R; VOR 16R, 34L and 34R (KFA 112.3, the 34R final offset on 326°). Vias from the IAFs of the KFA 14 DME arc (LOPOD, RESAN, KEBAP, LOSAX, DASLA, KFA; DAXAR and KAVIV for the 16 runways) and from DF603, DF604 and RESAN for the RNP approaches; published missed approaches to the RESAN and LOSAX holds.
   - 32 RNAV SIDs: EMUSA, MIBRA, PUSRA, TAYMA 2E/2F/2G/2H and LADNA, METLA, ROTEL, RYDAN 1E/2E, 1F/2F, 1G/2G, 1H/2H (one set per runway).
   - Fix positions from KFA radial/DME, the extended centrelines and the chart tracks and distances; the same fix reached by different procedures agrees within 0.6 NM (36 cross-checks printed by the generator).
+- **v0.25.12**: LDG memo laid out like the T.O memo.
+  - The LDG title and its items no longer run into each other ("LDGLDG GEAR"): both memos have the title in its own column and the items in one column further right (blue with dots to the setting until done, green once done).
 - **v0.25.11**: gentler OP DES / climb entries, gear-down climb, moving FD bars, smoother flare.
   - OP DES, DES, EXP DES, OP CLB, CLB and EXP CLB start and change their vertical speed gently, about 0.07 g: at most 250 ft/min per second, built up at 150 ft/min per second per second (it was 700 and 500, about 0.35 g). OP DES from level at 250 kt reaches -3000 ft/min in about 13 s. ALT*, G/S*, V/S and FPA keep the quicker rate.
   - Gear down in the climb: 35 % less climb rate and acceleration (it was 50 %). SRS with the gear down climbs at about 1560 ft/min (was 1200), 2400 once the gear is up.
