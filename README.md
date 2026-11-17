@@ -4,7 +4,7 @@ An unofficial A320 **procedure** trainer that runs in the browser (iPad first). 
 
 Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator manuals. The navigation data was typed from charts for training only and must never be used for navigation.
 
-## Status: Phase 3 prototype (v0.25.0)
+## Status: Phase 3 prototype (v0.25.1)
 
 - **MCDU** (Thales FMS2 layout, per FCOM DSC-22): keyboard and scratchpad, INIT A, F-PLN with TMPY (ERASE/INSERT), LAT REV, DEPARTURE, AIRWAYS (with airway-to-airway intersection), ARRIVAL, waypoint insertion, CLR of waypoints and discontinuities.
 - **Exercise** OEJN to OETB: RWY 16C MIGD2E, L677 WEJ, V54 TBK, ILS 31 via D179O, ALTN OEMA, FL340, CI 20, with automatic progress checks.
@@ -19,6 +19,11 @@ Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator
   - 11 approaches: ILS 16L (IMBF 111.7), 16R (IWSR 108.1), 34L (IWMR 108.9), 34R (IABF 110.7); RNP 16L, 16R, 34L, 34R; VOR 16R, 34L and 34R (KFA 112.3, the 34R final offset on 326°). Vias from the IAFs of the KFA 14 DME arc (LOPOD, RESAN, KEBAP, LOSAX, DASLA, KFA; DAXAR and KAVIV for the 16 runways) and from DF603, DF604 and RESAN for the RNP approaches; published missed approaches to the RESAN and LOSAX holds.
   - 32 RNAV SIDs: EMUSA, MIBRA, PUSRA, TAYMA 2E/2F/2G/2H and LADNA, METLA, ROTEL, RYDAN 1E/2E, 1F/2F, 1G/2G, 1H/2H (one set per runway).
   - Fix positions from KFA radial/DME, the extended centrelines and the chart tracks and distances; the same fix reached by different procedures agrees within 0.6 NM (36 cross-checks printed by the generator).
+- **v0.25.1**: CONF 2 drag, idle thrust for speed reductions.
+  - CONF 2 has 20 % more drag, gear up or down: level deceleration 12 kt per NM gear up (was 10) and 18 gear down (was 15); 7 and 13 at 1000 ft/min down. The effect of the rate of descent is unchanged, so on speed in OP DES CONF 2 descends at 2400 ft/min.
+  - Speed reductions with the auto-thrust on the speed (managed, for example the next configuration speed, or selected): more than 10 kt to lose, the thrust goes to idle and the speed comes back at the idle deceleration of the configuration. 3 kt before the target the thrust comes out of idle and builds up to the thrust that holds the speed; the last 3 kt go at 90 % of the idle deceleration.
+  - A reduction of 10 kt or less never goes to idle: the thrust comes back about half-way and the speed is lost at 90 % of the idle deceleration.
+  - Measured clean at 8000 ft: 230 to 200 kt, idle (N1 24 %) and 10 kt per NM down to 203.5 kt, then 9 to 9.5 kt per NM with the N1 rising to 57 %; 230 to 222 kt, 9.1 kt per NM, N1 40 % then rising.
 - **v0.25.0**: pop-out windows for the MCDU, the levers and the landing gear panel. PC browsers.
   - The displays stay together in the page, which is the one displays window to put on a monitor or a television: EFIS control panel, FCU, PFD, ND, upper and lower ECAM.
   - The MCDU, the levers and the landing gear panel each open in a browser window of their own, to drag to another monitor and resize freely. Pop-out button (a square with an arrow leaving it): top left of the MCDU, and beside the LEVERS and LDG GEAR buttons of the ECAM.

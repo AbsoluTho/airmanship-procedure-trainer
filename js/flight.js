@@ -133,7 +133,7 @@ function flightStart(){const miss=flightReady();if(miss.length)return miss;vFill
   const P=buildPath(),o=DB.apt[orig()],r=o.rwy[S.active.rwy],tr=r.crs+(o.var||0);
   Object.assign(FL,{active:true,running:true,t:0,utc0:Date.now(),path:P,s:0,seg:1,xtk:0,pos:r.pos,hdgT:tr,trkT:tr,roll:0,pitch:0,alt:r.tdze??o.elev,vs:0,ias:0,tas:0,gs:0,mach:0,
     ground:true,lat:'RWY',latArm:FCU.hdgMgd&&!S.active.noSid&&!(S.active.legs[1]&&S.active.legs[1].k==='disc')?'NAV':null,ver:'SRS',verArm:[FCU.lvlch?'CLB':'OP CLB'],thr:'IDLE',conf:['0','1+F','2','3','FULL'][LV.flaps],gear:true,gearPos:1,gaFlap:false,pmGearT:null,pmF3T:null,revDone:false,
-    fob:S.fuel.block-(S.fuel.taxi??0.2),fromIx:0,loT:null,spdLimOn:false,eoEng:null,crzDes:false,ldgSeq:0,gearT:null,f3T:null,inHold:null,holdExit:null,hsActive:null,cst:null,acc:0,accT:0,soe:false,opSmall:false,spdIsMach:false,capAlt:null,altHold:null,fmaT:{},loc:false,gsCap:false,tdReached:false,stage:'LINEUP',lvrT:null});LV.thr='IDLE';LV.gear='DOWN';LV.decel=false;LV.m1=LV.m2=true;
+    fob:S.fuel.block-(S.fuel.taxi??0.2),fromIx:0,loT:null,spdLimOn:false,thrIdle:false,eoEng:null,crzDes:false,ldgSeq:0,gearT:null,f3T:null,inHold:null,holdExit:null,hsActive:null,cst:null,acc:0,accT:0,soe:false,opSmall:false,spdIsMach:false,capAlt:null,altHold:null,fmaT:{},loc:false,gsCap:false,tdReached:false,stage:'LINEUP',lvrT:null});LV.thr='IDLE';LV.gear='DOWN';LV.decel=false;LV.m1=LV.m2=true;
   FCU.athr=true;FL.td=P.sThr-tdDist();FL.sig=planSig();S.phase='TAKEOFF';setFma();flightTick(0);return[]}
 function q2conf(){const f=S.perf.flaps;return f===1?'1+F':String(f||1)}
 
@@ -205,8 +205,9 @@ const DECEL_NM=25;
    steeper, the speed increases even at idle, in proportion to the rate of descent: 5 kt per NM for each 1000 ft/min more
    (gear up: 5 at 3000 ft/min, 10 at 4000 ft/min).
    The rates of descent are those of a ground speed of 250 kt or less; faster, the same descent gradient counts
-   (a 3 degree path gives the same deceleration at 250 kt and at cruise speed). In a climb the speed is lost faster. */
-function idleBase(){return 10+(FL.gear?(FL.conf==='3'||FL.conf==='FULL'?10:5):0)}
+   (a 3 degree path gives the same deceleration at 250 kt and at cruise speed). In a climb the speed is lost faster.
+   CONF 2 has 20 % more drag: level 12 gear up, 18 gear down (the effect of the rate of descent is unchanged). */
+function idleBase(){return(10+(FL.gear?(FL.conf==='3'||FL.conf==='FULL'?10:5):0))*(FL.conf==='2'?1.2:1)}
 /* speed brakes actually extended (0 to 1) for the lever position: not in CONF FULL (inhibited), half at the most with the autopilot engaged */
 function spbEff(){if(!FL.active||FL.ground||FL.conf==='FULL')return 0;return Math.min(LV.spb||0,FCU.ap1||FCU.ap2?0.5:1)}
 /* speed brakes add drag: half 50 % more, full 100 % more than the drag of the configuration (the level deceleration), so with full speed brakes
@@ -463,7 +464,12 @@ function step(dt){if(S.tmpy&&typeof ppHoldSync==='function')ppHoldSync(S.tmpy);c
   /* ---- dynamics ---- */
   if(FL.stage==='AIR'){const g3=FL.gp||1;/* thrust at idle sets how fast the speed can come back: never faster than the idle deceleration of the configuration and rate of descent */
     const idle=FL.ver==='FLARE'||FL.ver==='SRS'?-9:-idleDecel(FL.vs,FL.gs)*FL.gs/3600;
-    FL.ias+=FL.soe?FL.accT*dt:Math.max(idle*dt,Math.max(-1.6*dt,Math.min(1.6*g3*dt,spdT-FL.ias)));
+    /* speed reduction with the auto-thrust on the speed (managed or selected): more than 10 kt to lose, the thrust goes to idle and the speed
+       comes back at the idle deceleration; 3 kt before the target the thrust comes out of idle and the last knots go at 90 % of the idle
+       deceleration. A reduction of 10 kt or less never goes to idle: 90 % of the idle deceleration throughout. */
+    if(!FL.soe){const over=FL.ias-spdT;if(over>10&&!FL.thrIdle)FL.thrIdle=true;else if(over<=3)FL.thrIdle=false}else FL.thrIdle=false;
+    const dRate=FL.soe?idle:idle*(FL.thrIdle||idle>=0?1:0.9);
+    FL.ias+=FL.soe?FL.accT*dt:Math.max(dRate*dt,Math.max(-1.6*dt,Math.min(1.6*g3*dt,spdT-FL.ias)));
     /* lift-off: the rate of climb builds up along an S curve (slow, faster, slow) and reaches its target 5 s after lift-off */
     const lo=FL.ver==='SRS'&&S.phase!=='GA'&&FL.loT!=null?(FL.t-FL.loT)/5:1;
     if(lo<1){const x=Math.max(0,lo);FL.vs=vsT*x*x*(3-2*x)}else FL.vs+=Math.max(-600*dt,Math.min(600*dt,vsT-FL.vs));

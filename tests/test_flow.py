@@ -139,7 +139,12 @@ async def run(url,b):
     r=await pg.evaluate("""(()=>{const g=FL.gear,c=FL.conf,o=[];for(const [gear,conf] of [[false,'0'],[false,'2'],[true,'2'],[true,'3'],[true,'FULL']]){FL.gear=gear;FL.conf=conf;
       o.push([0,-1000,-2000,-2500,-3000].map(v=>idleDecel(v,200)).join('/'))}
       FL.gear=false;FL.conf='0';o.push(+idleDecel(-2385,450).toFixed(1),Math.round(idleVs(5,200)),Math.round(idleVs(0,200)),Math.round(idleVs(-5,200)));FL.gear=g;FL.conf=c;return o.join(' ')})()""")
-    assert r=='10/5/0/-2.5/-5 10/5/0/-2.5/-5 15/10/5/2.5/0 20/15/10/7.5/5 20/15/10/7.5/5 3.4 1000 2000 3000',('idle deceleration rules',r)
+    assert r=='10/5/0/-2.5/-5 12/7/2/-0.5/-3 18/13/8/5.5/3 20/15/10/7.5/5 20/15/10/7.5/5 3.4 1000 2000 3000',('idle deceleration rules',r)
+    # speed reduction with the auto-thrust: more than 10 kt, idle until 3 kt are left; 10 kt or less never idle
+    r=await pg.evaluate("""(()=>{const k=Object.assign({},FL),o=[];Object.assign(FL,{active:true,ground:false,stage:'AIR',soe:false,thrIdle:false,conf:'0',gear:false,vs:0,gs:220,spdT:200});
+      for(const v of [230,215,203.5,202,209,212]){FL.ias=v;const over=FL.ias-FL.spdT;if(over>10&&!FL.thrIdle)FL.thrIdle=true;else if(over<=3)FL.thrIdle=false;o.push(FL.thrIdle?'I':'-')}
+      Object.assign(FL,k);return o.join('')})()""")
+    assert r=='III--I',('idle logic',r)
     # EWD slats and flaps (FlyByWire Slats.tsx): the surfaces travel to the position of the configuration
     r=await pg.evaluate("""(()=>{const f0=LV.flaps,k={s:SF.s,f:SF.f,t:SF.t,key:SF.key},o=[];LV.flaps=2;SF.s=0;SF.f=0;SF.key='g';
       SF.t=performance.now()/1000-5/(FL.rate||1);sfTick();o.push(Math.round(SF.s),Math.round(SF.f));      // 5 s of travel
