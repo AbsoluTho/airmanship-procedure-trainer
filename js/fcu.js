@@ -58,7 +58,8 @@ function fcuTurn(knob,d,big){const now=Date.now();
     else FCU.spd=Math.max(FCU.mach?0.1:100,Math.min(FCU.mach?0.99:399,+(FCU.spd+d*st*(big?10:1)).toFixed(2)))}
   if(knob==='hdg'){if(FCU.hdgMgd){const b=FCU.hdgPre!=null&&now<FCU.hdgPreT?FCU.hdgPre:hdgNow();FCU.hdgPre=clampHdg(b+d*(big?10:1));FCU.hdgPreT=now+10000}
     else FCU.hdg=clampHdg((FCU.hdg??hdgNow())+d*(big?10:1))}
-  if(knob==='alt'){FCU.alt=Math.max(100,Math.min(49000,Math.round((FCU.alt+d*FCU.altInc)/FCU.altInc)*FCU.altInc||100))}
+  /* ALT: to the next step, whatever lies below it (step 1000: 4100, 4500 or 4900 + gives 5000, - gives 4000) */
+  if(knob==='alt'){const s=FCU.altInc,n=d>0?Math.floor(FCU.alt/s)+d:Math.ceil(FCU.alt/s)+d;FCU.alt=Math.max(100,Math.min(49000,n*s||100))}
   if(knob==='vs'){const vMode=flying()&&(FL.ver==='V/S'||FL.ver==='FPA');
     if(FCU.trkFpa){if(vMode)FCU.fpa=Math.max(-9.9,Math.min(9.9,+(FCU.fpa+d*0.1).toFixed(1)));else{FCU.vsPre=Math.max(-9.9,Math.min(9.9,+((FCU.vsPre!=null&&now<FCU.vsPreT?FCU.vsPre:0)+d*0.1).toFixed(1)));FCU.vsPreT=now+10000}}
     else{if(vMode)FCU.vsVal=Math.max(-6000,Math.min(6000,FCU.vsVal+d*100));else{FCU.vsPre=Math.max(-6000,Math.min(6000,(FCU.vsPre!=null&&now<FCU.vsPreT?FCU.vsPre:Math.round((flying()?FL.vs:0)/100)*100)+d*100));FCU.vsPreT=now+10000}}}

@@ -150,6 +150,10 @@ async def run(url,b):
       for(const v of [230,215,203.5,202,209,212]){FL.ias=v;const over=FL.ias-FL.spdT;if(over>10&&!FL.thrIdle)FL.thrIdle=true;else if(over<=3)FL.thrIdle=false;o.push(FL.thrIdle?'I':'-')}
       Object.assign(FL,k);return o.join('')})()""")
     assert r=='III--I',('idle logic',r)
+    # FCU ALT step 1000: to the next thousand whatever the hundreds
+    r=await pg.evaluate("""(()=>{const k=[FCU.alt,FCU.altInc],o=[];FCU.altInc=1000;for(const [a,d] of [[4500,1],[4100,1],[4900,1],[5000,1],[4500,-1],[4900,-1],[5000,-1]]){FCU.alt=a;fcuTurn('alt',d);o.push(FCU.alt)}
+      FCU.altInc=100;FCU.alt=4550;fcuTurn('alt',1);o.push(FCU.alt);[FCU.alt,FCU.altInc]=k;fcuRefresh();return o.join()})()""")
+    assert r=='5000,5000,5000,6000,4000,4000,4000,4600',('FCU ALT steps',r)
     # gear lever UP disarms the take-off AUTO BRK
     r=await pg.evaluate("""(()=>{const k=[FL.active,FL.ground,LV.gear,LV.abrk];FL.active=false;LV.abrk='MAX';lever('gear','UP');const o=[LV.abrk];LV.abrk='MAX';lever('gear','DOWN');o.push(LV.abrk);[FL.active,FL.ground,LV.gear,LV.abrk]=k;return o.join()})()""")
     assert r==',MAX',('AUTO BRK off at gear up only',r)
