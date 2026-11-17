@@ -464,8 +464,9 @@ function step(dt){if(S.tmpy&&typeof ppHoldSync==='function')ppHoldSync(S.tmpy);c
     const cap=climb?Math.max(400,(3300-FL.alt*0.06)*(64/gw))*(FL.eoEng?0.42:1)-cfgD:-(600+Math.max(0,FL.ias-200)*12+FL.alt*0.035)-cfgD;
     const g2=FL.gp||1,cap2=climb?cap*g2:cap;let a=Math.max(-1,Math.min(1,(spdT-FL.ias)*0.12))*(climb?g2:1),v=cap2-k*a;
     if(climb&&v<0){v=0;a=cap2/k}
-    /* open climb with a speed well above (more than 3 kt): climb power, +250 ft/min while it accelerates, the rest of the thrust for the speed */
-    if(climb&&spdT-FL.ias>3&&cap2>250){v=250;a=(cap2-250)/k}
+    /* accelerating (speed more than 3 kt above) with climb power: OP CLB +250 ft/min, managed CLB +1200 ft/min (after SRS, from the
+       acceleration altitude), the rest of the thrust for the speed */
+    {const vAcc=FL.ver==='OP CLB'?250:FL.ver==='CLB'?1200:null;if(climb&&vAcc&&spdT-FL.ias>3&&cap2>vAcc){v=vAcc;a=(cap2-vAcc)/k}}
     /* idle descent: the rate of descent that gives the deceleration (or acceleration) wanted; the speed then follows the rate actually flown */
     /* speed target above the speed (speed selected up, EXP DES): the nose goes down, the rate of descent increases and the speed increases in
        proportion to it; OP DES up to 10 kt per NM (4000 ft/min clean), EXP DES up to 15 kt per NM (5000 ft/min clean) */

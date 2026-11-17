@@ -17,19 +17,31 @@ function engTarget(){const on=flying(),alt=on?FL.alt:elevO(),q=S.perf,flx=q.flex
   if(FL.thr==='TO')return flx&&LV.thr!=='TOGA'?{n1:Math.max(80,92.4-(q.flex-30)*0.26),n2:96.2,egt:715,ff:2750}:{n1:92.8,n2:98.4,egt:760,ff:3000};
   const climb=CLIMBING.includes(FL.ver)||FL.ver==='SRS'||(['V/S','FPA'].includes(FL.ver)&&FL.vs>500);
   if(climb)return{n1:Math.min(91.5,87.4+alt/1e4*1.2),n2:94+alt/1e4*0.8,egt:690-alt/1e4*25,ff:Math.max(1050,1650-alt/1e4*180)};
-  if(DESCENDING.includes(FL.ver)||FL.vs<-1200&&FL.ias>=(FL.spdT||0)-3)return{n1:21+alt/1e4*3.6,n2:62+alt/1e4*3,egt:430+alt/1e4*20,ff:280+alt/1e4*25};
+  /* idle: OP DES and EXP DES (speed on elevator). A descent on the path (DES, V/S, FPA) keeps the thrust the path needs (see engHold) */
+  if(FL.soe&&DESCENDING.includes(FL.ver))return{n1:21+alt/1e4*3.6,n2:62+alt/1e4*3,egt:430+alt/1e4*20,ff:280+alt/1e4*25};
   const gw=gwNowF(),k=gw/64,idleE={n1:21+alt/1e4*3.6,n2:62+alt/1e4*3,egt:430+alt/1e4*20,ff:280+alt/1e4*25};
   /* speed reduction (FL.thrIdle, flight.js): idle while more than 3 kt are left; then out of idle, back to the thrust that holds the speed
      over the last 3 kt. A reduction of 10 kt or less: half-way between idle and that thrust, then the same build-up. */
   const over=(FL.ias||0)-(FL.spdT??FL.ias),hold=engHold(alt,gw,k);
   if(FL.thrIdle)return idleE;
+  /* faster speed selected (non speed-on-elevator, for example DES on the path): thrust above what holds the path, until the speed is reached */
+  if(!FL.soe&&(FL.spdT??0)-(FL.ias||0)>1&&FL.vs<-100&&FL.ver!=='FLARE')return{n1:Math.min(85,hold.n1+15),n2:Math.min(95,hold.n2+5),egt:hold.egt+40,ff:hold.ff+350};
   if(over>0.3&&!FL.soe&&FL.ver!=='FLARE'){const f=over>3?0.5:0.5+0.5*(3-over)/3,mix=(a,b)=>a+(b-a)*f;
     return{n1:mix(idleE.n1,hold.n1),n2:mix(idleE.n2,hold.n2),egt:mix(idleE.egt,hold.egt),ff:mix(idleE.ff,hold.ff)}}
   return hold}
 /* thrust that holds the speed in level flight or on the approach path */
 function engHold(alt,gw,k){
+  /* in a descent on the path (clean to CONF 2) the thrust that holds the speed is the share of the level thrust the drag still asks for:
+     the idle deceleration at this rate of descent over the level one (level: all of it; 2000 ft/min clean: none, idle) */
+  const vsD=flying()?FL.vs:0,conf=FL.conf==='0'?0:FL.conf==='FULL'?4:+FL.conf[0]||1;
+  if(vsD<-100&&conf<3&&typeof idleDecel==='function'){const lvl=engHoldL(alt,gw,k,true),fr=Math.max(0,Math.min(1,idleDecel(vsD,FL.gs)/(idleBase()*(1+spbEff())))),
+      idle={n1:21+alt/1e4*3.6,n2:62+alt/1e4*3,egt:430+alt/1e4*20,ff:280+alt/1e4*25},m=(a,b)=>a+(b-a)*fr;
+    return{n1:m(idle.n1,lvl.n1),n2:m(idle.n2,lvl.n2),egt:m(idle.egt,lvl.egt),ff:m(idle.ff,lvl.ff)}}
+  return engHoldL(alt,gw,k,false)}
+/* thrust that holds the speed in level flight (lvl) or on the present path; approach thrust in landing configuration */
+function engHoldL(alt,gw,k,lvl){
   if(alt>20000)return{n1:58+alt/34000*25*k,n2:84+alt/34000*7,egt:520+alt/34000*90,ff:FL.ver==='ALT'||FL.ver.startsWith('ALT')?(PM.ff(I().crz,I().ci)*PM.wf(gw)*500):1100};
-  const conf=FL.conf==='0'?0:FL.conf==='FULL'?4:+FL.conf[0]||1,fpa=FL.vs/Math.max(100,FL.gs)/101.27*57.3;
+  const conf=FL.conf==='0'?0:FL.conf==='FULL'?4:+FL.conf[0]||1,fpa=lvl?0:FL.vs/Math.max(100,FL.gs)/101.27*57.3;
   /* approach in landing configuration, stabilised on a 3 degree path at VAPP: CONF 3 45 to 55 % N1, CONF FULL 55 to 63 % N1, rising with the
      gross weight (50 t to 66 t). More on a shallower path or in level flight, towards idle while still decelerating. */
   if(conf>=3){const kw=Math.max(0,Math.min(1,(gw-50)/16)),base=conf===4?55+8*kw:45+10*kw;
