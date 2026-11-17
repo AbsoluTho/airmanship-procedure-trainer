@@ -16,9 +16,15 @@ const cockpitAudio = (() => {
   const priority = name => priorities[name] ?? 1;
   const buffers = {};
   const called = new Set();
-  let context, output, loading, current, candidate, primedMinimum, keepAlive, spare;
-  const urls = {};
+  let context, output, loading, current, candidate, primedMinimum, keepAlive, spare, starting, resumeFailed = false;
+  const urls = {}, raw = {};
   let enabled = false;
+  // SOUND ON / OFF: the choice is kept (on by default). With SOUND ON the audio starts at the first touch or key anywhere in the page,
+  // because browsers only let a page start sound from a tap; after that it is kept running (see wake).
+  const PREF = 'airmanship.sound';
+  let want = true;
+  try { want = localStorage.getItem(PREF) !== 'off'; } catch (error) {}
+  const savePref = () => { try { localStorage.setItem(PREF, want ? 'on' : 'off'); } catch (error) {} };
   const toggle = document.getElementById('cockpitSound');
   const cabin = document.getElementById('cabinCall');
   const status = document.getElementById('cockpitSoundStatus');
@@ -55,11 +61,41 @@ const cockpitAudio = (() => {
     } catch (error) { console.warn('Cockpit audio route:', error); }
   }
 
-  // Safari suspends ("interrupted") the context after a call, a lock or a switch to another app.
-  function wake() {
-    if (!enabled || !context || context.state === 'running') return;
-    try { const p = context.resume(); if (p && p.catch) p.catch(() => {}); } catch (error) {}
+  // Safari suspends ("interrupted") the context after a call, a lock or a switch to another app, and on iPad it
+  // sometimes stays so: resume() is tried first; inside a tap, a context that is interrupted, closed or would not
+  // resume is replaced by a new one (created in the tap, so it runs) and the sounds are decoded again.
+  function wake(gesture) {
+    if (!enabled || !context) return;
     mediaRoute(true);
+    if (context.state === 'running') { resumeFailed = false; return; }
+    if (gesture) primeSpare();
+    if (gesture && (context.state === 'interrupted' || context.state === 'closed' || resumeFailed)) { rebuild(); return; }
+    try { const p = context.resume(); if (p && p.catch) p.catch(() => { resumeFailed = true; }); } catch (error) { resumeFailed = true; }
+    setTimeout(() => { if (enabled && context && context.state !== 'running') resumeFailed = true; }, 400);
+  }
+
+  function newContext() {
+    context = new (window.AudioContext || window.webkitAudioContext)();
+    output = context.createGain();
+    output.gain.value = 0.65;
+    output.connect(context.destination);
+    try { const p = context.resume(); if (p && p.catch) p.catch(() => {}); } catch (error) {}
+    // A sound started inside the tap itself unlocks playback on iPad and iPhone.
+    const blip = context.createBufferSource();
+    blip.buffer = context.createBuffer(1, 1, 22050);
+    blip.connect(context.destination); blip.start(0);
+  }
+
+  function rebuild() {
+    const old = context;
+    stop();
+    try { newContext(); } catch (error) { console.warn('Cockpit audio:', error); return; }
+    resumeFailed = false;
+    try { if (old && old.state !== 'closed') old.close(); } catch (error) {}
+    for (const name of Object.keys(buffers)) delete buffers[name];
+    Object.entries(raw).forEach(([name, data]) => {
+      decode(data.slice(0)).then(b => { buffers[name] = b; }).catch(error => console.warn('Cockpit audio: ' + name, error));
+    });
   }
 
   // Older Safari only has the callback form of decodeAudioData.
@@ -77,7 +113,9 @@ const cockpitAudio = (() => {
   }
 
   function updateControls() {
-    toggle.setAttribute('aria-pressed', String(enabled));
+    toggle.setAttribute('aria-pressed', String(want));
+    toggle.textContent = want ? 'SOUND ON' : 'SOUND OFF';
+    toggle.title = want ? 'Cockpit sound on (tap to turn it off)' : 'Cockpit sound off (tap to turn it on)';
   }
 
   const say = text => { status.textContent = text; };
@@ -94,7 +132,8 @@ const cockpitAudio = (() => {
   }
 
   function toggleSound() {
-    if (enabled) {
+    if (want) {
+      want = false; savePref();
       enabled = false;
       stop();
       mediaRoute(false);
@@ -102,24 +141,25 @@ const cockpitAudio = (() => {
       say('');
       return Promise.resolve(false);
     }
+    want = true; savePref(); updateControls();
     return turnOn();
   }
 
-  async function turnOn() {
+  function turnOn() {
+    if (starting) return starting;
+    starting = startAudio().finally(() => { starting = null; });
+    return starting;
+  }
+
+  async function startAudio() {
     toggle.disabled = true;
     primeSpare();
     status.textContent = 'Loading audio…';
     try {
-      if (!context) {
-        context = new (window.AudioContext || window.webkitAudioContext)();
-        output = context.createGain();
-        output.gain.value = 0.65;
-        output.connect(context.destination);
-      }
-      // Resume during the click to satisfy browser autoplay rules.
+      // Created (or resumed) during the tap to satisfy browser autoplay rules.
       mediaRoute(true);
+      if (!context || context.state === 'closed') newContext();
       const resumed = context.resume();
-      // A sound started inside the tap itself unlocks playback on iPad and iPhone.
       { const blip = context.createBufferSource();
         blip.buffer = context.createBuffer(1, 1, 22050);
         blip.connect(context.destination); blip.start(0); }
@@ -131,7 +171,8 @@ const cockpitAudio = (() => {
           try {
             const response = await fetch(url);
             if (!response.ok) throw new Error('HTTP ' + response.status);
-            buffers[name] = await decode(await response.arrayBuffer());
+            raw[name] = await response.arrayBuffer();
+            buffers[name] = await decode(raw[name].slice(0));   // a copy: decoding empties the data it is given
           } catch (error) {
             // Left to the spare <audio> element, which loads the file by itself.
             console.warn('Cockpit audio: ' + name + ' not decoded:', error);
@@ -141,7 +182,7 @@ const cockpitAudio = (() => {
       // Do not wait for resume(): on iPad it can stay pending and would leave the button locked.
       if (resumed && resumed.catch) resumed.catch(() => {});
       await loading;
-      enabled = true;
+      enabled = want;
       const missing = Object.keys(files).length - Object.keys(buffers).length;
       say(context.state === 'running' && !missing ? '' :
         'Sound on · audio ' + context.state + (missing ? ' · ' + missing + ' files on spare player' : ''));
@@ -157,7 +198,7 @@ const cockpitAudio = (() => {
 
   function play(name) {
     if (!enabled) return;
-    if (context.state !== 'running') wake();
+    if (context.state !== 'running') wake(false);
     if (current && priority(current.name) >= priority(name)) return;
     stop();
     if (context.state !== 'running' || !buffers[name]) return playSpare(name);
@@ -246,14 +287,24 @@ const cockpitAudio = (() => {
     candidate = null;
   }
 
+  // every touch or key: with SOUND ON, start the audio if it is not running yet, or bring it back after an interruption
+  const onGesture = e => {
+    if (!want || (e.target && e.target.closest && e.target.closest('#cockpitSound'))) return;
+    if (!enabled) { if (!starting) turnOn(); return; }
+    wake(true);
+  };
   ['pointerdown', 'touchend', 'keydown'].forEach(ev =>
-    document.addEventListener(ev, wake, {capture: true, passive: true}));
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) wake(); });
+    document.addEventListener(ev, onGesture, {capture: true, passive: true}));
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) wake(false); });
+  addEventListener('pageshow', () => wake(false));
+  addEventListener('focus', () => wake(false));
   toggle.addEventListener('click', toggleSound);
   // CABIN CALL is the sound check: it also switches the sound on when it is off.
   cabin.addEventListener('click', async () => {
+    if (!want) { want = true; savePref(); updateControls(); }
     if (!enabled) await turnOn();
     play('cabin');
   });
-  return {play, reset, cancelFlight, readFlight, sample, flush};
+  updateControls();
+  return {play, reset, cancelFlight, readFlight, sample, flush, state: () => ({want, enabled, context: context && context.state, resumeFailed})};
 })();
