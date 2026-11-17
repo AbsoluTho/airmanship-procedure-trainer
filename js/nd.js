@@ -199,8 +199,11 @@ function pseudoWpts(){try{const out=[],crz=I().crz*100;if(!S.active||!S.active.a
   const at=s=>posAt(P,Math.max(0,Math.min(P.len,s))).pos,td=P.sThr-tdDist(),A=FCU.alt;
   if(flying()&&!FL.ground){const climbing=['SRS','CLB','OP CLB','EXP CLB','V/S','FPA','ALT*'].includes(FL.ver)&&FL.vs>200,desc=FL.vs<-200&&!['G/S*','G/S','LAND','FLARE'].includes(FL.ver);
     const ct=cstTarget(),cw=ct!=null?(FL.cst.clbIx!=null&&FL.ver!=='DES'&&FL.verArm[0]!=='DES'?FL.cst.clbIx:FL.cst.desIx):null;
-    const along=d=>FL.lat==='NAV'?at(s0+d):dst(FL.pos,FL.trkT,d);
-    if(ct!=null){const up=ct>alt0+30||FL.verArm.includes('CLB')&&ct>=alt0-30;
+    /* level-off arrows: only in NAV, on the route at the distance flown along it to the altitude (the tip touches the route line);
+       none in HDG / TRK or any other lateral mode */
+    const along=d=>at(s0+d),nav=FL.lat==='NAV';
+    if(!nav){}
+    else if(ct!=null){const up=ct>alt0+30||FL.verArm.includes('CLB')&&ct>=alt0-30;
       if(Math.abs(ct-alt0)>30&&Math.abs(FL.vs)>200){const d=Math.max(0,(ct-alt0)/FL.vs*60*FL.gs/3600);out.push({k:up?'up':'dn',c:'m',pos:along(d)})}
       /* start of climb (cyan) or descent (white) again at the constraint waypoint */
       const pt=cw!=null&&FL.path.pts.find(q=>q.ix===cw);if(pt&&pt.s>s0)out.push({k:up?'sc':'td',c:up?'b':'w',pos:at(pt.s)})}

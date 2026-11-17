@@ -105,7 +105,7 @@ async def run(url,b):
     fp=await pg.evaluate("""(()=>{const A0=S.active,I0=clone(S.init),pg0=S.page,ar0=S.arr,out={};document.querySelector('.tab[data-v="ofp"]').click();
       OV.from=null;OV.flt=null;ofpRender();out.froms=[...document.querySelectorAll('[data-ofp-from]')].map(x=>x.dataset.ofpFrom).join();
       document.querySelector('[data-ofp-from="OERK"]').click();out.list=[...document.querySelectorAll('.ofp-item .od')].map(x=>x.textContent).join();document.querySelector('[data-ofp="FAD225"]').click();
-      const t=document.querySelector('#ofpView').textContent;out.detail=['OERK - OEMA','OERKOEMA1','FL340 / -44','51.7 / 2','HD027','SISUD B544 NOMDA','PEGUR Z712 WEJ V54 TBK','325/017'].filter(x=>!t.includes(x));
+      const t=document.querySelector('#ofpView').textContent;out.detail=['OERK - OEMA','OERKOEMA1','FL340 / -44','51.7 / ','HD027','SISUD B544 NOMDA','PEGUR Z712 WEJ V54 TBK','325/017'].filter(x=>!t.includes(x));
       out.all=OFPS.map(o=>{OV.flt=o.flt;ofpRender();const n=document.querySelectorAll('#ofpView .sec').length,t=document.querySelector('#ofpView').textContent;return n===4+o.altn.length&&!/undefined|NaN|null|could not/.test(t)?'':o.flt}).filter(Boolean).join();OV.flt='FAD225';ofpRender();
       const sb=document.querySelector('[data-sec="initb"]');sb.querySelector('.sec-t').click();out.sec=[sb.classList.contains('shut'),sb.querySelector('.sec-t').textContent,getComputedStyle(sb.querySelector('.sec-b')).display];sb.querySelector('.sec-t').click();out.sec.push(sb.classList.contains('shut'),document.querySelectorAll('#ofpView .sec').length);
       document.querySelector('[data-ofp-back]').click();out.back=[...document.querySelectorAll('.ofp-item .od')].length+':'+!!document.querySelector('[data-ofp-froms]');document.querySelector('[data-ofp-froms]').click();out.back+=':'+document.querySelectorAll('[data-ofp-from]').length;
@@ -687,8 +687,10 @@ async def check_audio(url,b):
       };
     })()""")
     await pg.goto(url)
-    await pg.click('#cockpitSound')
-    await pg.wait_for_function("document.querySelector('#cockpitSound').getAttribute('aria-pressed') === 'true'")
+    # SOUND ON by default: the audio starts at the first touch anywhere in the page
+    assert await pg.evaluate("[document.querySelector('#cockpitSound').textContent,document.querySelector('#cockpitSound').getAttribute('aria-pressed'),audioContexts.length].join()")=='SOUND ON,true,0','SOUND ON shown, nothing started before a touch'
+    await pg.mouse.click(5,5)
+    await pg.wait_for_function("cockpitAudio.state().enabled === true")
     assert await pg.evaluate("navigator.audioSession.type")=='playback','iPad: sound is routed as media playback, not on the ringer channel'
     # an interruption (lock, other app) suspends the context: the next touch brings it back
     await pg.evaluate("audioContexts[0].suspend()")
@@ -697,6 +699,16 @@ async def check_audio(url,b):
     await pg.wait_for_function("audioContexts[0].state === 'running'")
     await pg.click('#cabinCall')
     assert await pg.evaluate('startedSounds.length')==1, 'cabin call plays a decoded WAV'
+    # an iPad context that will not resume after the app was left: the next touches replace it and the sounds play again
+    r=await pg.evaluate("""async () => {
+      startedSounds.at(-1).stop();await new Promise(r=>setTimeout(r,50));
+      const c=audioContexts[0];await c.suspend();c.resume=()=>Promise.resolve();
+      document.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true}));await new Promise(r=>setTimeout(r,500));
+      document.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true}));await new Promise(r=>setTimeout(r,400));
+      const n=startedSounds.length;cockpitAudio.play('cabin');
+      return [audioContexts.length,audioContexts.at(-1).state,c.state,startedSounds.length-n];
+    }""")
+    assert r==[2,'running','closed',1],('stuck context replaced on the next touch, sounds decoded again',r)
     result=await pg.evaluate("""async () => {
       const finish = async () => {
         const last = startedSounds.at(-1);
@@ -738,7 +750,7 @@ async def check_audio(url,b):
       await finish();
       return counts;
     }""")
-    assert result==[2,2,3,3,3,4,5,6,7], result
+    assert result==[3,3,4,4,4,5,6,7,8], result   # one more sound before: the stuck-context check
     await pg.click('#cockpitSound')
     assert await pg.evaluate("document.querySelector('#cockpitSound').getAttribute('aria-pressed')")=='false'
     n=await pg.evaluate('startedSounds.length')
@@ -753,13 +765,17 @@ async def check_audio(url,b):
       HTMLMediaElement.prototype.play = function () { made.push(this.src.slice(0, 60)); return play.call(this); };
       startedSounds.at(-1).stop();
       await new Promise(r => setTimeout(r, 50));
-      const c = audioContexts[0];
+      const c = audioContexts.at(-1);
       await c.suspend();
       c.resume = () => Promise.resolve();
       cockpitAudio.play('cabin');
       return [startedSounds.length, made.at(-1)];
     }""")
     assert spare[0]==n+1 and ('cabin-call.wav' in spare[1] or spare[1].startswith('data:audio/wav')), ('spare player',spare)
+    # SOUND OFF is kept: after a reload nothing starts at a touch
+    await pg.click('#cockpitSound');await pg.reload();await pg.mouse.click(5,5);await pg.wait_for_timeout(300)
+    assert await pg.evaluate("[document.querySelector('#cockpitSound').textContent,cockpitAudio.state().enabled].join()")=='SOUND OFF,false','SOUND OFF kept after a reload'
+    await pg.evaluate("localStorage.removeItem('airmanship.sound')")
     assert not errors, errors
     print('PASS cockpit audio',url)
     await pg.close()
