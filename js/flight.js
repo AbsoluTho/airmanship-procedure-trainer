@@ -341,9 +341,10 @@ function step(dt){if(S.tmpy&&typeof ppHoldSync==='function')ppHoldSync(S.tmpy);c
     /* takeoff: RWY on the ground, RWY TRK once airborne (NAV stays armed), NAV from 400 ft AAL */
     if(FL.lat==='RWY'&&agl()>30)FL.lat=FCU.hdgMgd||FL.latArm==='NAV'?'RWY TRK':(FCU.trkFpa?'TRK':'HDG');
     {const tko=FL.lat==='RWY TRK'||FL.lat==='GA TRK';
-      if(FL.latArm==='NAV'&&!(FL.lat==='GA TRK'&&agl()<100)&&FL.lat!=='RWY'&&!(FL.lat==='RWY TRK'&&agl()<400)&&(tko?pr&&pr.d<0.6&&navTae(P,pr)<90:navCapture(P))){FL.lat='NAV';FL.latArm=null}}
+      if(FL.latArm==='NAV'&&!((FCU.loc||FCU.appr)&&hasLs())&&!(FL.lat==='GA TRK'&&agl()<100)&&FL.lat!=='RWY'&&!(FL.lat==='RWY TRK'&&agl()<400)&&(tko?pr&&pr.d<0.6&&navTae(P,pr)<90:navCapture(P))){FL.lat='NAV';FL.latArm=null}}
     const lg=hasLs()?locGeo(FL.pos):null,lsArmed=(FCU.loc||FCU.appr)&&lg;
-    if(lsArmed&&!['LOC*','LOC','LAND'].includes(FL.lat)){if(FL.latArm!=='NAV')FL.latArm='LOC';
+    /* LOC (LOC or APPR pushbutton) has priority over NAV: an armed NAV gives way to LOC armed (blue), then LOC*, LOC */
+    if(lsArmed&&!['LOC*','LOC','LAND'].includes(FL.lat)){FL.latArm='LOC';
       const hdif=Math.abs(((lg.crs-FL.trkT+540)%360)-180),v=Math.max(140,FL.tas)/1.94384,R=v*v/(9.81*Math.tan(25*D2R))/1852;
       /* LOC capture as the turn onto the course must begin: the turn radius x (1 - cos intercept angle), from 0.25 NM to 1.5 NM off the course */
       if(lg.along>0.5&&lg.along<30&&Math.abs(lg.xtk)<Math.min(1.5,Math.max(0.25,R*(1-Math.cos(Math.min(100,hdif)*D2R))+0.15))&&hdif<100){FL.lat='LOC*';FL.latArm=null;FL.loc=true}}

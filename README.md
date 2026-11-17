@@ -19,9 +19,10 @@ Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator
   - 11 approaches: ILS 16L (IMBF 111.7), 16R (IWSR 108.1), 34L (IWMR 108.9), 34R (IABF 110.7); RNP 16L, 16R, 34L, 34R; VOR 16R, 34L and 34R (KFA 112.3, the 34R final offset on 326°). Vias from the IAFs of the KFA 14 DME arc (LOPOD, RESAN, KEBAP, LOSAX, DASLA, KFA; DAXAR and KAVIV for the 16 runways) and from DF603, DF604 and RESAN for the RNP approaches; published missed approaches to the RESAN and LOSAX holds.
   - 32 RNAV SIDs: EMUSA, MIBRA, PUSRA, TAYMA 2E/2F/2G/2H and LADNA, METLA, ROTEL, RYDAN 1E/2E, 1F/2F, 1G/2G, 1H/2H (one set per runway).
   - Fix positions from KFA radial/DME, the extended centrelines and the chart tracks and distances; the same fix reached by different procedures agrees within 0.6 NM (36 cross-checks printed by the generator).
-- **v0.25.13**: FD bars.
+- **v0.25.13**: FD bars, LOC armed over NAV.
   - The vertical FD bar is as long above the aircraft reference as below it (90 px each way; it was 110 above and 70 below).
   - The bars never jump to a new command: they travel to it at 6 degrees per second (roll bar 12 px/s, pitch bar 37 px/s), then follow the command as before. HDG +90 and OP DES selected together: the roll bar moves out over 3 s and meets the command at 17 degrees of bank still to go, the pitch bar reaches 4.5 degrees nose down in 0.75 s.
+  - LOC has priority over NAV: with NAV armed (for example in HDG), pressing LOC or APPR replaces NAV armed with LOC armed (blue), and NAV can no longer engage; then LOC*, LOC. They used to show NAV armed with LOC only when NAV was not armed, and NAV could still engage first.
 - **v0.25.12**: LDG memo laid out like the T.O memo.
   - The LDG title and its items no longer run into each other ("LDGLDG GEAR"): both memos have the title in its own column and the items in one column further right (blue with dots to the setting until done, green once done).
 - **v0.25.11**: gentler OP DES / climb entries, gear-down climb, moving FD bars, smoother flare.
