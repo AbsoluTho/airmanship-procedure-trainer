@@ -4,7 +4,7 @@ An unofficial A320 **procedure** trainer that runs in the browser (iPad first). 
 
 Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator manuals. The navigation data was typed from charts for training only and must never be used for navigation.
 
-## Status: Phase 3 prototype (v0.25.5)
+## Status: Phase 3 prototype (v0.25.6)
 
 - **MCDU** (Thales FMS2 layout, per FCOM DSC-22): keyboard and scratchpad, INIT A, F-PLN with TMPY (ERASE/INSERT), LAT REV, DEPARTURE, AIRWAYS (with airway-to-airway intersection), ARRIVAL, waypoint insertion, CLR of waypoints and discontinuities.
 - **Exercise** OEJN to OETB: RWY 16C MIGD2E, L677 WEJ, V54 TBK, ILS 31 via D179O, ALTN OEMA, FL340, CI 20, with automatic progress checks.
@@ -19,6 +19,8 @@ Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator
   - 11 approaches: ILS 16L (IMBF 111.7), 16R (IWSR 108.1), 34L (IWMR 108.9), 34R (IABF 110.7); RNP 16L, 16R, 34L, 34R; VOR 16R, 34L and 34R (KFA 112.3, the 34R final offset on 326°). Vias from the IAFs of the KFA 14 DME arc (LOPOD, RESAN, KEBAP, LOSAX, DASLA, KFA; DAXAR and KAVIV for the 16 runways) and from DF603, DF604 and RESAN for the RNP approaches; published missed approaches to the RESAN and LOSAX holds.
   - 32 RNAV SIDs: EMUSA, MIBRA, PUSRA, TAYMA 2E/2F/2G/2H and LADNA, METLA, ROTEL, RYDAN 1E/2E, 1F/2F, 1G/2G, 1H/2H (one set per runway).
   - Fix positions from KFA radial/DME, the extended centrelines and the chart tracks and distances; the same fix reached by different procedures agrees within 0.6 NM (36 cross-checks printed by the generator).
+- **v0.25.6**: ND level-off arrows only in NAV, on the route.
+  - The level-off arrow (where the aircraft will reach the FCU altitude or the altitude constraint, blue or magenta) and the start-of-climb arrow are drawn only with NAV engaged, with their tip on the route line at the distance flown along it. In HDG, TRK or any other lateral mode they are not drawn (they used to be projected along the present track, off the route). T/D and DECEL stay on the route as before.
 - **v0.25.5**: managed CLB acceleration, thrust in a descent on the path, smoother vertical speed.
   - Managed CLB accelerating (after SRS from the acceleration altitude, after the speed limit): +1200 ft/min while the aircraft accelerates, then the normal climb. +250 ft/min remains for OP CLB only. Take-off at OERK: SRS 2400 ft/min, CLB 1200 ft/min from 161 to 248 kt, then 2750 to 2800 ft/min at 250 kt.
   - Descent on the path (DES, V/S, FPA, clean to CONF 2): the aircraft follows the path, not the speed. The thrust is the share of the level thrust the drag still asks for at that rate of descent (level: all of it, 2000 ft/min clean: idle). V/S -1500 at 280 kt: N1 38 % (it was idle).
