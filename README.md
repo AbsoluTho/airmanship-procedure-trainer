@@ -4,7 +4,7 @@ An unofficial A320 **procedure** trainer that runs in the browser (iPad first). 
 
 Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator manuals. The navigation data was typed from charts for training only and must never be used for navigation.
 
-## Status: Phase 3 prototype (v0.25.1)
+## Status: Phase 3 prototype (v0.25.2)
 
 - **MCDU** (Thales FMS2 layout, per FCOM DSC-22): keyboard and scratchpad, INIT A, F-PLN with TMPY (ERASE/INSERT), LAT REV, DEPARTURE, AIRWAYS (with airway-to-airway intersection), ARRIVAL, waypoint insertion, CLR of waypoints and discontinuities.
 - **Exercise** OEJN to OETB: RWY 16C MIGD2E, L677 WEJ, V54 TBK, ILS 31 via D179O, ALTN OEMA, FL340, CI 20, with automatic progress checks.
@@ -19,13 +19,20 @@ Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator
   - 11 approaches: ILS 16L (IMBF 111.7), 16R (IWSR 108.1), 34L (IWMR 108.9), 34R (IABF 110.7); RNP 16L, 16R, 34L, 34R; VOR 16R, 34L and 34R (KFA 112.3, the 34R final offset on 326°). Vias from the IAFs of the KFA 14 DME arc (LOPOD, RESAN, KEBAP, LOSAX, DASLA, KFA; DAXAR and KAVIV for the 16 runways) and from DF603, DF604 and RESAN for the RNP approaches; published missed approaches to the RESAN and LOSAX holds.
   - 32 RNAV SIDs: EMUSA, MIBRA, PUSRA, TAYMA 2E/2F/2G/2H and LADNA, METLA, ROTEL, RYDAN 1E/2E, 1F/2F, 1G/2G, 1H/2H (one set per runway).
   - Fix positions from KFA radial/DME, the extended centrelines and the chart tracks and distances; the same fix reached by different procedures agrees within 0.6 NM (36 cross-checks printed by the generator).
+- **v0.25.2**: gear drag, OP CLB / OP DES speed changes, altitude capture, glide slope capture from above, heading turns.
+  - Landing gear down: 30 % more drag. Level deceleration with the gear down: clean or CONF 1 19.5 kt per NM (was 15), CONF 2 23.4 (was 18), CONF 3 or FULL 26 (was 20). The effect of the rate of descent is unchanged.
+  - After the touchdown the pitch comes down to 0 in 3 s (was 5 s).
+  - OP CLB with a speed more than 3 kt above: climb power, +250 ft/min while the aircraft accelerates, then the normal climb. OP DES with a speed more than 3 kt below: idle, -250 ft/min while it decelerates, then the normal idle descent.
+  - ALT*: the capture, and the thrust change, start at 10 % of the vertical speed before the altitude (3000 ft/min: 300 ft before; 1000 ft/min: 100 ft). The capture law is matched to that band, so the vertical speed reduces without a step.
+  - Glide slope from above: G/S stays armed and the descent mode in use (V/S, OP DES) goes on until the tip of the glide slope diamond touches the centre of the scale (one third of a dot, 0.13 degree above the path); then G/S*. It used to capture at once from anywhere above and dive at 1500 ft/min. From below unchanged.
+  - Heading and track selected: the aircraft rolls at 3 degrees per second to 27 degrees of bank (9 s), the turn rate follows the bank (2.2 degrees per second at 250 kt TAS, about 3.5 at 160 kt), and the roll-out starts early enough to level the wings on the heading. It used to turn at 3 degrees per second from the first instant. NAV turns unchanged.
 - **v0.25.1**: CONF 2 drag, idle thrust for speed reductions, take-off acceleration by weight, flare pitch.
   - CONF 2 has 20 % more drag, gear up or down: level deceleration 12 kt per NM gear up (was 10) and 18 gear down (was 15); 7 and 13 at 1000 ft/min down. The effect of the rate of descent is unchanged, so on speed in OP DES CONF 2 descends at 2400 ft/min.
   - Speed reductions with the auto-thrust on the speed (managed, for example the next configuration speed, or selected): more than 10 kt to lose, the thrust goes to idle and the speed comes back at the idle deceleration of the configuration. 3 kt before the target the thrust comes out of idle and builds up to the thrust that holds the speed; the last 3 kt go at 90 % of the idle deceleration.
   - A reduction of 10 kt or less never goes to idle: the thrust comes back about half-way and the speed is lost at 90 % of the idle deceleration.
   - Measured clean at 8000 ft: 230 to 200 kt, idle (N1 24 %) and 10 kt per NM down to 203.5 kt, then 9 to 9.5 kt per NM with the N1 rising to 57 %; 230 to 222 kt, 9.1 kt per NM, N1 40 % then rising.
   - Take-off roll from the aircraft: 0 to V1 in 40 s at 69 t, 1 s less per tonne lighter (39 s at 68 t, 30 s at 59 t), at a constant acceleration (V1 / that time); TOGA 13 % more. The same acceleration continues to VR. It was a fixed 4.37 kt/s (FLX) whatever the weight.
-  - Flare: from 10 ft radio height the pitch goes up to 7.5 degrees, reached at 5 ft and held to the touchdown; after the touchdown it comes down to 0 in 5 s (it was 2 degrees per second).
+  - Flare: from 10 ft radio height the pitch goes up to 7.5 degrees, reached at 5 ft and held to the touchdown; after the touchdown it comes down to 0 in 5 s (it was 2 degrees per second; 3 s from v0.25.2).
 - **v0.25.0**: pop-out windows for the MCDU, the levers and the landing gear panel. PC browsers.
   - The displays stay together in the page, which is the one displays window to put on a monitor or a television: EFIS control panel, FCU, PFD, ND, upper and lower ECAM.
   - The MCDU, the levers and the landing gear panel each open in a browser window of their own, to drag to another monitor and resize freely. Pop-out button (a square with an arrow leaving it): top left of the MCDU, and beside the LEVERS and LDG GEAR buttons of the ECAM.

@@ -137,9 +137,9 @@ async def run(url,b):
     assert await pg.evaluate("[!document.querySelector('#v-mcdu .side'),!!document.querySelector('#v-mcdu #deck'),OFPS.length,AOC_OFP.FAD122.rte,buildRoute(CO_RTES.OERKOEJN1).star].join()")=='true,true,12,OEJNOERK1,VEME1A','MCDU tab without the Exercise and How to cards; 12 OFP flights'
     # idle deceleration rules (kt per NM): gear up 10/5/0, gear down 15/10/5, landing configuration 20/15/10, 5 less for each further 1000 ft/min (the speed increases)
     r=await pg.evaluate("""(()=>{const g=FL.gear,c=FL.conf,o=[];for(const [gear,conf] of [[false,'0'],[false,'2'],[true,'2'],[true,'3'],[true,'FULL']]){FL.gear=gear;FL.conf=conf;
-      o.push([0,-1000,-2000,-2500,-3000].map(v=>idleDecel(v,200)).join('/'))}
+      o.push([0,-1000,-2000,-2500,-3000].map(v=>+idleDecel(v,200).toFixed(1)).join('/'))}
       FL.gear=false;FL.conf='0';o.push(+idleDecel(-2385,450).toFixed(1),Math.round(idleVs(5,200)),Math.round(idleVs(0,200)),Math.round(idleVs(-5,200)));FL.gear=g;FL.conf=c;return o.join(' ')})()""")
-    assert r=='10/5/0/-2.5/-5 12/7/2/-0.5/-3 18/13/8/5.5/3 20/15/10/7.5/5 20/15/10/7.5/5 3.4 1000 2000 3000',('idle deceleration rules',r)
+    assert r=='10/5/0/-2.5/-5 12/7/2/-0.5/-3 23.4/18.4/13.4/10.9/8.4 26/21/16/13.5/11 26/21/16/13.5/11 3.4 1000 2000 3000',('idle deceleration rules',r)
     # speed reduction with the auto-thrust: more than 10 kt, idle until 3 kt are left; 10 kt or less never idle
     r=await pg.evaluate("""(()=>{const k=Object.assign({},FL),o=[];Object.assign(FL,{active:true,ground:false,stage:'AIR',soe:false,thrIdle:false,conf:'0',gear:false,vs:0,gs:220,spdT:200});
       for(const v of [230,215,203.5,202,209,212]){FL.ias=v;const over=FL.ias-FL.spdT;if(over>10&&!FL.thrIdle)FL.thrIdle=true;else if(over<=3)FL.thrIdle=false;o.push(FL.thrIdle?'I':'-')}
@@ -172,7 +172,7 @@ async def run(url,b):
       LV.spb=0.5;FCU.ap1=true;o.push(row());LV.spb=1;o.push(row());FCU.ap1=false;o.push(row(),Math.round(idleVs(0,200)));
       FL.conf='FULL';FL.gear=true;o.push(row());FL.gear=k.g;FL.conf=k.c;FL.active=k.a;FL.ground=k.gr;FCU.ap1=k.ap1;FCU.ap2=k.ap2;
       LV.spb=0;lever('spb','0.7');o.push(LV.spb);lever('spb','1.4');o.push(LV.spb);lever('spb',0.01);o.push(LV.spb);LV.spb=k.sb;return o.join(' ')})()""")
-    assert r=='15/10/5/0/-5 15/10/5/0/-5 20/15/10/5/0 4000 20/15/10/5/0 0.7 0.7 0',('speed brake rules',r)
+    assert r=='15/10/5/0/-5 15/10/5/0/-5 20/15/10/5/0 4000 26/21/16/11/6 0.7 0.7 0',('speed brake rules',r)
     # levers: speed brake marks and flap numbers are the buttons; the landing gear panel opens from LDG GEAR over the upper ECAM
     await pg.evaluate("window.__ecam.show(true)");await pg.click('#lvBtn');await pg.click('#lgBtn')
     r=await pg.evaluate("""(()=>{const q=s=>document.querySelector(s),o=[];
@@ -398,11 +398,14 @@ async def run(url,b):
         if(!d.sm&&FL.ver==='ALT'&&Math.abs(FL.alt-7000)<30){FCU.alt=7800;fcuPush('alt',true);d.sm=FL.t}
         if(d.sm&&!d.smv&&FL.t-d.sm>20&&FL.ver==='OP CLB'){out.small=Math.round(FL.vs);d.smv=1}
         if(d.smv&&!d.big&&FL.ver==='ALT'){FCU.spd=300;FCU.spdMgd=false;FCU.mach=false;FCU.alt=34000;fcuPush('alt',true);d.big=FL.t}
-        if(d.big&&!d.bigv&&Math.abs(FL.ias-300)<3){out.acc=Math.round(FL.t-d.big);out.big=Math.round(FL.vs);out.fma=FL.fma.c1[0][0]+'/'+FL.fma.c2[0][0];d.bigv=1}
+        if(d.big&&!d.mid&&FL.t-d.big>8){out.accVs=Math.round(FL.vs);d.mid=1}   /* accelerating: +250 ft/min */
+        if(d.big&&!d.at&&Math.abs(FL.ias-300)<3){out.acc=Math.round(FL.t-d.big);d.at=FL.t}
+        if(d.at&&!d.bigv&&FL.t-d.at>=10){out.big=Math.round(FL.vs);out.fma=FL.fma.c1[0][0]+'/'+FL.fma.c2[0][0];d.bigv=1}
         if(d.big&&FCU.mach){out.mach=[FCU.spd,Math.round(FL.alt)];break}}
       window.__flight('reset');FCU.spdMgd=true;FCU.mach=false;return out})()""")
     assert r.get('small') is not None and 900<=r['small']<=1100,f'OP CLB under 1200 ft: V/S 1000 ({r})'
     assert r.get('big',0)>1500 and r.get('fma')=='THR CLB/OP CLB',f'OP CLB: climb thrust, speed on elevator ({r})'
+    assert r.get('accVs')==250,f'OP CLB accelerating: +250 ft/min ({r})'
     assert r.get('mach') and abs(r['mach'][0]-0.78)<0.03 and 25000<r['mach'][1]<33000,f'selected SPD to MACH at the crossover ({r})'
     # ---- third flight: HOLD at LABUN (flown, IMM EXIT), OFFSET R10 in cruise, NEW DEST ----
     P=lambda x:pg.evaluate('k=>window.__press(k)',x)
@@ -454,7 +457,7 @@ async def run(url,b):
       let n=0,st=0,o={};const id=()=>S.active.legs[FL.fromIx].id;
       while(n<3000&&st<4){step(0.5);n++;if(FL.alt-groundElev()>1500&&!FCU.ap1)fcuButton('ap1');
         if(st===0&&FL.alt>2500){st=1;o.ca=id();newDest(S.active,0,'OEJN');const q=S.active;q.legs[idxK(q,'dest')].rwy='34R';q.appr='ILS34RZ';q.via='SOLOG';buildArr(q);normalize(q);FCU.hdgMgd=false;FCU.hdg=66;FL.lat='HDG'}
-        if(st===1&&gc(FL.pos,DB.apt.OEJN.rwy['34R'].pos)>6){st=2;FCU.hdg=156}
+        if(st===1&&gc(FL.pos,DB.apt.OEJN.rwy['34R'].pos)>6&&Math.abs(((hdgNow()-66+540)%360)-180)<3){st=2;FCU.hdg=156}   /* on heading 066 first (turns at 27 degrees bank take time) */
         if(st===2&&FL.pos[0]<DB.wpt.PAXOS[0]-0.03){st=3;o.abeam=id();FCU.hdg=246}
         if(st===3&&brg(FL.pos,DB.wpt.PAXOS)>275){st=4;directTo('PAXOS');S.sp='';P.DIR.lsk('R',1);P.DIR.lsk('R',6);o.fp=S.active.legs.slice(FL.fromIx+1).map(l=>l.id||l.k).slice(0,4).join(' ');step(0.5);o.from=S.active.legs[FL.fromIx].id+' '+FL.lat+'/'+FL.latArm}}
       window.__flight('reset');PM_AUTO=pm;S.active=A0;S.tmpy=null;FCU.hdgMgd=true;return o})()""")
@@ -559,6 +562,7 @@ async def run(url,b):
     r=await pg.evaluate("""(()=>{window.__flight('start');let n=0,ap=0,o={};while(FL.stage!=='STOP'&&n<60000){step(0.5);if(n%10===0)setFma();n++;
         if(!ap&&FL.alt-groundElev()>1200){fcuButton('ap1');ap=1}if(FL.ver==='ALT'&&FL.alt<8000&&!o.d){FCU.alt=34000;fcuPush('alt',false)}
         if(S.phase==='CRZ'&&!o.d&&FL.s>FL.td-30){FCU.alt=7000;fcuPush('alt',false);o.d=1}
+        if(o.d===1&&S.phase==='APPR'){FCU.alt=5000;fcuPush('alt',false);o.d=2}   /* approach altitude, so that the glide slope is met from below or at its centre (no capture from far above) */
         if(S.phase==='APPR'&&FL.path.sThr-FL.s<20)FCU.appr=true;if(FL.ver==='G/S'&&!o.g){FCU.alt=6000;o.g=1}if(o.g&&FL.alt-groundElev()<500)break}
       window.__flight('ga');setFma();
       const modes=()=>[FL.fma.c1.map(x=>x[0]).join(' '),FL.fma.c2[0][0],FL.fma.c3[0][0]];
