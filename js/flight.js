@@ -133,7 +133,7 @@ function flightStart(){const miss=flightReady();if(miss.length)return miss;vFill
   const P=buildPath(),o=DB.apt[orig()],r=o.rwy[S.active.rwy],tr=r.crs+(o.var||0);
   Object.assign(FL,{active:true,running:true,t:0,utc0:Date.now(),path:P,s:0,seg:1,xtk:0,pos:r.pos,hdgT:tr,trkT:tr,roll:0,pitch:0,alt:r.tdze??o.elev,vs:0,ias:0,tas:0,gs:0,mach:0,
     ground:true,lat:'RWY',latArm:FCU.hdgMgd&&!S.active.noSid&&!(S.active.legs[1]&&S.active.legs[1].k==='disc')?'NAV':null,ver:'SRS',verArm:[FCU.lvlch?'CLB':'OP CLB'],thr:'IDLE',conf:['0','1+F','2','3','FULL'][LV.flaps],gear:true,gearPos:1,gaFlap:false,pmGearT:null,pmF3T:null,revDone:false,
-    fob:S.fuel.block-(S.fuel.taxi??0.2),fromIx:0,loT:null,spdLimOn:false,eoEng:null,crzDes:false,ldgSeq:0,gearT:null,f3T:null,inHold:null,holdExit:null,hsActive:null,cst:null,acc:0,accT:0,soe:false,opSmall:false,spdIsMach:false,capAlt:null,altHold:null,fmaT:{},loc:false,gsCap:false,tdReached:false,stage:'LINEUP',lvrT:null});LV.thr='IDLE';LV.gear='DOWN';LV.decel=false;LV.m1=LV.m2=true;
+    fob:S.fuel.block-(S.fuel.taxi??0.2),fromIx:0,loT:null,spdLimOn:false,thrIdle:false,toAcc:0,p10:null,tdPitch:null,tdT:null,eoEng:null,crzDes:false,ldgSeq:0,gearT:null,f3T:null,inHold:null,holdExit:null,hsActive:null,cst:null,acc:0,accT:0,soe:false,opSmall:false,spdIsMach:false,capAlt:null,altHold:null,fmaT:{},loc:false,gsCap:false,tdReached:false,stage:'LINEUP',lvrT:null});LV.thr='IDLE';LV.gear='DOWN';LV.decel=false;LV.m1=LV.m2=true;
   FCU.athr=true;FL.td=P.sThr-tdDist();FL.sig=planSig();S.phase='TAKEOFF';setFma();flightTick(0);return[]}
 function q2conf(){const f=S.perf.flaps;return f===1?'1+F':String(f||1)}
 
@@ -205,8 +205,10 @@ const DECEL_NM=25;
    steeper, the speed increases even at idle, in proportion to the rate of descent: 5 kt per NM for each 1000 ft/min more
    (gear up: 5 at 3000 ft/min, 10 at 4000 ft/min).
    The rates of descent are those of a ground speed of 250 kt or less; faster, the same descent gradient counts
-   (a 3 degree path gives the same deceleration at 250 kt and at cruise speed). In a climb the speed is lost faster. */
-function idleBase(){return 10+(FL.gear?(FL.conf==='3'||FL.conf==='FULL'?10:5):0)}
+   (a 3 degree path gives the same deceleration at 250 kt and at cruise speed). In a climb the speed is lost faster.
+   CONF 2 has 20 % more drag, and the landing gear down 30 % more again (the effect of the rate of descent is unchanged):
+   level, gear down, clean or CONF 1 19.5, CONF 2 23.4, CONF 3 or FULL 26. */
+function idleBase(){return(10+(FL.gear?(FL.conf==='3'||FL.conf==='FULL'?10:5):0))*(FL.conf==='2'?1.2:1)*(FL.gear?1.3:1)}
 /* speed brakes actually extended (0 to 1) for the lever position: not in CONF FULL (inhibited), half at the most with the autopilot engaged */
 function spbEff(){if(!FL.active||FL.ground||FL.conf==='FULL')return 0;return Math.min(LV.spb||0,FCU.ap1||FCU.ap2?0.5:1)}
 /* speed brakes add drag: half 50 % more, full 100 % more than the drag of the configuration (the level deceleration), so with full speed brakes
@@ -324,7 +326,9 @@ function step(dt){if(S.tmpy&&typeof ppHoldSync==='function')ppHoldSync(S.tmpy);c
   for(const pt of P.pts)if(pt.ix!=null&&pt.s<=FL.s+0.05&&pt.ix>FL.fromIx)FL.fromIx=pt.ix;
   if(FL.fromIx!==fi&&S.page==='FPLN'&&!S.secMode)S.fpOff=0;   /* waypoint sequenced: the F-PLN starts again at the FROM line */
 
-  if(FL.stage==='ROLL'){FL.ias+=(LV.thr==='TOGA'?4.94:4.37)*dt;if(FL.ias>=q.vr){FL.pitch=Math.min(15,FL.pitch+3*dt);if(FL.ias>=q.vr+4){FL.ground=false;FL.stage='AIR';FL.loT=FL.t}}}
+  /* take-off roll (measured on the aircraft): 0 to V1 in 40 s at 69 t with FLX thrust, 1 s less per tonne lighter (39 s at 68 t, 30 s at 59 t),
+     at a constant acceleration V1 / time; TOGA 13 % more. The same acceleration continues to VR. */
+  if(FL.stage==='ROLL'){const toT=Math.max(25,Math.min(45,40-(69-gwNowF()))),acc=(q.v1||130)/toT*(LV.thr==='TOGA'?1.13:1);FL.toAcc=acc;FL.ias+=acc*dt;if(FL.ias>=q.vr){FL.pitch=Math.min(15,FL.pitch+3*dt);if(FL.ias>=q.vr+4){FL.ground=false;FL.stage='AIR';FL.loT=FL.t}}}
   const ga=S.phase==='GA',thrRed=ga?(p2.gaThr??defGa()):(q.thr??defRed()),acc=ga?(p2.gaAcc??defGa()):(q.acc??defRed());
   if(FL.thr==='GA SOFT'&&FL.eoEng)FL.thr='TO';
   if((FL.thr==='TO'||FL.thr==='GA SOFT')&&!FL.ground&&FL.alt>=thrRed){FL.thr='LVR';FL.lvrT=FL.t}
@@ -352,7 +356,8 @@ function step(dt){if(S.tmpy&&typeof ppHoldSync==='function')ppHoldSync(S.tmpy);c
     else if(FL.lat==='GA TRK')trkT=FL.gaTrk;
     else if(['LOC*','LOC','LAND'].includes(FL.lat)&&lg){const d=destRwy(),Ll=Math.max(0.5,Math.min(2,FL.gs*12/3600)),tgt=dst(d.r.pos,lg.crs+180,Math.max(-2,lg.along-Ll));trkT=brg(FL.pos,tgt)}   /* tighter than NAV: 12 s ahead on the course */
     /* ---- vertical ---- */
-    const capBand=Math.max(80,Math.abs(FL.vs)*0.12),CK=cstrNow();FL.cst=CK;
+    const capBand=Math.max(50,Math.abs(FL.vs)*0.10),   /* ALT*: thrust change and capture start at 10 % of the vertical speed before the altitude (3000 ft/min: 300 ft) */
+      CK=cstrNow();FL.cst=CK;
     const gp=!FL.ground&&(['TAKEOFF','CLB','GA'].includes(S.phase)||CLIMBING.includes(FL.ver)||FL.ver==='SRS')?1-0.5*(FL.gearPos??1):1;FL.gp=gp;   /* gear drag follows the gear position: half the climb rate and acceleration with the gear down, full once up and locked, gradual in transit */
     if(FL.ver==='SRS'){const rate=FL.thr==='GA SOFT'?2000:2400;
       spdT=ga?FL.gaSpd:q.v2+10;vsT=(ga?Math.min(rate,FL.vs+600):rate)*gp;
@@ -369,7 +374,7 @@ function step(dt){if(S.tmpy&&typeof ppHoldSync==='function')ppHoldSync(S.tmpy);c
       if(fl!=null&&FL.alt-fl<capBand){FL.ver='ALT CST*';FL.capAlt=fl;FL.verArm=['DES']}else if(fl==null&&FL.alt-A<capBand)FL.ver='ALT*'}
     if(FL.ver==='V/S'||FL.ver==='FPA'){vsT=FL.ver==='FPA'?Math.tan((FCU.fpa||0)*D2R)*FL.gs*101.27:(FCU.vsVal||0);
       if((vsT>0&&A>FL.alt&&A-FL.alt<capBand)||(vsT<0&&A<FL.alt&&FL.alt-A<capBand))FL.ver='ALT*'}
-    if(FL.ver==='ALT*'){if(FL.capAlt==null)FL.capAlt=A;const ca=FL.capAlt;vsT=Math.max(-Math.abs(FL.vs)-200,Math.min(Math.abs(FL.vs)+200,(ca-FL.alt)*5));
+    if(FL.ver==='ALT*'){if(FL.capAlt==null)FL.capAlt=A;const ca=FL.capAlt;vsT=Math.max(-Math.abs(FL.vs)-200,Math.min(Math.abs(FL.vs)+200,(ca-FL.alt)*10));   /* capture law matched to the 10 % band: no step in the vertical speed */
       if(Math.abs(ca-FL.alt)<25){FL.alt=ca;FL.altHold=ca;FL.ver='ALT';FL.capAlt=null;FL.verArm=FL.verArm.filter(x=>x==='DES'||x==='G/S')}}else if(FL.ver!=='ALT CST*')FL.capAlt=null;
     /* ALT CST*, ALT CST: level at the constraint; the climb or descent resumes once its waypoint is sequenced */
     if(FL.ver==='ALT CST*'){const ca=FL.capAlt??FL.alt;vsT=Math.max(-Math.abs(FL.vs)-200,Math.min(Math.abs(FL.vs)+200,(ca-FL.alt)*5));
@@ -393,7 +398,10 @@ function step(dt){if(S.tmpy&&typeof ppHoldSync==='function')ppHoldSync(S.tmpy);c
     const gsArmed=FCU.appr&&lg;
     if(gsArmed&&!FL.gsCap&&!FL.verArm.includes('G/S')&&!['G/S*','G/S','LAND','FLARE'].includes(FL.ver))FL.verArm=[...FL.verArm.filter(x=>x!=='DES'),'G/S'];
     if(!gsArmed&&FL.verArm.includes('G/S'))FL.verArm=FL.verArm.filter(x=>x!=='G/S');
-    if(gsArmed&&FL.verArm.includes('G/S')&&FL.loc&&lg.along>0.5&&lg.along<12&&gsAlt(lg.along)<=FL.alt+40){FL.ver='G/S*';FL.verArm=[];FL.gsCap=true;FL.gssT=FL.t}
+    /* G/S*: from below 40 ft under the beam; from above only when the tip of the glide slope diamond touches the centre of the scale (diamond half
+       height 12 px, dots 36 px apart, 0.4 degree per dot: one third of a dot, 0.13 degree above the path); until then the descent mode in use goes on */
+    const gsDev=lg?FL.alt-gsAlt(lg.along):0,gsTop=lg?Math.max(40,lg.along*6076*Math.tan(0.4/3*D2R)):40;
+    if(gsArmed&&FL.verArm.includes('G/S')&&FL.loc&&lg.along>0.5&&lg.along<12&&gsDev>=-40&&gsDev<=gsTop){FL.ver='G/S*';FL.verArm=[];FL.gsCap=true;FL.gssT=FL.t}
     if(['G/S*','G/S','LAND','FLARE'].includes(FL.ver)){const ga=gsAlt(lg?lg.along:dtg);vsT=Math.max(-1500,(ga-FL.alt)*4-318*FL.gs/60);
       if(FL.ver==='G/S*'&&Math.abs(ga-FL.alt)<30&&FL.t-FL.gssT>8)FL.ver='G/S';
       if(FL.ver==='G/S'&&agl()<400&&FL.lat==='LOC'){FL.ver='LAND';FL.lat='LAND'}
@@ -410,7 +418,8 @@ function step(dt){if(S.tmpy&&typeof ppHoldSync==='function')ppHoldSync(S.tmpy);c
       else{const lim=spdLim('clb'),dl=spdLim('des'),mmo=iasOf((S.phase==='DES'?mgd.desM():mgd.crzM())*sos(FL.alt),FL.alt);
         /* managed: the target is the programmed speed until it equals the programmed Mach, then the Mach (and the reverse in the descent) */
         if(S.phase==='CLB'||S.phase==='TAKEOFF'){const v=FL.alt<lim.alt?lim.spd:mgd.clb();mm=FL.ver!=='EXP CLB'&&mmo<v;spdT=FL.ver==='EXP CLB'?sp.GD:Math.min(v,mmo)}
-        else if(S.phase==='CRZ'){spdT=mmo;mm=true;const rm=typeof rtaMach==='function'?rtaMach(FL.alt):null;if(rm){spdT=iasOf(rm*sos(FL.alt),FL.alt);mm=true}}
+        else if(S.phase==='CRZ'){spdT=mmo;mm=true;if(mgd.clb()<mmo){spdT=mgd.clb();mm=false}   /* low cruise level (FL170, FL240): the ECON speed, not the Mach (0.77 at FL170 would be 360 kt, above VMO) */
+          const rm=typeof rtaMach==='function'?rtaMach(FL.alt):null;if(rm){spdT=iasOf(rm*sos(FL.alt),FL.alt);mm=true}}
         else if(S.phase==='DES'){const em=iasOf(0.80*sos(FL.alt),FL.alt);/* the speed limit is started early enough to be met at the limit altitude, and kept once started (a level-off on the way does not cancel it) */
           if(FL.alt<dl.alt+Math.max(1000,decelLead(FL.ias-dl.spd)*Math.max(0,-FL.vs)*60/Math.max(100,FL.gs)+300))FL.spdLimOn=true;else if(FL.alt>dl.alt+6000)FL.spdLimOn=false;
           const v=FL.ver==='EXP DES'?340:FL.spdLimOn?dl.spd:mgd.des();
@@ -439,11 +448,11 @@ function step(dt){if(S.tmpy&&typeof ppHoldSync==='function')ppHoldSync(S.tmpy);c
     /* the ground: below the runway elevation away from the runway (or gear up there) the flight ends */
     if(FL.alt<gnd-1&&FL.vs<0&&FL.ver!=='FLARE'){const rw=dtg<1.5&&dtg>-1.5&&FL.gearPos>=1;if(rw){FL.ver='FLARE'}else{FL.alt=gnd;FL.vs=0;FL.ias=0;FL.ground=true;FL.stage='STOP';S.phase='GROUND CONTACT';FL.running=false;S.msg='GROUND CONTACT'}}
     if(FL.ver==='FLARE'&&agl()<=1&&FL.vs<=0&&FL.gearPos<1){FL.ground=true;FL.alt=gnd;FL.vs=0;FL.ias=0;FL.stage='STOP';S.phase='GEAR UP LANDING';FL.running=false;S.msg='GEAR NOT DOWN AT TOUCHDOWN'}
-    if(FL.ver==='FLARE'&&agl()<=1&&FL.vs<=0&&FL.gearPos>=1){FL.ground=true;FL.stage='ROLLOUT';FL.ver='ROLL OUT';FL.lat='ROLL OUT';FL.alt=gnd;FL.vs=0;FCU.ap1=FCU.ap2=false;FCU.athr=false}}
+    if(FL.ver==='FLARE'&&agl()<=1&&FL.vs<=0&&FL.gearPos>=1){FL.ground=true;FL.stage='ROLLOUT';FL.ver='ROLL OUT';FL.lat='ROLL OUT';FL.alt=gnd;FL.vs=0;FCU.ap1=FCU.ap2=false;FCU.athr=false;FL.tdPitch=Math.max(0.5,FL.pitch);FL.tdT=FL.t}}
   if(FL.stage==='ROLLOUT'){const idle=['IDLE','REVIDLE','REVMAX'].includes(LV.thr),ab=idle&&LV.askid&&LV.abrk;
     let dec=!idle?0.6:ab?{LO:2.5,MED:3.7,MAX:4.6}[LV.abrk]:LV.askid?(FL.ias>40?3:2.3):1.9;if(ab&&FL.ias<40)dec=Math.min(dec,2.7);   /* gentler roll-out (v0.15.7) */
     if(LV.thr==='REVMAX'&&FL.ias>70)dec+=1.1;else if(LV.thr==='REVIDLE'&&FL.ias>70)dec+=0.3;LV.decel=!!ab&&FL.ias>2;
-    FL.ias=Math.max(0,FL.ias-dec*dt);FL.pitch=Math.max(0,FL.pitch-2*dt);
+    FL.ias=Math.max(0,FL.ias-dec*dt);FL.pitch=Math.max(0,FL.pitch-(FL.tdPitch||7.5)/3*dt);   /* nose down: from the touchdown pitch to 0 in 3 s */
     const lg=locGeo(FL.pos),d=destRwy();trkT=brg(FL.pos,dst(d.r.pos,lg.crs+180,lg.along-1));if(FL.ias<=0){FL.stage='STOP';S.phase='DONE';FL.running=false}}
   if(FL.stage==='ROLL'){const o=DB.apt[orig()],r=o.rwy[S.active.rwy];trkT=r.crs+(o.var||0)}
 
@@ -454,29 +463,47 @@ function step(dt){if(S.tmpy&&typeof ppHoldSync==='function')ppHoldSync(S.tmpy);c
     const cap=climb?Math.max(400,(3300-FL.alt*0.06)*(64/gw))*(FL.eoEng?0.42:1)-cfgD:-(600+Math.max(0,FL.ias-200)*12+FL.alt*0.035)-cfgD;
     const g2=FL.gp||1,cap2=climb?cap*g2:cap;let a=Math.max(-1,Math.min(1,(spdT-FL.ias)*0.12))*(climb?g2:1),v=cap2-k*a;
     if(climb&&v<0){v=0;a=cap2/k}
+    /* open climb with a speed well above (more than 3 kt): climb power, +250 ft/min while it accelerates, the rest of the thrust for the speed */
+    if(climb&&spdT-FL.ias>3&&cap2>250){v=250;a=(cap2-250)/k}
     /* idle descent: the rate of descent that gives the deceleration (or acceleration) wanted; the speed then follows the rate actually flown */
     /* speed target above the speed (speed selected up, EXP DES): the nose goes down, the rate of descent increases and the speed increases in
        proportion to it; OP DES up to 10 kt per NM (4000 ft/min clean), EXP DES up to 15 kt per NM (5000 ft/min clean) */
-    if(!climb){v=-idleVs(Math.max(FL.ver==='EXP DES'?-15:-10,FL.ias-spdT),FL.gs);a=-idleDecel(FL.vs,FL.gs)*FL.gs/3600}
+    if(!climb){v=-idleVs(Math.max(FL.ver==='EXP DES'?-15:-10,FL.ias-spdT),FL.gs);a=-idleDecel(FL.vs,FL.gs)*FL.gs/3600;
+      /* open descent with a speed well below (more than 3 kt): idle, -250 ft/min while it decelerates */
+      if(FL.ias-spdT>3)v=-250}
     FL.accT=a;vsT=v}
   expedSync();FL.spdT=spdT;vsT=Math.max(-6000,Math.min(6000,vsT));
   /* ---- dynamics ---- */
   if(FL.stage==='AIR'){const g3=FL.gp||1;/* thrust at idle sets how fast the speed can come back: never faster than the idle deceleration of the configuration and rate of descent */
     const idle=FL.ver==='FLARE'||FL.ver==='SRS'?-9:-idleDecel(FL.vs,FL.gs)*FL.gs/3600;
-    FL.ias+=FL.soe?FL.accT*dt:Math.max(idle*dt,Math.max(-1.6*dt,Math.min(1.6*g3*dt,spdT-FL.ias)));
+    /* speed reduction with the auto-thrust on the speed (managed or selected): more than 10 kt to lose, the thrust goes to idle and the speed
+       comes back at the idle deceleration; 3 kt before the target the thrust comes out of idle and the last knots go at 90 % of the idle
+       deceleration. A reduction of 10 kt or less never goes to idle: 90 % of the idle deceleration throughout. */
+    if(!FL.soe){const over=FL.ias-spdT;if(over>10&&!FL.thrIdle)FL.thrIdle=true;else if(over<=3)FL.thrIdle=false}else FL.thrIdle=false;
+    const dRate=FL.soe?idle:idle*(FL.thrIdle||idle>=0?1:0.9);
+    FL.ias+=FL.soe?FL.accT*dt:Math.max(dRate*dt,Math.max(-1.6*dt,Math.min(1.6*g3*dt,spdT-FL.ias)));
     /* lift-off: the rate of climb builds up along an S curve (slow, faster, slow) and reaches its target 5 s after lift-off */
     const lo=FL.ver==='SRS'&&S.phase!=='GA'&&FL.loT!=null?(FL.t-FL.loT)/5:1;
     if(lo<1){const x=Math.max(0,lo);FL.vs=vsT*x*x*(3-2*x)}else FL.vs+=Math.max(-600*dt,Math.min(600*dt,vsT-FL.vs));
     FL.alt+=FL.vs/60*dt}
   else if(FL.ground)FL.alt=gnd;
   FL.tas=tasOf(FL.ias,FL.alt);FL.gs=FL.ground?FL.ias:FL.tas;FL.mach=FL.tas/sos(FL.alt);
-  const dh=((trkT-FL.trkT+540)%360)-180,rate=Math.max(-3,Math.min(3,dh*0.6));FL.trkT=(FL.trkT+rate*dt+360)%360;
+  const dh=((trkT-FL.trkT+540)%360)-180,selTurn=!FL.ground&&FL.stage==='AIR'&&(FL.lat==='HDG'||FL.lat==='TRK');
+  /* heading (or track) selected: the aircraft rolls at 3 degrees per second to 27 degrees of bank and the turn rate follows the bank
+     (g tan(bank) / TAS), so the turn starts slowly; the roll-out starts early enough to level the wings on the selected heading */
+  let rate;if(selTurn){const tas=Math.max(80,FL.tas)*0.5144,rOf=b=>9.81*Math.tan(Math.abs(b)*D2R)/tas/D2R,lead=rOf(FL.roll)*Math.abs(FL.roll)/6;
+      const want=Math.sign(dh)*Math.min(27,Math.max(0,Math.abs(dh)-lead)*10);FL.roll+=Math.max(-3*dt,Math.min(3*dt,want-FL.roll));
+      rate=Math.sign(FL.roll)*rOf(FL.roll);if(Math.abs(dh)<0.3&&Math.abs(FL.roll)<0.5){rate=dh/Math.max(dt,0.1);FL.roll=0}}
+    else rate=Math.max(-3,Math.min(3,dh*0.6));
+  FL.trkT=(FL.trkT+rate*dt+360)%360;
   /* wind of the OFP: the guidance flies ground tracks, so the heading carries the drift and the ground speed the head or tail wind */
   FL.wind=FL.ground?{dir:0,spd:0}:windAt(FL.pos,FL.alt,FL.alt-groundElev());{const c=crabOf(FL.trkT,FL.tas,FL.wind);FL.hdgT=c.hdg;if(!FL.ground)FL.gs=c.gs}
-  const bank=FL.ground?0:Math.max(-30,Math.min(30,Math.atan(rate*D2R*FL.tas*0.5144/9.81)/D2R));FL.roll+=Math.max(-5*dt,Math.min(5*dt,bank-FL.roll));
+  if(!selTurn){const bank=FL.ground?0:Math.max(-30,Math.min(30,Math.atan(rate*D2R*FL.tas*0.5144/9.81)/D2R));FL.roll+=Math.max(-5*dt,Math.min(5*dt,bank-FL.roll))}
   FL.pos=dst(FL.pos,FL.trkT,FL.gs*KT2NMS*dt);
   if(FL.stage==='AIR'){const fpa=Math.atan2(FL.vs,Math.max(60,FL.gs)*101.27)/D2R,aoa=FL.conf==='0'?2.5:FL.conf==='FULL'?4:3.5;
-    {const pr=FL.ver==='SRS'&&S.phase!=='GA'?3:2;   /* rotation: 3 degrees per second, 0 to 15 degrees in 5 s */
+    /* flare: from 10 ft radio height the pitch goes up to 7.5 degrees, reached at 5 ft and held to the touchdown */
+    const ra=agl();if(FL.ver==='FLARE'&&ra<=10){if(FL.p10==null)FL.p10=FL.pitch;FL.pitch=FL.p10+(7.5-FL.p10)*Math.min(1,Math.max(0,(10-ra)/5))}
+    else{if(FL.ver!=='FLARE')FL.p10=null;const pr=FL.ver==='SRS'&&S.phase!=='GA'?3:2;   /* rotation: 3 degrees per second, 0 to 15 degrees in 5 s */
     FL.pitch+=Math.max(-2*dt,Math.min(pr*dt,(FL.ver==='SRS'?15:fpa+aoa)-FL.pitch))}}
   const ff=FL.stage==='ROLL'||FL.thr==='TO'?5.6:CLIMBING.includes(FL.ver)||FL.ver==='SRS'?3.2:DESCENDING.includes(FL.ver)?0.7:FL.ground?0.4:FL.alt>20000?PM.ff(I().crz,I().ci)*PM.wf(gwNowF()):2.4;
   FL.fob=Math.max(0,FL.fob-ff*dt/3600);FL.t+=dt;

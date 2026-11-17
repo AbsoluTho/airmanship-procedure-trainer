@@ -32,6 +32,8 @@ const AWY={L677:['MIGDA','RIDEP','YEN','RAGNO','ORGIM','TUGRU','WEJ'],V54:['WEJ'
   N112:['OTISU','RAPLO','GETOT'],Q212:['GETOT','SIVAG','MEMGO','REXOV','KSA'],
   G782:['KSA','DURMA','UMASU','RGB','TUKVU','ASMUN','DFN','BOPEV','VEMEM'],
   V31:['EGPOB','DATVA','BHA'],V40:['BHA','EMEKO','KEDAS','ABH'],
+  /* from the OFPs FAD13 / FAD14 (Riyadh - Abha): the segments flown, in the order of the OFP */
+  Z414:['MERVI','ASMIS','PUSUM','OBSAM','RAKLI','SENRA','EMEKO'],H75:['ABH','DUMSI','IRBAB'],Q313:['IRBAB','KATIX','ALMIN','EGMOT','ULDUP','DANOM','UMRAN','MOBAG'],
   /* B544: the ABH-BOSUT-JDW part and the NOMDA-SISUD part north of Jeddah, joined at JDW */
   B544:['ABH','ITESO','RABGO','QUN','TORBI','LOVIL','BOSUT','JDW','NOMDA','RBG','ASLAD','SISUD'],
   T510:['WEJ','KULKI','VELEK','VEDAX','TORTI','RBG'],A424:['JDW','DATAP','RULEB','ORMEK','DEGVU','PMA'],

@@ -103,11 +103,13 @@ async def run(url,b):
     assert cr==['EGREP KSA MUSRI KFA DEMKA HSA ODBAX ODBAX',False,'ITSE1H','MA443 OBTOX CF35 FF35 D060P GERIR',469,'OEJNOEAH1',64,0],f'OFP company routes, Dammam SIDs, OFP positions: {cr}'
     # FLIGHT PLANS tab, OFP winds, CO RTES list, ALTN F-PLN, short approach names, arrow scrolling
     fp=await pg.evaluate("""(()=>{const A0=S.active,I0=clone(S.init),pg0=S.page,ar0=S.arr,out={};document.querySelector('.tab[data-v="ofp"]').click();
-      out.list=[...document.querySelectorAll('.ofp-item .od')].map(x=>x.textContent).slice(0,2).join();document.querySelector('[data-ofp="FAD225"]').click();
+      OV.from=null;OV.flt=null;ofpRender();out.froms=[...document.querySelectorAll('[data-ofp-from]')].map(x=>x.dataset.ofpFrom).join();
+      document.querySelector('[data-ofp-from="OERK"]').click();out.list=[...document.querySelectorAll('.ofp-item .od')].map(x=>x.textContent).join();document.querySelector('[data-ofp="FAD225"]').click();
       const t=document.querySelector('#ofpView').textContent;out.detail=['OERK - OEMA','OERKOEMA1','FL340 / -44','51.7 / 2','HD027','SISUD B544 NOMDA','PEGUR Z712 WEJ V54 TBK','325/017'].filter(x=>!t.includes(x));
       out.all=OFPS.map(o=>{OV.flt=o.flt;ofpRender();const n=document.querySelectorAll('#ofpView .sec').length,t=document.querySelector('#ofpView').textContent;return n===4+o.altn.length&&!/undefined|NaN|null|could not/.test(t)?'':o.flt}).filter(Boolean).join();OV.flt='FAD225';ofpRender();
       const sb=document.querySelector('[data-sec="initb"]');sb.querySelector('.sec-t').click();out.sec=[sb.classList.contains('shut'),sb.querySelector('.sec-t').textContent,getComputedStyle(sb.querySelector('.sec-b')).display];sb.querySelector('.sec-t').click();out.sec.push(sb.classList.contains('shut'),document.querySelectorAll('#ofpView .sec').length);
-      document.querySelector('[data-ofp-back]').click();document.querySelector('.tab[data-v="mcdu"]').click();
+      document.querySelector('[data-ofp-back]').click();out.back=[...document.querySelectorAll('.ofp-item .od')].length+':'+!!document.querySelector('[data-ofp-froms]');document.querySelector('[data-ofp-froms]').click();out.back+=':'+document.querySelectorAll('[data-ofp-from]').length;
+      document.querySelector('.tab[data-v="mcdu"]').click();
       WX.on=true;applyRoute('OERKOEMA1',CO_RTES.OERKOEMA1);out.alt=altRte().wpts.join(' ')+'/'+altRte().via.RBG+'/'+fplnRows(S.active).filter(r=>r.k==='altwpt').length;
       const w=windAt(DB.wpt.GIDUV,34000,30000,'CRZ'),c=crabOf(267+3,449,w);out.wind=[Math.round(w.dir),Math.round(w.spd),Math.round(c.gs),Math.round(trkOfHdg(c.hdg,449,w))];
       const o=DB.apt.OERK,d=DB.apt.OEMA,lo=windAt(o.pos,o.elev+500,500,'TAKEOFF'),ld=windAt(d.pos,d.elev+500,500,'APPR');
@@ -118,7 +120,7 @@ async def run(url,b):
       out.up=wxUplink()&&[S.wind.clb.length,S.wind.crz.map(x=>x.alt/100).join(),S.wind.des[0].alt];
       S.arrAlt=false;S.arr={list:'APPR',off:0};S.page='ARR';out.appr=P.ARR.items()[0].txt;P.ARR.slew(1);out.off=S.arr.off;
       S.wind={clb:[],crz:[],des:[]};S.active=A0;S.init=I0;S.tmpy=null;S.coRte=null;S.page=pg0;S.arr=ar0;WX.flt=null;WX.on=false;WX.surface={};render();return out})()""")
-    assert fp=={'list':'OEJN - OERK,OERK - OEJN','detail':[],'alt':'SISUD ASLAD RBG NOMDA/B544/4','wind':[278,32,417,270],'calm':[True]*6,'up':[5,'300,320,340,360',39000],'appr':'<ILS17','off':1,'sec':[True,'+','none',False,6],'all':''},f'FLIGHT PLANS tab and OFP winds: {fp}'
+    assert fp=={'froms':'OEJN,OERK,OEAB,OEAH,OEDF,OEMA,OETB','list':'OERK - OEAB,OERK - OEJN,OERK - OEMA','back':'3:true:7','detail':[],'alt':'SISUD ASLAD RBG NOMDA/B544/4','wind':[278,32,417,270],'calm':[True]*6,'up':[5,'300,320,340,360',39000],'appr':'<ILS17','off':1,'sec':[True,'+','none',False,6],'all':''},f'FLIGHT PLANS tab and OFP winds: {fp}'
     # v0.22: PROG TO a runway, airways through VORs on the ND, ALTN LAT REV and airways, ALTN route in PLAN only, random ZFWCG
     v22=await pg.evaluate("""(()=>{const A0=S.active,I0=clone(S.init),pg0=S.page,sp0=S.sp,pr0=S.prog.to,off0=S.fpOff,out={};
       S.page='PROG';S.sp='OEDF34R';P.PROG.lsk('R',4);out.prog=[S.prog.to,Math.round(gc(anyPos('OEDF34R'),DB.apt.OEDF.rwy['34R'].pos)*10)];S.sp='OEDF99';P.PROG.lsk('R',4);out.bad=S.prog.to;S.sp='';
@@ -134,12 +136,23 @@ async def run(url,b):
         for(const[c,w]of[['3',50],['3',66],['FULL',50],['FULL',66]]){FL.conf=c;window.gwNowF=()=>w;r.push(Math.round(engTarget().n1))}Object.assign(FL,f0);window.gwNowF=g0;return r})();
       S.active=A0;S.init=I0;S.page=pg0;S.sp=sp0;S.prog.to=pr0;S.fpOff=off0;S.msg='';S.tmpy=null;S.coRte=null;render();return out})()""")
     assert v22=={'prog':['OEDF34R',0],'bad':'OEDF34R','vor':[True,True,3],'lr':'ALTLR','aw':'ALTAWY','alt':'PEGUR SIGRO IVUDA WEJ LABUN NETOL DEMSU TBK|Z712V54','next':'PEGUR WEJ','cg':[True,True],'n1':[45,55,55,63]},f'v0.22 checks: {v22}'
-    assert await pg.evaluate("[!document.querySelector('#v-mcdu .side'),!!document.querySelector('#v-mcdu #deck'),OFPS.length,AOC_OFP.FAD122.rte,buildRoute(CO_RTES.OERKOEJN1).star].join()")=='true,true,12,OEJNOERK1,VEME1A','MCDU tab without the Exercise and How to cards; 12 OFP flights'
+    assert await pg.evaluate("[!document.querySelector('#v-mcdu .side'),!!document.querySelector('#v-mcdu #deck'),OFPS.length,AOC_OFP.FAD122.rte,buildRoute(CO_RTES.OERKOEJN1).star].join()")=='true,true,14,OEJNOERK1,VEME1A','MCDU tab without the Exercise and How to cards; 14 OFP flights'
+    r=await pg.evaluate("""(()=>{const a=buildRoute(CO_RTES.OERKOEAB1),b=buildRoute(CO_RTES.OEABOERK1),w=p=>p.legs.filter(l=>l.k==='wpt'&&l.seg==='enr').map(l=>l.id).join(' ');
+      return[AOC_OFP.FAD13.rte,a.sid,w(a),AOC_OFP.FAD14.rte,w(b),b.star,b.appr,(b.legs.find(l=>l.id==='ALMIN')||{}).step]})()""")
+    assert r==['OERKOEAB1','MERV2E','ASMIS PUSUM OBSAM RAKLI SENRA EMEKO KEDAS','OEABOERK1','ABH DUMSI IRBAB KATIX ALMIN EGMOT ULDUP DANOM UMRAN','MOBA1A','ILS15LY',33000],f'FAD13 / FAD14 Riyadh - Abha: airways Z414, V40, H75, Q313 and the step climb at ALMIN: {r}'
     # idle deceleration rules (kt per NM): gear up 10/5/0, gear down 15/10/5, landing configuration 20/15/10, 5 less for each further 1000 ft/min (the speed increases)
     r=await pg.evaluate("""(()=>{const g=FL.gear,c=FL.conf,o=[];for(const [gear,conf] of [[false,'0'],[false,'2'],[true,'2'],[true,'3'],[true,'FULL']]){FL.gear=gear;FL.conf=conf;
-      o.push([0,-1000,-2000,-2500,-3000].map(v=>idleDecel(v,200)).join('/'))}
+      o.push([0,-1000,-2000,-2500,-3000].map(v=>+idleDecel(v,200).toFixed(1)).join('/'))}
       FL.gear=false;FL.conf='0';o.push(+idleDecel(-2385,450).toFixed(1),Math.round(idleVs(5,200)),Math.round(idleVs(0,200)),Math.round(idleVs(-5,200)));FL.gear=g;FL.conf=c;return o.join(' ')})()""")
-    assert r=='10/5/0/-2.5/-5 10/5/0/-2.5/-5 15/10/5/2.5/0 20/15/10/7.5/5 20/15/10/7.5/5 3.4 1000 2000 3000',('idle deceleration rules',r)
+    assert r=='10/5/0/-2.5/-5 12/7/2/-0.5/-3 23.4/18.4/13.4/10.9/8.4 26/21/16/13.5/11 26/21/16/13.5/11 3.4 1000 2000 3000',('idle deceleration rules',r)
+    # speed reduction with the auto-thrust: more than 10 kt, idle until 3 kt are left; 10 kt or less never idle
+    r=await pg.evaluate("""(()=>{const k=Object.assign({},FL),o=[];Object.assign(FL,{active:true,ground:false,stage:'AIR',soe:false,thrIdle:false,conf:'0',gear:false,vs:0,gs:220,spdT:200});
+      for(const v of [230,215,203.5,202,209,212]){FL.ias=v;const over=FL.ias-FL.spdT;if(over>10&&!FL.thrIdle)FL.thrIdle=true;else if(over<=3)FL.thrIdle=false;o.push(FL.thrIdle?'I':'-')}
+      Object.assign(FL,k);return o.join('')})()""")
+    assert r=='III--I',('idle logic',r)
+    # take-off: 0 to V1 in 40 s at 69 t, 1 s less per tonne
+    r=await pg.evaluate("""(()=>{const z=S.fuel.zfw,f=FL.fob,o=[];S.fuel.zfw=60;for(const fob of [9,4]){FL.fob=fob;o.push((40-(69-gwNowF())).toFixed(0))}S.fuel.zfw=z;FL.fob=f;return o.join()})()""")
+    assert r=='40,35',('take-off time by weight',r)
     # EWD slats and flaps (FlyByWire Slats.tsx): the surfaces travel to the position of the configuration
     r=await pg.evaluate("""(()=>{const f0=LV.flaps,k={s:SF.s,f:SF.f,t:SF.t,key:SF.key},o=[];LV.flaps=2;SF.s=0;SF.f=0;SF.key='g';
       SF.t=performance.now()/1000-5/(FL.rate||1);sfTick();o.push(Math.round(SF.s),Math.round(SF.f));      // 5 s of travel
@@ -164,7 +177,7 @@ async def run(url,b):
       LV.spb=0.5;FCU.ap1=true;o.push(row());LV.spb=1;o.push(row());FCU.ap1=false;o.push(row(),Math.round(idleVs(0,200)));
       FL.conf='FULL';FL.gear=true;o.push(row());FL.gear=k.g;FL.conf=k.c;FL.active=k.a;FL.ground=k.gr;FCU.ap1=k.ap1;FCU.ap2=k.ap2;
       LV.spb=0;lever('spb','0.7');o.push(LV.spb);lever('spb','1.4');o.push(LV.spb);lever('spb',0.01);o.push(LV.spb);LV.spb=k.sb;return o.join(' ')})()""")
-    assert r=='15/10/5/0/-5 15/10/5/0/-5 20/15/10/5/0 4000 20/15/10/5/0 0.7 0.7 0',('speed brake rules',r)
+    assert r=='15/10/5/0/-5 15/10/5/0/-5 20/15/10/5/0 4000 26/21/16/11/6 0.7 0.7 0',('speed brake rules',r)
     # levers: speed brake marks and flap numbers are the buttons; the landing gear panel opens from LDG GEAR over the upper ECAM
     await pg.evaluate("window.__ecam.show(true)");await pg.click('#lvBtn');await pg.click('#lgBtn')
     r=await pg.evaluate("""(()=>{const q=s=>document.querySelector(s),o=[];
@@ -390,11 +403,14 @@ async def run(url,b):
         if(!d.sm&&FL.ver==='ALT'&&Math.abs(FL.alt-7000)<30){FCU.alt=7800;fcuPush('alt',true);d.sm=FL.t}
         if(d.sm&&!d.smv&&FL.t-d.sm>20&&FL.ver==='OP CLB'){out.small=Math.round(FL.vs);d.smv=1}
         if(d.smv&&!d.big&&FL.ver==='ALT'){FCU.spd=300;FCU.spdMgd=false;FCU.mach=false;FCU.alt=34000;fcuPush('alt',true);d.big=FL.t}
-        if(d.big&&!d.bigv&&Math.abs(FL.ias-300)<3){out.acc=Math.round(FL.t-d.big);out.big=Math.round(FL.vs);out.fma=FL.fma.c1[0][0]+'/'+FL.fma.c2[0][0];d.bigv=1}
+        if(d.big&&!d.mid&&FL.t-d.big>8){out.accVs=Math.round(FL.vs);d.mid=1}   /* accelerating: +250 ft/min */
+        if(d.big&&!d.at&&Math.abs(FL.ias-300)<3){out.acc=Math.round(FL.t-d.big);d.at=FL.t}
+        if(d.at&&!d.bigv&&FL.t-d.at>=10){out.big=Math.round(FL.vs);out.fma=FL.fma.c1[0][0]+'/'+FL.fma.c2[0][0];d.bigv=1}
         if(d.big&&FCU.mach){out.mach=[FCU.spd,Math.round(FL.alt)];break}}
       window.__flight('reset');FCU.spdMgd=true;FCU.mach=false;return out})()""")
     assert r.get('small') is not None and 900<=r['small']<=1100,f'OP CLB under 1200 ft: V/S 1000 ({r})'
     assert r.get('big',0)>1500 and r.get('fma')=='THR CLB/OP CLB',f'OP CLB: climb thrust, speed on elevator ({r})'
+    assert r.get('accVs')==250,f'OP CLB accelerating: +250 ft/min ({r})'
     assert r.get('mach') and abs(r['mach'][0]-0.78)<0.03 and 25000<r['mach'][1]<33000,f'selected SPD to MACH at the crossover ({r})'
     # ---- third flight: HOLD at LABUN (flown, IMM EXIT), OFFSET R10 in cruise, NEW DEST ----
     P=lambda x:pg.evaluate('k=>window.__press(k)',x)
@@ -446,7 +462,7 @@ async def run(url,b):
       let n=0,st=0,o={};const id=()=>S.active.legs[FL.fromIx].id;
       while(n<3000&&st<4){step(0.5);n++;if(FL.alt-groundElev()>1500&&!FCU.ap1)fcuButton('ap1');
         if(st===0&&FL.alt>2500){st=1;o.ca=id();newDest(S.active,0,'OEJN');const q=S.active;q.legs[idxK(q,'dest')].rwy='34R';q.appr='ILS34RZ';q.via='SOLOG';buildArr(q);normalize(q);FCU.hdgMgd=false;FCU.hdg=66;FL.lat='HDG'}
-        if(st===1&&gc(FL.pos,DB.apt.OEJN.rwy['34R'].pos)>6){st=2;FCU.hdg=156}
+        if(st===1&&gc(FL.pos,DB.apt.OEJN.rwy['34R'].pos)>6&&Math.abs(((hdgNow()-66+540)%360)-180)<3){st=2;FCU.hdg=156}   /* on heading 066 first (turns at 27 degrees bank take time) */
         if(st===2&&FL.pos[0]<DB.wpt.PAXOS[0]-0.03){st=3;o.abeam=id();FCU.hdg=246}
         if(st===3&&brg(FL.pos,DB.wpt.PAXOS)>275){st=4;directTo('PAXOS');S.sp='';P.DIR.lsk('R',1);P.DIR.lsk('R',6);o.fp=S.active.legs.slice(FL.fromIx+1).map(l=>l.id||l.k).slice(0,4).join(' ');step(0.5);o.from=S.active.legs[FL.fromIx].id+' '+FL.lat+'/'+FL.latArm}}
       window.__flight('reset');PM_AUTO=pm;S.active=A0;S.tmpy=null;FCU.hdgMgd=true;return o})()""")
@@ -551,6 +567,7 @@ async def run(url,b):
     r=await pg.evaluate("""(()=>{window.__flight('start');let n=0,ap=0,o={};while(FL.stage!=='STOP'&&n<60000){step(0.5);if(n%10===0)setFma();n++;
         if(!ap&&FL.alt-groundElev()>1200){fcuButton('ap1');ap=1}if(FL.ver==='ALT'&&FL.alt<8000&&!o.d){FCU.alt=34000;fcuPush('alt',false)}
         if(S.phase==='CRZ'&&!o.d&&FL.s>FL.td-30){FCU.alt=7000;fcuPush('alt',false);o.d=1}
+        if(o.d===1&&S.phase==='APPR'){FCU.alt=5000;fcuPush('alt',false);o.d=2}   /* approach altitude, so that the glide slope is met from below or at its centre (no capture from far above) */
         if(S.phase==='APPR'&&FL.path.sThr-FL.s<20)FCU.appr=true;if(FL.ver==='G/S'&&!o.g){FCU.alt=6000;o.g=1}if(o.g&&FL.alt-groundElev()<500)break}
       window.__flight('ga');setFma();
       const modes=()=>[FL.fma.c1.map(x=>x[0]).join(' '),FL.fma.c2[0][0],FL.fma.c3[0][0]];
