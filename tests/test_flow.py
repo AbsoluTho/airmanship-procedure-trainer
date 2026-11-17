@@ -699,22 +699,27 @@ async def check_audio(url,b):
     await pg.wait_for_function("cockpitAudio.state().enabled === true")
     assert await pg.evaluate("navigator.audioSession.type")=='playback','iPad: sound is routed as media playback, not on the ringer channel'
     # an interruption (lock, other app) suspends the context: the next touch brings it back
-    await pg.evaluate("audioContexts[0].suspend()")
-    assert await pg.evaluate("audioContexts[0].state")=='suspended'
+    # suspended by the system: resumed by itself (statechange), or replaced at the next touch
+    await pg.evaluate("audioContexts.at(-1).suspend()")
     await pg.mouse.click(5,5)
-    await pg.wait_for_function("audioContexts[0].state === 'running'")
+    await pg.wait_for_function("audioContexts.at(-1).state === 'running'")
     await pg.click('#cabinCall')
-    assert await pg.evaluate('startedSounds.length')==1, 'cabin call plays a decoded WAV'
+    await pg.wait_for_function("startedSounds.length === 1")
     # an iPad context that will not resume after the app was left: the next touches replace it and the sounds play again
     r=await pg.evaluate("""async () => {
       startedSounds.at(-1).stop();await new Promise(r=>setTimeout(r,50));
-      const c=audioContexts[0];await c.suspend();c.resume=()=>Promise.resolve();
-      document.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true}));await new Promise(r=>setTimeout(r,500));
+      const n0=audioContexts.length,c=audioContexts.at(-1);c.resume=()=>Promise.resolve();await c.suspend();
       document.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true}));await new Promise(r=>setTimeout(r,400));
-      const n=startedSounds.length;cockpitAudio.play('cabin');
-      return [audioContexts.length,audioContexts.at(-1).state,c.state,startedSounds.length-n];
+      const n=startedSounds.length;cockpitAudio.play('cabin');await new Promise(r=>setTimeout(r,200));
+      const a=[audioContexts.length-n0,audioContexts.at(-1).state,c.state,startedSounds.length-n];
+      // the sound stopped (for example after loading a flight plan) and SOUND OFF / SOUND ON pressed: replaced in that press
+      startedSounds.at(-1).stop();await new Promise(r=>setTimeout(r,50));
+      const d=audioContexts.at(-1);d.resume=()=>Promise.resolve();await d.suspend();
+      document.querySelector('#cockpitSound').click();document.querySelector('#cockpitSound').click();await new Promise(r=>setTimeout(r,400));
+      const m=startedSounds.length;cockpitAudio.play('cabin');await new Promise(r=>setTimeout(r,200));
+      return a.concat([audioContexts.at(-1)!==d,audioContexts.at(-1).state,startedSounds.length-m]);
     }""")
-    assert r==[2,'running','closed',1],('stuck context replaced on the next touch, sounds decoded again',r)
+    assert r==[1,'running','closed',1,True,'running',1],('stopped context replaced at the next touch, and by SOUND ON; sounds decoded again',r)
     result=await pg.evaluate("""async () => {
       const finish = async () => {
         const last = startedSounds.at(-1);
@@ -756,7 +761,7 @@ async def check_audio(url,b):
       await finish();
       return counts;
     }""")
-    assert result==[3,3,4,4,4,5,6,7,8], result   # one more sound before: the stuck-context check
+    assert result==[4,4,5,5,5,6,7,8,9], result   # two more sounds before: the stopped-context checks
     await pg.click('#cockpitSound')
     assert await pg.evaluate("document.querySelector('#cockpitSound').getAttribute('aria-pressed')")=='false'
     n=await pg.evaluate('startedSounds.length')

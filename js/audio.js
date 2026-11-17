@@ -64,18 +64,23 @@ const cockpitAudio = (() => {
   // Safari suspends ("interrupted") the context after a call, a lock or a switch to another app, and on iPad it
   // sometimes stays so: resume() is tried first; inside a tap, a context that is interrupted, closed or would not
   // resume is replaced by a new one (created in the tap, so it runs) and the sounds are decoded again.
+  // In a tap the context is replaced at once whenever it is not running: on iPad a long task (loading a flight plan, building
+  // the route) or leaving the app can leave it interrupted, and resume() alone may never bring it back. Outside a tap only
+  // resume() is possible.
   function wake(gesture) {
     if (!enabled || !context) return;
     mediaRoute(true);
     if (context.state === 'running') { resumeFailed = false; return; }
-    if (gesture) primeSpare();
-    if (gesture && (context.state === 'interrupted' || context.state === 'closed' || resumeFailed)) { rebuild(); return; }
+    if (gesture) { primeSpare(); rebuild(); return; }
     try { const p = context.resume(); if (p && p.catch) p.catch(() => { resumeFailed = true; }); } catch (error) { resumeFailed = true; }
-    setTimeout(() => { if (enabled && context && context.state !== 'running') resumeFailed = true; }, 400);
   }
 
   function newContext() {
     context = new (window.AudioContext || window.webkitAudioContext)();
+    // interrupted or suspended by the system while the sound is on: try to resume at once (allowed when the interruption ends)
+    const c = context;
+    c.onstatechange = () => { if (c === context && enabled && c.state !== 'running' && c.state !== 'closed') {
+      try { const p = c.resume(); if (p && p.catch) p.catch(() => {}); } catch (error) {} } };
     output = context.createGain();
     output.gain.value = 0.65;
     output.connect(context.destination);
@@ -158,7 +163,9 @@ const cockpitAudio = (() => {
     try {
       // Created (or resumed) during the tap to satisfy browser autoplay rules.
       mediaRoute(true);
-      if (!context || context.state === 'closed') newContext();
+      // a context that is not running is replaced inside this tap (SOUND ON or CABIN CALL pressed again after the sound stopped)
+      if (context && context.state !== 'running' && Object.keys(raw).length) rebuild();
+      else if (!context || context.state === 'closed') newContext();
       const resumed = context.resume();
       { const blip = context.createBufferSource();
         blip.buffer = context.createBuffer(1, 1, 22050);
@@ -201,7 +208,15 @@ const cockpitAudio = (() => {
     if (context.state !== 'running') wake(false);
     if (current && priority(current.name) >= priority(name)) return;
     stop();
-    if (context.state !== 'running' || !buffers[name]) return playSpare(name);
+    if (context.state !== 'running') return playSpare(name);
+    if (!buffers[name]) {
+      // just replaced: the sound is decoded again, then played if nothing more important has started meanwhile
+      if (!raw[name]) return playSpare(name);
+      const c = context;
+      decode(raw[name].slice(0)).then(b => { buffers[name] = b; if (c === context && enabled && (!current || priority(current.name) < priority(name))) play(name); })
+        .catch(() => playSpare(name));
+      return;
+    }
     const source = context.createBufferSource();
     source.buffer = buffers[name];
     source.connect(output);
