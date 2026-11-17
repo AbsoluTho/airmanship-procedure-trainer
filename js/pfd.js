@@ -6,6 +6,7 @@ const PC={bg:'#0a0c2b',sky:'#11bafe',gnd:'#c3544e',tape:'#8a8b9f',htape:'#857d82
 const PF=(px,w)=>`${w||500} ${px}px "Helvetica Neue",Helvetica,Arial,sans-serif`;
 function vmaxFor(conf,alt){const v={'0':350,'1':230,'1+F':215,'2':200,'3':185,'FULL':177}[conf]||350;return conf==='0'?Math.min(v,iasOf(0.82*sos(alt),alt)):v}
 const VFE_NEXT={'0':230,'1':200,'1+F':200,'2':185,'3':177};
+const FDB={r:0,p:0,t:null};   /* flight director bars as shown (px), travelling to their command */
 function drawPFD(g,W,H,powered){g.save();g.setTransform(1,0,0,1,0,0);g.fillStyle='#000';g.fillRect(0,0,W,H);if(!powered){g.restore();return}
   const sc=W/592,Hp=H/sc,oy=(Hp-573)/2;g.scale(sc,sc);g.translate(-41,-39+oy);
   g.fillStyle=PC.bg;g.fillRect(41,39-oy,592,Hp);
@@ -55,8 +56,12 @@ function drawPFD(g,W,H,powered){g.save();g.setTransform(1,0,0,1,0,0);g.fillStyle
   /* FD bars */
   /* FD bars: they show the command against the aircraft. Roll bar: (bank asked for - bank) 2 px per degree, so in a turn it moves to the
      side of the turn and comes back to the centre as the bank is reached. Pitch bar: (pitch asked for - pitch), on the pitch scale */
+  /* the bars never jump: they travel to a new command at 6 degrees per second (roll 12 px/s, pitch 37 px/s); the vertical bar is as long
+     above the centre as below it */
   if(EFIS.fd&&!FCU.trkFpa&&!['ROLLOUT','STOP'].includes(FL.stage)){const dr=on?Math.max(-60,Math.min(60,((FL.rollCmd??roll)-roll)*2)):0,
-      dp=on&&FL.pitchCmd!=null?Math.max(-70,Math.min(70,(FL.pitchCmd-pitch)*ppd)):0;L(210,SY-dp,390,SY-dp,'g',3);L(CX+dr,SY-110,CX+dr,SY+70,'g',3)}
+      dp=on&&FL.pitchCmd!=null?Math.max(-70,Math.min(70,(FL.pitchCmd-pitch)*ppd)):0,now=performance.now(),dt=Math.min(0.5,Math.max(0,(now-(FDB.t||now))/1000));FDB.t=now;
+    FDB.r+=Math.max(-12*dt,Math.min(12*dt,dr-FDB.r));FDB.p+=Math.max(-6*ppd*dt,Math.min(6*ppd*dt,dp-FDB.p));
+    L(210,SY-FDB.p,390,SY-FDB.p,'g',3);L(CX+FDB.r,SY-90,CX+FDB.r,SY+90,'g',3)}else{FDB.r=0;FDB.p=0;FDB.t=null}
   /* flight path vector (bird) in TRK/FPA */
   if(FCU.trkFpa){const fpa=on?Math.atan2(FL.vs,Math.max(60,FL.gs)*101.27)/D2R:0,by=SY+(pitch-fpa)*ppd;g.save();g.translate(CX,by);g.rotate(-roll*D2R);g.strokeStyle=PC.g;g.lineWidth=3;
     g.beginPath();g.arc(0,0,8,0,7);g.moveTo(-8,0);g.lineTo(-26,0);g.moveTo(8,0);g.lineTo(26,0);g.moveTo(0,-8);g.lineTo(0,-18);g.stroke();g.restore()}

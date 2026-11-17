@@ -4,7 +4,7 @@ An unofficial A320 **procedure** trainer that runs in the browser (iPad first). 
 
 Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator manuals. The navigation data was typed from charts for training only and must never be used for navigation.
 
-## Status: Phase 3 prototype (v0.25.12)
+## Status: Phase 3 prototype (v0.25.14)
 
 - **MCDU** (Thales FMS2 layout, per FCOM DSC-22): keyboard and scratchpad, INIT A, F-PLN with TMPY (ERASE/INSERT), LAT REV, DEPARTURE, AIRWAYS (with airway-to-airway intersection), ARRIVAL, waypoint insertion, CLR of waypoints and discontinuities.
 - **Exercise** OEJN to OETB: RWY 16C MIGD2E, L677 WEJ, V54 TBK, ILS 31 via D179O, ALTN OEMA, FL340, CI 20, with automatic progress checks.
@@ -19,6 +19,15 @@ Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator
   - 11 approaches: ILS 16L (IMBF 111.7), 16R (IWSR 108.1), 34L (IWMR 108.9), 34R (IABF 110.7); RNP 16L, 16R, 34L, 34R; VOR 16R, 34L and 34R (KFA 112.3, the 34R final offset on 326°). Vias from the IAFs of the KFA 14 DME arc (LOPOD, RESAN, KEBAP, LOSAX, DASLA, KFA; DAXAR and KAVIV for the 16 runways) and from DF603, DF604 and RESAN for the RNP approaches; published missed approaches to the RESAN and LOSAX holds.
   - 32 RNAV SIDs: EMUSA, MIBRA, PUSRA, TAYMA 2E/2F/2G/2H and LADNA, METLA, ROTEL, RYDAN 1E/2E, 1F/2F, 1G/2G, 1H/2H (one set per runway).
   - Fix positions from KFA radial/DME, the extended centrelines and the chart tracks and distances; the same fix reached by different procedures agrees within 0.6 NM (36 cross-checks printed by the generator).
+- **v0.25.14**: Open-descent idle rates.
+  - In OP DES and EXP DES at idle, holding speed, the descent rate now depends on configuration, speed and weight: clean 1300 ft/min at green dot rising to 2200 ft/min at 250 kt (about 3500 at 300 kt), CONF 1 and 2 1300 ft/min at S, CONF 3 and FULL 1500 ft/min at F, gear down 2300 ft/min.
+  - Lighter aircraft descend less steeply (0.6 + 0.4 x weight / 64 t), and the rate grows a little with true airspeed at altitude.
+  - More than that needs the speed brakes: half lever adds 50 per cent (3300 ft/min clean at 250 kt), full lever 100 per cent (4400 ft/min), autopilot off only; none in CONF FULL.
+  - Diving faster than the idle rate accelerates the aircraft; shallower decelerates it, at the configuration's level deceleration when level (clean 10 kt/NM, CONF 2 12, gear down x1.3).
+- **v0.25.13**: FD bars, LOC armed over NAV.
+  - The vertical FD bar is as long above the aircraft reference as below it (90 px each way; it was 110 above and 70 below).
+  - The bars never jump to a new command: they travel to it at 6 degrees per second (roll bar 12 px/s, pitch bar 37 px/s), then follow the command as before. HDG +90 and OP DES selected together: the roll bar moves out over 3 s and meets the command at 17 degrees of bank still to go, the pitch bar reaches 4.5 degrees nose down in 0.75 s.
+  - LOC has priority over NAV: with NAV armed (for example in HDG), pressing LOC or APPR replaces NAV armed with LOC armed (blue), and NAV can no longer engage; then LOC*, LOC. They used to show NAV armed with LOC only when NAV was not armed, and NAV could still engage first.
 - **v0.25.12**: LDG memo laid out like the T.O memo.
   - The LDG title and its items no longer run into each other ("LDGLDG GEAR"): both memos have the title in its own column and the items in one column further right (blue with dots to the setting until done, green once done).
 - **v0.25.11**: gentler OP DES / climb entries, gear-down climb, moving FD bars, smoother flare.
