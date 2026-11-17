@@ -134,7 +134,8 @@ function flightStart(){const miss=flightReady();if(miss.length)return miss;vFill
   Object.assign(FL,{active:true,running:true,t:0,utc0:Date.now(),path:P,s:0,seg:1,xtk:0,pos:r.pos,hdgT:tr,trkT:tr,roll:0,pitch:0,alt:r.tdze??o.elev,vs:0,ias:0,tas:0,gs:0,mach:0,
     ground:true,lat:'RWY',latArm:FCU.hdgMgd&&!S.active.noSid&&!(S.active.legs[1]&&S.active.legs[1].k==='disc')?'NAV':null,ver:'SRS',verArm:[FCU.lvlch?'CLB':'OP CLB'],thr:'IDLE',conf:['0','1+F','2','3','FULL'][LV.flaps],gear:true,gearPos:1,gaFlap:false,pmGearT:null,pmF3T:null,revDone:false,
     fob:S.fuel.block-(S.fuel.taxi??0.2),fromIx:0,loT:null,spdLimOn:false,thrIdle:false,toAcc:0,p10:null,tdPitch:null,tdT:null,eoEng:null,crzDes:false,ldgSeq:0,gearT:null,f3T:null,inHold:null,holdExit:null,hsActive:null,cst:null,acc:0,accT:0,soe:false,opSmall:false,spdIsMach:false,capAlt:null,altHold:null,fmaT:{},loc:false,gsCap:false,tdReached:false,stage:'LINEUP',lvrT:null});LV.thr='IDLE';LV.gear='DOWN';LV.decel=false;LV.m1=LV.m2=true;
-  FCU.athr=true;FL.td=P.sThr-tdDist();FL.sig=planSig();S.phase='TAKEOFF';setFma();flightTick(0);return[]}
+  FCU.athr=false;FL.td=P.sThr-tdDist();   /* A/THR armed only when the thrust levers are set to FLX/MCT or TOGA */
+  FL.sig=planSig();S.phase='TAKEOFF';setFma();flightTick(0);return[]}
 function q2conf(){const f=S.perf.flaps;return f===1?'1+F':String(f||1)}
 
 /* ---------- LEVERS: thrust levers, flaps lever, landing gear lever, autobrake (the pilot's commands) ---------- */
@@ -146,7 +147,7 @@ function lever(k,v){
     if(v.startsWith('REV')&&FL.active&&!FL.ground)return;   /* no reverse in flight; on the ground the levers go into the REV zone (reverse thrust acts on the landing roll) */
     const prev=LV.thr;
     LV.thr=v;if(!FL.active)return;
-    if(FL.stage==='LINEUP'&&(v==='FLX'||v==='TOGA')){FL.stage='ROLL';FL.thr='TO'}   /* the take-off roll starts at FLX/MCT or TOGA */
+    if(FL.stage==='LINEUP'&&(v==='FLX'||v==='TOGA')){FL.stage='ROLL';FL.thr='TO';FCU.athr=true}   /* take-off thrust arms the A/THR (blue on the FMA, FCU light on) */   /* the take-off roll starts at FLX/MCT or TOGA */
     else if(FL.stage==='AIR'){
       if(v==='TOGA'&&FL.thr==='GA SOFT'){FL.thr='TO';setFma()}
       else if(v==='TOGA'&&!['TO','LVR'].includes(FL.thr))goAround();
@@ -164,7 +165,7 @@ function lever(k,v){
   else if(k==='flaps'){const n=+v;if(n>=0&&n<=4)LV.flaps=n}
   else if(k==='spb'){const n=+v;if(n>=0&&n<=1){LV.spb=n<0.03?0:n>0.97?1:n;if(LV.spb>0)LV.gsArm=false}}   /* speed brake lever: any position from RET (0) to FULL (1); out of RET the ground spoilers are not armed */
   else if(k==='gsarm'){if(LV.spb===0)LV.gsArm=v==='toggle'?!LV.gsArm:v===true||v==='1'||v==='on'}   /* ground spoilers armed (lever pulled up), at RET only */
-  else if(k==='gear'){if(v==='UP'&&FL.active&&FL.ground)return;LV.gear=v}   /* weight on wheels: no gear up on the ground */
+  else if(k==='gear'){if(v==='UP'&&FL.active&&FL.ground)return;LV.gear=v;if(v==='UP'){LV.abrk=null;LV.decel=false}}   /* weight on wheels: no gear up on the ground; gear up: the take-off AUTO BRK (MAX) is disarmed */
   else if(k==='abrk')LV.abrk=LV.abrk===v?null:v;
   else if(k==='master'){if(FL.active)return;LV['m'+v]=!LV['m'+v]}
   else if(k==='mode'){if(typeof engMode==='function')engMode(v);return}   /* engines running in flight: masters stay ON */
