@@ -720,6 +720,18 @@ async def check_audio(url,b):
       return a.concat([audioContexts.at(-1)!==d,audioContexts.at(-1).state,startedSounds.length-m]);
     }""")
     assert r==[1,'running','closed',1,True,'running',1],('stopped context replaced at the next touch, and by SOUND ON; sounds decoded again',r)
+    # back from another app: the context still says running, yet the first touch restarts the whole sound
+    r=await pg.evaluate("""async () => {
+      const c=audioContexts.at(-1),st0=c.state;
+      Object.defineProperty(document,'hidden',{value:true,configurable:true});document.dispatchEvent(new Event('visibilitychange'));
+      Object.defineProperty(document,'hidden',{value:false,configurable:true});document.dispatchEvent(new Event('visibilitychange'));
+      const stale=cockpitAudio.state().stale;
+      document.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true}));await new Promise(r=>setTimeout(r,400));
+      delete document.hidden;
+      const n=startedSounds.length;cockpitAudio.play('cabin');await new Promise(r=>setTimeout(r,300));
+      return [st0,stale,audioContexts.at(-1)!==c,c.state,audioContexts.at(-1).state,cockpitAudio.state().stale,startedSounds.length-n];
+    }""")
+    assert r==['running',True,True,'closed','running',False,1],('first touch after the app was hidden restarts the sound, and it plays',r)
     result=await pg.evaluate("""async () => {
       const finish = async () => {
         const last = startedSounds.at(-1);
@@ -761,7 +773,7 @@ async def check_audio(url,b):
       await finish();
       return counts;
     }""")
-    assert result==[4,4,5,5,5,6,7,8,9], result   # two more sounds before: the stopped-context checks
+    assert result==[5,5,6,6,6,7,8,9,10], result   # three more sounds before: the stopped-context and back-from-another-app checks
     await pg.click('#cockpitSound')
     assert await pg.evaluate("document.querySelector('#cockpitSound').getAttribute('aria-pressed')")=='false'
     n=await pg.evaluate('startedSounds.length')

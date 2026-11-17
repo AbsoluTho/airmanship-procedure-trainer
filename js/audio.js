@@ -16,7 +16,7 @@ const cockpitAudio = (() => {
   const priority = name => priorities[name] ?? 1;
   const buffers = {};
   const called = new Set();
-  let context, output, loading, current, candidate, primedMinimum, keepAlive, spare, starting, resumeFailed = false;
+  let context, output, loading, current, candidate, primedMinimum, keepAlive, spare, starting, resumeFailed = false, stale = false;
   const urls = {}, raw = {};
   let enabled = false;
   // SOUND ON / OFF: the choice is kept (on by default). With SOUND ON the audio starts at the first touch or key anywhere in the page,
@@ -67,11 +67,13 @@ const cockpitAudio = (() => {
   // In a tap the context is replaced at once whenever it is not running: on iPad a long task (loading a flight plan, building
   // the route) or leaving the app can leave it interrupted, and resume() alone may never bring it back. Outside a tap only
   // resume() is possible.
+  // After the app has been left (hidden), iPad Safari can report the context as running while it plays nothing: the first touch
+  // after coming back restarts the whole sound (new context, new media elements, sounds decoded again) whatever its state.
   function wake(gesture) {
     if (!enabled || !context) return;
+    if (gesture && (stale || context.state !== 'running')) { restart(); return; }
     mediaRoute(true);
     if (context.state === 'running') { resumeFailed = false; return; }
-    if (gesture) { primeSpare(); rebuild(); return; }
     try { const p = context.resume(); if (p && p.catch) p.catch(() => { resumeFailed = true; }); } catch (error) { resumeFailed = true; }
   }
 
@@ -89,6 +91,14 @@ const cockpitAudio = (() => {
     const blip = context.createBufferSource();
     blip.buffer = context.createBuffer(1, 1, 22050);
     blip.connect(context.destination); blip.start(0);
+  }
+
+  // the whole sound set up again inside a tap: the silent keep-alive element, the spare player, the context and its buffers
+  function restart() {
+    stale = false;
+    try { if (keepAlive) keepAlive.pause(); } catch (error) {}
+    keepAlive = null; spare = null;
+    mediaRoute(true); primeSpare(); rebuild();
   }
 
   function rebuild() {
@@ -136,12 +146,16 @@ const cockpitAudio = (() => {
     } catch (error) { console.warn('Cockpit audio spare:', error); }
   }
 
+  // SOUND OFF closes the sound completely; SOUND ON sets it all up again from the start, so OFF then ON is a full reset
   function toggleSound() {
     if (want) {
       want = false; savePref();
       enabled = false;
       stop();
       mediaRoute(false);
+      try { if (context && context.state !== 'closed') context.close(); } catch (error) {}
+      context = null; keepAlive = null; spare = null; stale = false;
+      for (const name of Object.keys(buffers)) delete buffers[name];
       updateControls();
       say('');
       return Promise.resolve(false);
@@ -189,7 +203,9 @@ const cockpitAudio = (() => {
       // Do not wait for resume(): on iPad it can stay pending and would leave the button locked.
       if (resumed && resumed.catch) resumed.catch(() => {});
       await loading;
-      enabled = want;
+      // sounds already fetched before (SOUND ON again): decoded again into the new context
+      await Promise.all(Object.keys(raw).filter(n => !buffers[n]).map(n => decode(raw[n].slice(0)).then(b => { buffers[n] = b; }).catch(() => {})));
+      enabled = want; stale = false;
       const missing = Object.keys(files).length - Object.keys(buffers).length;
       say(context.state === 'running' && !missing ? '' :
         'Sound on · audio ' + context.state + (missing ? ' · ' + missing + ' files on spare player' : ''));
@@ -310,7 +326,9 @@ const cockpitAudio = (() => {
   };
   ['pointerdown', 'touchend', 'keydown'].forEach(ev =>
     document.addEventListener(ev, onGesture, {capture: true, passive: true}));
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) wake(false); });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) stale = true; else wake(false); });
+  addEventListener('pagehide', () => { stale = true; });
+  document.addEventListener('freeze', () => { stale = true; });
   addEventListener('pageshow', () => wake(false));
   addEventListener('focus', () => wake(false));
   toggle.addEventListener('click', toggleSound);
@@ -321,5 +339,5 @@ const cockpitAudio = (() => {
     play('cabin');
   });
   updateControls();
-  return {play, reset, cancelFlight, readFlight, sample, flush, state: () => ({want, enabled, context: context && context.state, resumeFailed})};
+  return {play, reset, cancelFlight, readFlight, sample, flush, state: () => ({want, enabled, context: context && context.state, resumeFailed, stale})};
 })();
