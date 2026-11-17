@@ -133,7 +133,7 @@ function flightStart(){const miss=flightReady();if(miss.length)return miss;vFill
   const P=buildPath(),o=DB.apt[orig()],r=o.rwy[S.active.rwy],tr=r.crs+(o.var||0);
   Object.assign(FL,{active:true,running:true,t:0,utc0:Date.now(),path:P,s:0,seg:1,xtk:0,pos:r.pos,hdgT:tr,trkT:tr,roll:0,pitch:0,alt:r.tdze??o.elev,vs:0,ias:0,tas:0,gs:0,mach:0,
     ground:true,lat:'RWY',latArm:FCU.hdgMgd&&!S.active.noSid&&!(S.active.legs[1]&&S.active.legs[1].k==='disc')?'NAV':null,ver:'SRS',verArm:[FCU.lvlch?'CLB':'OP CLB'],thr:'IDLE',conf:['0','1+F','2','3','FULL'][LV.flaps],gear:true,gearPos:1,gaFlap:false,pmGearT:null,pmF3T:null,revDone:false,
-    fob:S.fuel.block-(S.fuel.taxi??0.2),fromIx:0,loT:null,spdLimOn:false,thrIdle:false,toAcc:0,p10:null,tdPitch:null,tdT:null,eoEng:null,crzDes:false,ldgSeq:0,gearT:null,f3T:null,inHold:null,holdExit:null,hsActive:null,cst:null,acc:0,accT:0,soe:false,opSmall:false,spdIsMach:false,capAlt:null,altHold:null,fmaT:{},loc:false,gsCap:false,tdReached:false,stage:'LINEUP',lvrT:null});LV.thr='IDLE';LV.gear='DOWN';LV.decel=false;LV.m1=LV.m2=true;
+    fob:S.fuel.block-(S.fuel.taxi??0.2),fromIx:0,vsR:0,loT:null,spdLimOn:false,thrIdle:false,toAcc:0,p10:null,tdPitch:null,tdT:null,eoEng:null,crzDes:false,ldgSeq:0,gearT:null,f3T:null,inHold:null,holdExit:null,hsActive:null,cst:null,acc:0,accT:0,soe:false,opSmall:false,spdIsMach:false,capAlt:null,altHold:null,fmaT:{},loc:false,gsCap:false,tdReached:false,stage:'LINEUP',lvrT:null});LV.thr='IDLE';LV.gear='DOWN';LV.decel=false;LV.m1=LV.m2=true;
   FCU.athr=false;FL.td=P.sThr-tdDist();   /* A/THR armed only when the thrust levers are set to FLX/MCT or TOGA */
   FL.sig=planSig();S.phase='TAKEOFF';setFma();flightTick(0);return[]}
 function q2conf(){const f=S.perf.flaps;return f===1?'1+F':String(f||1)}
@@ -466,13 +466,15 @@ function step(dt){if(S.tmpy&&typeof ppHoldSync==='function')ppHoldSync(S.tmpy);c
     if(climb&&v<0){v=0;a=cap2/k}
     /* accelerating (speed more than 3 kt above) with climb power: OP CLB +250 ft/min, managed CLB +1200 ft/min (after SRS, from the
        acceleration altitude), the rest of the thrust for the speed */
-    {const vAcc=FL.ver==='OP CLB'?250:FL.ver==='CLB'?1200:null;if(climb&&vAcc&&spdT-FL.ias>3&&cap2>vAcc){v=vAcc;a=(cap2-vAcc)/k}}
+    /* the last 3 kt: the rate of climb goes from that value to the full climb rate as the speed closes on its target, together */
+    {const vAcc=FL.ver==='OP CLB'?250:FL.ver==='CLB'?1200:null,dS=spdT-FL.ias;if(climb&&vAcc&&dS>0&&cap2>vAcc){const f=Math.min(1,dS/3);v=vAcc*f+cap2*(1-f);a=(cap2-v)/k}}
     /* idle descent: the rate of descent that gives the deceleration (or acceleration) wanted; the speed then follows the rate actually flown */
     /* speed target above the speed (speed selected up, EXP DES): the nose goes down, the rate of descent increases and the speed increases in
        proportion to it; OP DES up to 10 kt per NM (4000 ft/min clean), EXP DES up to 15 kt per NM (5000 ft/min clean) */
     if(!climb){v=-idleVs(Math.max(FL.ver==='EXP DES'?-15:-10,FL.ias-spdT),FL.gs);a=-idleDecel(FL.vs,FL.gs)*FL.gs/3600;
-      /* open descent with a speed well below (more than 3 kt): idle, -250 ft/min while it decelerates */
-      if(FL.ias-spdT>3)v=-250}
+      /* open descent with a speed below: idle, -250 ft/min while it decelerates; over the last 3 kt the rate of descent goes back to the
+         on-speed idle descent as the speed closes on its target, together */
+      const dD=FL.ias-spdT;if(dD>0){const f=Math.min(1,dD/3),vOn=-idleVs(0,FL.gs);v=-250*f+vOn*(1-f)}}
     FL.accT=a;vsT=v}
   expedSync();FL.spdT=spdT;vsT=Math.max(-6000,Math.min(6000,vsT));
   /* ---- dynamics ---- */
@@ -486,7 +488,10 @@ function step(dt){if(S.tmpy&&typeof ppHoldSync==='function')ppHoldSync(S.tmpy);c
     FL.ias+=FL.soe?FL.accT*dt:Math.max(dRate*dt,Math.max(-1.6*dt,Math.min(1.6*g3*dt,spdT-FL.ias)));
     /* lift-off: the rate of climb builds up along an S curve (slow, faster, slow) and reaches its target 5 s after lift-off */
     const lo=FL.ver==='SRS'&&S.phase!=='GA'&&FL.loT!=null?(FL.t-FL.loT)/5:1;
-    if(lo<1){const x=Math.max(0,lo);FL.vs=vsT*x*x*(3-2*x)}else FL.vs+=Math.max(-600*dt,Math.min(600*dt,vsT-FL.vs));
+    /* the vertical speed changes smoothly: its rate of change builds up and eases off (at most 500 ft/min per second per second, 700 ft/min
+       per second), so a new rate is joined without a jump at the start or at the end */
+    if(lo<1){const x=Math.max(0,lo),v0=FL.vs;FL.vs=vsT*x*x*(3-2*x);FL.vsR=(FL.vs-v0)/Math.max(dt,1e-3)}
+    else{const rW=Math.max(-700,Math.min(700,(vsT-FL.vs)*0.8));FL.vsR=(FL.vsR||0)+Math.max(-500*dt,Math.min(500*dt,rW-(FL.vsR||0)));FL.vs+=FL.vsR*dt}
     FL.alt+=FL.vs/60*dt}
   else if(FL.ground)FL.alt=gnd;
   FL.tas=tasOf(FL.ias,FL.alt);FL.gs=FL.ground?FL.ias:FL.tas;FL.mach=FL.tas/sos(FL.alt);
