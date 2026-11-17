@@ -251,8 +251,8 @@ P.SECIDX={render(){cput(1,'SEC INDEX');put(3,0,'{COPY ACTIVE','b');rput(3,'INIT>
   if(k==='L1'){if(!S.active)return err('NOT ALLOWED');S.sec=clone(S.active);S.secOff=0;return}
   if(k==='L2'){if(!S.sec)return err('NOT ALLOWED');S.secMode=true;S.fpOffMain=S.fpOff;S.fpOff=S.secOff||0;return go('FPLN')}
   if(k==='L3'&&S.sec){S.sec=null;return}
-  if(k==='L4'&&S.sec){if(flying()&&!FL.ground)S.sec.flownIx=secFlown(S.active,S.sec);S.active=S.sec;S.sec=null;S.tmpy=null;S.fpOff=0;if(flying())FCU.hdgMgd=true;return}   /* in flight too: immediate return or diversion (path rebuilt from the present position) */   /* in flight too: immediate return or diversion (path rebuilt from the present position) */
-  if(k==='L6'&&S.sec){const a=S.active;if(flying()&&!FL.ground)S.sec.flownIx=secFlown(a,S.sec);S.active=S.sec;S.sec=a;S.tmpy=null;S.fpOff=0;return}
+  if(k==='L4'&&S.sec){if(flying()&&!FL.ground)S.sec.flownIx=secFlown(S.active,S.sec);S.active=S.sec;S.sec=null;S.tmpy=null;S.fpOff=0;if(flying()&&!FL.ground)FL.planNew=true;return}   /* in flight too: immediate return or diversion (path rebuilt from the present position) */   /* in flight too: immediate return or diversion (path rebuilt from the present position) */
+  if(k==='L6'&&S.sec){const a=S.active;if(flying()&&!FL.ground)S.sec.flownIx=secFlown(a,S.sec);S.active=S.sec;S.sec=a;S.tmpy=null;S.fpOff=0;if(flying()&&!FL.ground)FL.planNew=true;return}
   return err('NOT IN PROTOTYPE')}};
 /* ---------- FUEL PRED ---------- */
 P.FUELPRED={render(){const f=S.fuel,pr=predict(),d=destId(),al=I().altn,D='---.-',T='----';

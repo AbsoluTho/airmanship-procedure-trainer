@@ -20,7 +20,7 @@ function buildPath(plan){const p=plan||S.active,pts=[],holds=[];let vr=DB.apt[p.
     /* go-around heading leg: the heading flown until its altitude (about 600 ft per NM) */
     if(l.k==='hdg'&&pts.length){const c=+((String(l.lbl).match(/(\d{3})/)||[0,0])[1]),vd=DB.apt[p.legs[idxK(p,'dest')].id].var||0,from=flying()?FL.alt:0,L=l.alt?Math.max(2,(l.alt.v-from)/600):5;
       push(dst(pts[pts.length-1].p,c+vd,L),ix);continue}
-    if(l.k==='orig'){const ap=DB.apt[l.id],r=ap.rwy[l.rwy];vr=ap.var||0;push(r.pos,ix);push(dst(r.pos,r.crs+vr,Math.min(1.6,r.len/1852*0.7)),null);continue}
+    if(l.k==='orig'){const ap=DB.apt[l.id],r=ap.rwy[l.rwy];vr=ap.var||0;if(!r){push(ap.pos,ix);continue}push(r.pos,ix);push(dst(r.pos,r.crs+vr,Math.min(1.6,r.len/1852*0.7)),null);continue}
     /* climb leg (e.g. (1526) after NO SID): drawn on runway track, at most 3 NM past the runway end, clear of the waypoints that follow */
     if(l.k==='ca'){const o=p.legs[0],ap=DB.apt[o.id],r=ap.rwy[o.rwy];push(dst(r.pos,r.crs+vr,r.len/1852+Math.min(3,l.aal/320)),ix);continue}
     if(l.k==='wpt'){const pos=DB.wpt[l.id];if(!pos)continue;const prev=pts[pts.length-1];
@@ -71,12 +71,21 @@ function posAt(P,s){const a=P.pts;let i=1;while(i<a.length-1&&a[i].s<s)i++;const
 const navTae=(P,pr)=>{const A=P.pts[pr.i-1],B=P.pts[pr.i];return A&&B?Math.abs(((brg(A.p,B.p)-FL.trkT+540)%360)-180):0};
 /* NAV capture from HDG/TRK (FBW LnavDriver computeNavCaptureCondition): only the active leg (FROM to TO) can be captured. Converging, the
    capture zone grows with the intercept angle from the turn radius at 25 deg of bank (at least 0.3 NM); diverging, within two turn radii. */
-function navCapture(P){const a=P.pts,iT=a.findIndex(q=>q.ix!=null&&q.ix>FL.fromIx);if(iT<1)return false;let iF=0;for(let i=0;i<iT;i++)if(a[i].ix!=null&&a[i].ix<=FL.fromIx)iF=i;
-  const q=project(P,FL.pos,Math.max(1,iF+1),iT);if(!q)return false;const A=a[q.i-1],B=a[q.i],c=brg(A.p,B.p),e=enu(A.p,FL.pos);
-  const xte=e[0]*Math.cos(c*D2R)-e[1]*Math.sin(c*D2R),tae=((FL.trkT-c+540)%360)-180,v=Math.max(150,FL.tas)/1.94384,R=v*v/(9.81*Math.tan(25*D2R))/1852;
+function activeLeg(P){const a=P.pts,iT=a.findIndex(q=>q.ix!=null&&q.ix>FL.fromIx);if(iT<1)return null;let iF=0;for(let i=0;i<iT;i++)if(a[i].ix!=null&&a[i].ix<=FL.fromIx)iF=i;
+  const q=project(P,FL.pos,Math.max(1,iF+1),iT);if(!q)return null;const A=a[q.i-1],B=a[q.i],c=brg(A.p,B.p),e=enu(A.p,FL.pos);
+  return{q,c,xte:e[0]*Math.cos(c*D2R)-e[1]*Math.sin(c*D2R),tae:((FL.trkT-c+540)%360)-180}}
+function navCapture(P){const al=activeLeg(P);if(!al)return false;const{q,xte,tae}=al,v=Math.max(150,FL.tas)/1.94384,R=v*v/(9.81*Math.tan(25*D2R))/1852;
   if(xte*tae>0)return q.d<2*R&&Math.abs(tae)<90;
   /* our lateral law rolls in more gently than FBW's path law, so the lead is the full turn: radius x (1 - cos intercept angle) */
   return q.d<Math.max(0.3,R*(1-Math.cos(Math.min(180,Math.abs(tae))*D2R))+0.2)}
+/* a new active F-PLN in flight (SEC activated or swapped, NEW DEST, ENABLE ALTN, FROM/TO, AOC uplink): the aircraft never turns by itself.
+   HDG/TRK: the selected heading is kept and NAV is armed. NAV: kept only if the aircraft is on the new active leg (within 0.5 NM, tracking
+   along it); otherwise HDG (TRK) at the present heading with NAV armed. NAV then captures as usual when the route is reached. */
+function planNewLat(){const d=S.active&&S.active.legs[idxK(S.active,'dest')],did=d?d.id:null;if(FL.destSeen!==undefined&&did!==FL.destSeen)FL.planNew=true;FL.destSeen=did;
+  if(!FL.planNew)return;FL.planNew=false;if(!FL.path)return;
+  if(FL.lat==='HDG'||FL.lat==='TRK'){FL.latArm='NAV';return}
+  if(FL.lat!=='NAV')return;const al=activeLeg(FL.path);if(al&&al.q.d<0.5&&Math.abs(al.tae)<45)return;
+  const vr=DB.apt[orig()].var||3;FL.lat=FCU.trkFpa?'TRK':'HDG';FCU.hdgMgd=false;FCU.hdgPre=null;FCU.hdg=Math.round(((FCU.trkFpa?FL.trkT:FL.hdgT)-vr+360)%360)||360;FL.latArm='NAV'}
 /* local flat projection around a point (NM) */
 function enu(o,p){return[(p[1]-o[1])*60*Math.cos(o[0]*D2R),(p[0]-o[0])*60]}
 /* closest point on the path: along-track distance and cross-track (+ right of track) */
@@ -131,7 +140,7 @@ function vFill(){const q=S.perf,f=S.fuel,tow=(f.zfw||58)+(f.block||8)-(f.taxi??0
 function flightStart(){const miss=flightReady();if(miss.length)return miss;vFill();WX.surface={};WX.frozenWind=null;
   cockpitAudio.reset();
   const P=buildPath(),o=DB.apt[orig()],r=o.rwy[S.active.rwy],tr=r.crs+(o.var||0);
-  Object.assign(FL,{active:true,running:true,t:0,utc0:Date.now(),path:P,s:0,seg:1,xtk:0,pos:r.pos,hdgT:tr,trkT:tr,roll:0,pitch:0,alt:r.tdze??o.elev,vs:0,ias:0,tas:0,gs:0,mach:0,
+  Object.assign(FL,{active:true,running:true,destSeen:undefined,planNew:false,t:0,utc0:Date.now(),path:P,s:0,seg:1,xtk:0,pos:r.pos,hdgT:tr,trkT:tr,roll:0,pitch:0,alt:r.tdze??o.elev,vs:0,ias:0,tas:0,gs:0,mach:0,
     ground:true,lat:'RWY',latArm:FCU.hdgMgd&&!S.active.noSid&&!(S.active.legs[1]&&S.active.legs[1].k==='disc')?'NAV':null,ver:'SRS',verArm:[FCU.lvlch?'CLB':'OP CLB'],thr:'IDLE',conf:['0','1+F','2','3','FULL'][LV.flaps],gear:true,gearPos:1,gaFlap:false,pmGearT:null,pmF3T:null,revDone:false,
     fob:S.fuel.block-(S.fuel.taxi??0.2),fromIx:0,vsR:0,loT:null,spdLimOn:false,thrIdle:false,toAcc:0,p10:null,tdPitch:null,tdT:null,eoEng:null,crzDes:false,ldgSeq:0,gearT:null,f3T:null,inHold:null,holdExit:null,hsActive:null,cst:null,acc:0,accT:0,soe:false,opSmall:false,spdIsMach:false,capAlt:null,altHold:null,fmaT:{},loc:false,gsCap:false,tdReached:false,stage:'LINEUP',lvrT:null});LV.thr='IDLE';LV.gear='DOWN';LV.decel=false;LV.m1=LV.m2=true;
   FCU.athr=false;FL.td=P.sThr-tdDist();   /* A/THR armed only when the thrust levers are set to FLX/MCT or TOGA */
@@ -192,7 +201,7 @@ function autoPM(dtg,sp){const st=FL.stage,h=FL.alt-groundElev();
     if(FL.pmGearT!=null&&FL.t-FL.pmGearT>=5&&n<3){n=3;FL.pmF3T=FL.t}if(FL.pmF3T!=null&&!S.p2.conf3&&FL.t-FL.pmF3T>=3)n=4;
     if(n!==LV.flaps)lever('flaps',n)}
   else if(h>400){let n=LV.flaps;if(FL.ias>=sp.S-2)n=0;else if(FL.ias>=sp.F-2)n=Math.min(n,1);if(n!==LV.flaps)lever('flaps',n)}}
-function flightReset(){S.eo=false;Object.assign(FL,{active:false,running:false,eoEng:null,path:null,stage:'IDLE',fma:{c1:[],c2:[],c3:[],c4:[],c5:[]},ias:0,gs:0,tas:0,vs:0});
+function flightReset(){S.eo=false;Object.assign(FL,{active:false,running:false,destSeen:undefined,planNew:false,eoEng:null,path:null,stage:'IDLE',fma:{c1:[],c2:[],c3:[],c4:[],c5:[]},ias:0,gs:0,tas:0,vs:0});
   cockpitAudio.reset();
   FCU.ap1=FCU.ap2=FCU.athr=FCU.loc=FCU.appr=FCU.exped=false;if(FCU.spdMgd)FCU.mach=false;S.phase='PREFLIGHT';S.apprArm=false;refreshAll()}
 
@@ -223,11 +232,18 @@ function idleR0(){const gw=gwNowF(),kw=0.6+0.4*gw/64,ias=Math.max(100,FL.ias||20
   const fa=Math.max(0.9,Math.min(1.25,((FL.tas||ias)/ias)/1.16));return R*kw*fa*(1+spbEff())}
 /* deceleration at idle (kt per NM) at a vertical speed: the level deceleration of the configuration, falling to none at the idle descent
    rate on speed, and the speed increasing beyond it at the same slope; in a climb 5 kt per NM more for each 1000 ft/min */
-function idleDecel(vs,gs){const base=idleBase()*(1+spbEff()),v=-vs;
+function idleDecelOpen(vs,gs){const base=idleBase()*(1+spbEff()),v=-vs;
   if(v<=0)return Math.min(60,base-v/200);return Math.max(-30,base*(1-v/idleR0()))}
 /* the rate of descent (ft/min, positive down) that gives a deceleration of r kt per NM at idle (r negative: an acceleration) */
-function idleVs(r,gs){const base=idleBase()*(1+spbEff());r=Math.max(-30,Math.min(base,r));
+function idleVsOpen(r,gs){const base=idleBase()*(1+spbEff());r=Math.max(-30,Math.min(base,r));
   return idleR0()*(1-r/base)}
+/* fixed paths (G/S, FPA, V/S, managed DES) and the thrust: idle deceleration of the configuration, 5 kt per NM less for each 1000 ft/min
+   of descent (clean: level 10, 1000 ft/min down 5, 2000 ft/min down 0, steeper the speed increases); speed brakes half 50 %, full 100 % more */
+function idleDecel(vs,gs){const base=idleBase()*(1+spbEff()),v=-vs*Math.min(1,250/Math.max(1,gs));
+  return Math.max(-30,Math.min(60,base-v/200))}
+/* the rate of descent (ft/min, positive down) that gives a deceleration of r kt per NM at idle on a fixed path (r negative: an acceleration) */
+function idleVs(r,gs){const base=idleBase()*(1+spbEff()),k=Math.max(1,gs/250);r=Math.max(-30,Math.min(base,r));
+  return(base-r)*200*k}
 /* distance (NM) needed to lose dv kt at idle on the present path */
 function decelLead(dv){return Math.max(0,dv)/Math.max(2.5,idleDecel(Math.min(0,FL.vs),FL.gs))}
 function gaLeg(l){l.seg='ga';if(l.k==='hold'&&!l.fix)return null;return l}
@@ -247,15 +263,15 @@ function goAround(){if(!FL.active||FL.ground||FL.stage!=='AIR'||!['APPR','DES'].
 /* ---------- FCU actions arriving in flight ---------- */
 const CLIMBING=['CLB','OP CLB','EXP CLB'],DESCENDING=['DES','OP DES','EXP DES'];
 function fcuEvent(ev){if(!FL.active)return;const A=FCU.alt;
-  if(ev!=='spd-pull')FL.opSmall=Math.abs(A-FL.alt)<1200;   /* level change under 1200 ft: V/S 1000 ft/min with A/THR on speed (Airbus OPEN mode logic) */
+  if(ev!=='spd-pull')FL.opSmall=Math.abs(A-FL.alt)<1200;   /* level change under 1200 ft: OP DES at 1000 ft/min with A/THR on speed; OP CLB is never limited (always climb thrust) */
   if(ev==='alt-pull'){if(FL.ground)return;if(Math.abs(A-FL.alt)<250)return;FL.ver=A>FL.alt?'OP CLB':'OP DES';FL.verArm=['ALT']}
   if(ev==='alt-push'){if(FL.ground){FL.verArm=['CLB'];return}if(Math.abs(A-FL.alt)<250)return;
     if(A>FL.alt){FL.ver='CLB';FL.verArm=['ALT']}else{FL.ver='DES';FL.verArm=['ALT']}}   /* before T/D: early descent at 1000 ft/min until the path */
   if(ev==='vs-pull'){if(FL.ground)return;FL.ver=FCU.trkFpa?'FPA':'V/S';FL.verArm=['ALT']}
   if(ev==='vs-push'){if(FL.ground)return;FL.ver=FCU.trkFpa?'FPA':'V/S';FCU.vsVal=0;FCU.fpa=0;FL.verArm=[]}
   if(ev==='hdg-pull'){if(FL.ground){FL.latArm=null;return}FL.lat=FCU.trkFpa?'TRK':'HDG';FL.latArm=null}
-  if(ev==='hdg-push'){if(FL.ground){FL.latArm='NAV';return}const pr=project(FL.path,FL.pos,1,FL.path.pts.length-1);
-    if(pr&&pr.d<0.3){FL.lat='NAV';FL.latArm=null;FL.seg=pr.i;FL.s=pr.s}else FL.latArm='NAV'}
+  if(ev==='hdg-push'){if(FL.ground){FL.latArm='NAV';return}const al=activeLeg(FL.path);   /* on the active leg (not a leg already flown): NAV at once; otherwise armed */
+    if(al&&al.q.d<0.3&&Math.abs(al.tae)<90){FL.lat='NAV';FL.latArm=null;FL.seg=al.q.i;FL.s=al.q.s}else FL.latArm='NAV'}
   /* EXPED: engages EXP CLB or EXP DES toward the FCU altitude; pressed again, back to OP CLB or OP DES */
   if(ev==='exped'){if(FL.ground)return;if(FL.ver==='EXP CLB')FL.ver='OP CLB';else if(FL.ver==='EXP DES')FL.ver='OP DES';
     else if(Math.abs(A-FL.alt)>=250){FL.ver=A>FL.alt?'EXP CLB':'EXP DES';FL.verArm=['ALT'];FL.opSmall=false}}
@@ -312,7 +328,7 @@ function cstTarget(){if(!flying()||FL.ground||!FL.cst)return null;if(FL.ver==='A
 const cstArmed=()=>FL.verArm.length===1&&FL.verArm[0]==='ALT'&&['CLB','DES'].includes(FL.ver)&&cstTarget()!=null;
 
 /* ---------- one simulation step ---------- */
-function step(dt){if(S.tmpy&&typeof ppHoldSync==='function')ppHoldSync(S.tmpy);const ias0=FL.ias;if(FL.sig!==planSig()&&!FL.ground)flightReplan();const P=FL.path,q=S.perf,p2=S.p2,crz=I().crz*100,sp=cfgSpeeds(),gnd=groundElev(),A=FCU.alt;
+function step(dt){if(S.tmpy&&typeof ppHoldSync==='function')ppHoldSync(S.tmpy);const ias0=FL.ias;if(FL.sig!==planSig()&&!FL.ground)flightReplan();if(!FL.ground)planNewLat();const P=FL.path,q=S.perf,p2=S.p2,crz=I().crz*100,sp=cfgSpeeds(),gnd=groundElev(),A=FCU.alt;
   const agl=()=>FL.alt-gnd;
   if(PM_AUTO)autoPM(P.sThr-FL.s,sp);lvStep(dt);
   /* LOC, LAND and ROLL OUT never search back along the path (after a go-around the path starts on the final approach) */
@@ -374,7 +390,7 @@ function step(dt){if(S.tmpy&&typeof ppHoldSync==='function')ppHoldSync(S.tmpy);c
       spdT=ga?FL.gaSpd:q.v2+10;vsT=(ga?Math.min(rate,FL.vs+600):rate)*gp;
       if(FL.alt>=acc){FL.opSmall=false;if(A>FL.alt+capBand){FL.ver=FL.verArm.includes('OP CLB')?'OP CLB':'CLB';FL.verArm=['ALT']}else{FL.ver='ALT*';FL.verArm=[]}if(!ga)S.phase='CLB'}}
     FL.soe=false;
-    if(CLIMBING.includes(FL.ver)){if(FL.opSmall&&FL.ver!=='EXP CLB')vsT=1000;else FL.soe=true;   /* THR CLB, speed on elevator: V/S computed after the speed target */
+    if(CLIMBING.includes(FL.ver)){FL.soe=true;   /* THR CLB, speed on elevator: V/S computed after the speed target; an open climb is never limited (no 1000 ft/min for a small level change) */
       const lc=FL.ver==='CLB'&&CK.clb!=null&&CK.clb>=FL.alt-200?CK.clb:null;   /* managed climb: level off at the constraint first */
       if(lc!=null&&lc-FL.alt<capBand){FL.ver='ALT CST*';FL.capAlt=lc;FL.verArm=['CLB']}else if(lc==null&&A-FL.alt<capBand)FL.ver='ALT*'}
     if(DESCENDING.includes(FL.ver)){const fl=FL.ver==='DES'&&CK.des!=null&&CK.des<=FL.alt+200?CK.des:null,pa=Math.max(profileAlt(dtg),A,fl??-1e9);
@@ -481,10 +497,10 @@ function step(dt){if(S.tmpy&&typeof ppHoldSync==='function')ppHoldSync(S.tmpy);c
     /* idle descent: the rate of descent that gives the deceleration (or acceleration) wanted; the speed then follows the rate actually flown */
     /* speed target above the speed (speed selected up, EXP DES): the nose goes down, the rate of descent increases and the speed increases in
        proportion to it; OP DES up to 10 kt per NM (4000 ft/min clean), EXP DES up to 15 kt per NM (5000 ft/min clean) */
-    if(!climb){v=-idleVs(Math.max(FL.ver==='EXP DES'?-15:-10,FL.ias-spdT),FL.gs);a=-idleDecel(FL.vs,FL.gs)*FL.gs/3600;
+    if(!climb){v=-idleVsOpen(Math.max(FL.ver==='EXP DES'?-15:-10,FL.ias-spdT),FL.gs);a=-idleDecelOpen(FL.vs,FL.gs)*FL.gs/3600;
       /* open descent with a speed below: idle, -250 ft/min while it decelerates; over the last 3 kt the rate of descent goes back to the
          on-speed idle descent as the speed closes on its target, together */
-      const dD=FL.ias-spdT;if(dD>0){const f=Math.min(1,dD/3),vOn=-idleVs(0,FL.gs);v=-250*f+vOn*(1-f)}}
+      const dD=FL.ias-spdT;if(dD>0){const f=Math.min(1,dD/3),vOn=-idleVsOpen(0,FL.gs);v=-250*f+vOn*(1-f)}}
     FL.accT=a;vsT=v}
   expedSync();FL.spdT=spdT;vsT=Math.max(-6000,Math.min(6000,vsT));
   /* ---- dynamics ---- */

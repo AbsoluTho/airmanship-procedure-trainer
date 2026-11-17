@@ -81,7 +81,7 @@ const routeLines=r=>{const out=[];if(r.sid)out.push([r.sid,r.route.length?'':'']
     const pair=I().from&&Object.keys(allRtes()).find(x=>allRtes()[x].from===I().from&&allRtes()[x].to===I().to);
     if(!known&&!pair)return err('NO ANSWER TO REQUEST');S.req=true;
     setTimeout(()=>{S.req=false;const o=known?AOC_OFP[id]:{rte:pair};const r=allRtes()[o.rte];if(!r){err('NO ANSWER TO REQUEST');return render()}
-      applyRoute(o.rte,r);const i=I();if(o.ci!=null)i.ci=o.ci;if(o.crz){i.crz=o.crz;i.temp=o.temp??null}if(o.tropo)i.tropo=o.tropo;msg2('AOC ACT F-PLN UPLINK');render()},REQ_MS);return}
+      applyRoute(o.rte,r);if(flying()&&!FL.ground)FL.planNew=true;const i=I();if(o.ci!=null)i.ci=o.ci;if(o.crz){i.crz=o.crz;i.temp=o.temp??null}if(o.tropo)i.tropo=o.tropo;msg2('AOC ACT F-PLN UPLINK');render()},REQ_MS);return}
   const from0=I().from+'/'+I().to;l0.call(this,s,n);
   if(k==='R1'&&I().from&&I().from+'/'+I().to!==from0){S.coRte=null;const list=Object.keys(allRtes()).filter(x=>allRtes()[x].from===I().from&&allRtes()[x].to===I().to);
     if(list.length){S.rsel={list,i:0,off:0,ro:0};go('ROUTELIST')}}}}
