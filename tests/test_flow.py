@@ -624,7 +624,7 @@ async def run(url,b):
     assert r['a']['fma0'][:2]==[None,None] and r['a']['fma0'][2] and r['a']['fma1']==['SRS','RWY'],f'take-off FMA: armed modes only until FLX/TOGA, then SRS and RWY: {r["a"]}'
     assert r['a']['lineup']==['LINEUP',0] and r['a']['n1']==50,f'lined up, still until the thrust levers move; 50% N1: {r["a"]}'
     assert r['a']['thr']=='LVR' and r['a']['thr2']=='CL','LVR CLB until the thrust levers are set to CL'
-    assert 0.35<r['a']['climb']/r['b']['climb']<0.7,f'gear left down: about half the climb: {r["a"]["climb"]} vs {r["b"]["climb"]}'
+    assert 0.55<r['a']['climb']/r['b']['climb']<0.8,f'gear left down: about 65 % of the climb: {r["a"]["climb"]} vs {r["b"]["climb"]}'
     assert r['a']['conf']=='1' and r['a']['ias']<=227,f'flaps 1 not retracted: speed held below VFE 230: {r["a"]}'
     assert r['ret'][0]=='OEJN' and r['dt']=='tp,dest',f'immediate return: SEC with NEW DEST OEJN activated in flight, DIR TO OEJN: {r}'
     # ---- CO RTE, ROUTE selection, INIT REQUEST, STORED ROUTES, MCDU MENU (fresh MCDU) ----

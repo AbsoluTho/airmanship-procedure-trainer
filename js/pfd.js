@@ -53,7 +53,10 @@ function drawPFD(g,W,H,powered){g.save();g.setTransform(1,0,0,1,0,0);g.fillStyle
   const ss=0;g.beginPath();g.moveTo(-11+ss,-138);g.lineTo(11+ss,-138);g.lineTo(15+ss,-131);g.lineTo(-15+ss,-131);g.closePath();g.stroke();
   g.restore();
   /* FD bars */
-  if(EFIS.fd&&!FCU.trkFpa&&!['ROLLOUT','STOP'].includes(FL.stage)){const dr=on?Math.max(-60,Math.min(60,((FL.rollCmd??roll)-roll)*2)):0;L(210,SY,390,SY,'g',3);L(CX+dr,SY-110,CX+dr,SY+70,'g',3)}
+  /* FD bars: they show the command against the aircraft. Roll bar: (bank asked for - bank) 2 px per degree, so in a turn it moves to the
+     side of the turn and comes back to the centre as the bank is reached. Pitch bar: (pitch asked for - pitch), on the pitch scale */
+  if(EFIS.fd&&!FCU.trkFpa&&!['ROLLOUT','STOP'].includes(FL.stage)){const dr=on?Math.max(-60,Math.min(60,((FL.rollCmd??roll)-roll)*2)):0,
+      dp=on&&FL.pitchCmd!=null?Math.max(-70,Math.min(70,(FL.pitchCmd-pitch)*ppd)):0;L(210,SY-dp,390,SY-dp,'g',3);L(CX+dr,SY-110,CX+dr,SY+70,'g',3)}
   /* flight path vector (bird) in TRK/FPA */
   if(FCU.trkFpa){const fpa=on?Math.atan2(FL.vs,Math.max(60,FL.gs)*101.27)/D2R:0,by=SY+(pitch-fpa)*ppd;g.save();g.translate(CX,by);g.rotate(-roll*D2R);g.strokeStyle=PC.g;g.lineWidth=3;
     g.beginPath();g.arc(0,0,8,0,7);g.moveTo(-8,0);g.lineTo(-26,0);g.moveTo(8,0);g.lineTo(26,0);g.moveTo(0,-8);g.lineTo(0,-18);g.stroke();g.restore()}
