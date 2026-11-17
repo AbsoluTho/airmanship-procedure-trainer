@@ -154,11 +154,12 @@ function drawEWD(c){const D=ecCtx(c,76,82,522,510),{g,T,L,R}=D,E=engStep(),q=S.p
   const fob=fobKg(),ok=fob!=null&&!isNaN(fob);T('FOB :',84,406,'w',18);T(ok?String(Math.round(fob/10)*10):'XX',210,406,ok?'g':'a',19,'right');T('KG',232,407,'b',16);
   /* memo area */
   L([[76,423],[378,423]],'w',2);L([[427,423],[598,423]],'w',2);L([[402,432],[402,570]],'w',2);
-  const agl=on?FL.alt-groundElev():0,x0=84,y0=438,dy=18.5;
+  /* T.O and LDG memos laid out alike: the title in its own column, the items in a column clear of the wider LDG title */
+  const agl=on?FL.alt-groundElev():0,x0=84,y0=438,dy=18.5,xi=x0+46;
   if(!on){[['AUTO BRK','MAX',true],['SIGNS','ON',true],['CABIN','CHECK',true],['SPLRS','ARM',!!LV.gsArm],['FLAPS','T.O',LV.flaps>=1&&LV.flaps<=3],['T.O CONFIG','TEST',EC.toCfg]].forEach(([a,b,d],k)=>{
-      if(k===0)T('T.O',x0,y0,'w',17);if(k===5&&d)T('T.O CONFIG NORMAL',x0+36,y0+k*dy,'g',17);else memo(D,x0+36,y0+k*dy,a,d&&b==='CHECK'?'READY':b,d,360)})}
+      if(k===0)T('T.O',x0,y0,'w',17);if(k===5&&d)T('T.O CONFIG NORMAL',xi,y0+k*dy,'g',17);else memo(D,xi,y0+k*dy,a,d&&b==='CHECK'?'READY':b,d,360)})}
   else if(S.phase==='APPR'&&agl<2000&&!FL.ground){const full=!S.p2.conf3;
-    [['LDG GEAR','DN',FL.gear],['SIGNS','ON',true],['CABIN','READY',true],['SPLRS','ARM',!!LV.gsArm],['FLAPS',full?'FULL':'CONF 3',FL.conf===(full?'FULL':'3')]].forEach(([a,b,d],k)=>{if(k===0)T('LDG',x0,y0,'w',17);memo(D,x0+36,y0+k*dy,a,b,d,360)})}
+    [['LDG GEAR','DN',FL.gear],['SIGNS','ON',true],['CABIN','READY',true],['SPLRS','ARM',!!LV.gsArm],['FLAPS',full?'FULL':'CONF 3',FL.conf===(full?'FULL':'3')]].forEach(([a,b,d],k)=>{if(k===0)T('LDG',x0,y0,'w',17);memo(D,xi,y0+k*dy,a,b,d,360)})}
   const rm=[];if(on&&(FL.thr==='TO'||(!FL.ground&&agl<1500&&S.phase==='TAKEOFF')))rm.push(['T.O INHIBIT','m']);
   if(on&&(!FL.ground&&S.phase==='APPR'&&agl<800||FL.stage==='ROLLOUT'))rm.push(['LDG INHIBIT','m']);
   if(on&&FL.stage==='ROLLOUT'&&LV.gsArm)rm.push(['GND SPLRS','g']);else if(LV.gsArm)rm.push(['GND SPLRS ARMED','g']);   /* armed: green memo; extended on the landing roll */
