@@ -359,7 +359,7 @@ function step(dt){if(S.tmpy&&typeof ppHoldSync==='function')ppHoldSync(S.tmpy);c
     /* ---- vertical ---- */
     const capBand=Math.max(50,Math.abs(FL.vs)*0.10),   /* ALT*: thrust change and capture start at 10 % of the vertical speed before the altitude (3000 ft/min: 300 ft) */
       CK=cstrNow();FL.cst=CK;
-    const gp=!FL.ground&&(['TAKEOFF','CLB','GA'].includes(S.phase)||CLIMBING.includes(FL.ver)||FL.ver==='SRS')?1-0.5*(FL.gearPos??1):1;FL.gp=gp;   /* gear drag follows the gear position: half the climb rate and acceleration with the gear down, full once up and locked, gradual in transit */
+    const gp=!FL.ground&&(['TAKEOFF','CLB','GA'].includes(S.phase)||CLIMBING.includes(FL.ver)||FL.ver==='SRS')?1-0.35*(FL.gearPos??1):1;FL.gp=gp;   /* gear drag follows the gear position: 35 % less climb rate and acceleration with the gear down (SRS about 1560 ft/min), full once up and locked, gradual in transit */
     if(FL.ver==='SRS'){const rate=FL.thr==='GA SOFT'?2000:2400;
       spdT=ga?FL.gaSpd:q.v2+10;vsT=(ga?Math.min(rate,FL.vs+600):rate)*gp;
       if(FL.alt>=acc){FL.opSmall=false;if(A>FL.alt+capBand){FL.ver=FL.verArm.includes('OP CLB')?'OP CLB':'CLB';FL.verArm=['ALT']}else{FL.ver='ALT*';FL.verArm=[]}if(!ga)S.phase='CLB'}}
@@ -453,7 +453,7 @@ function step(dt){if(S.tmpy&&typeof ppHoldSync==='function')ppHoldSync(S.tmpy);c
   if(FL.stage==='ROLLOUT'){const idle=['IDLE','REVIDLE','REVMAX'].includes(LV.thr),ab=idle&&LV.askid&&LV.abrk;
     let dec=!idle?0.6:ab?{LO:2.5,MED:3.7,MAX:4.6}[LV.abrk]:LV.askid?(FL.ias>40?3:2.3):1.9;if(ab&&FL.ias<40)dec=Math.min(dec,2.7);   /* gentler roll-out (v0.15.7) */
     if(LV.thr==='REVMAX'&&FL.ias>70)dec+=1.1;else if(LV.thr==='REVIDLE'&&FL.ias>70)dec+=0.3;LV.decel=!!ab&&FL.ias>2;
-    FL.ias=Math.max(0,FL.ias-dec*dt);FL.pitch=Math.max(0,FL.pitch-(FL.tdPitch||7.5)/3*dt);   /* nose down: from the touchdown pitch to 0 in 3 s */
+    FL.ias=Math.max(0,FL.ias-dec*dt);{const x=Math.min(1,Math.max(0,(FL.t-(FL.tdT??FL.t))/3));FL.pitch=Math.max(0,(FL.tdPitch||6)*(1-x*x*(3-2*x)))}   /* nose down: from the touchdown pitch to 0 in 3 s, eased at both ends */
     const lg=locGeo(FL.pos),d=destRwy();trkT=brg(FL.pos,dst(d.r.pos,lg.crs+180,lg.along-1));if(FL.ias<=0){FL.stage='STOP';S.phase='DONE';FL.running=false}}
   if(FL.stage==='ROLL'){const o=DB.apt[orig()],r=o.rwy[S.active.rwy];trkT=r.crs+(o.var||0)}
 
@@ -491,7 +491,11 @@ function step(dt){if(S.tmpy&&typeof ppHoldSync==='function')ppHoldSync(S.tmpy);c
     /* the vertical speed changes smoothly: its rate of change builds up and eases off (at most 500 ft/min per second per second, 700 ft/min
        per second), so a new rate is joined without a jump at the start or at the end */
     if(lo<1){const x=Math.max(0,lo),v0=FL.vs;FL.vs=vsT*x*x*(3-2*x);FL.vsR=(FL.vs-v0)/Math.max(dt,1e-3)}
-    else{const rW=Math.max(-700,Math.min(700,(vsT-FL.vs)*0.8));FL.vsR=(FL.vsR||0)+Math.max(-500*dt,Math.min(500*dt,rW-(FL.vsR||0)));FL.vs+=FL.vsR*dt}
+    /* climb and descent modes (OP DES, DES, EXP DES, OP CLB, CLB, EXP CLB) start and change their rate gently, about 0.07 g (250 ft/min per
+       second, 150 ft/min per second per second); the captures (ALT*, G/S*), V/S and FPA keep the quicker rate */
+    else{const soft=['OP DES','DES','EXP DES','OP CLB','CLB','EXP CLB'].includes(FL.ver),rm=soft?250:700,jm=soft?150:500;
+      const rW=Math.max(-rm,Math.min(rm,(vsT-FL.vs)*0.8));FL.vsR=(FL.vsR||0)+Math.max(-jm*dt,Math.min(jm*dt,rW-(FL.vsR||0)));FL.vs+=FL.vsR*dt}
+    FL.vsCmd=vsT;
     FL.alt+=FL.vs/60*dt}
   else if(FL.ground)FL.alt=gnd;
   FL.tas=tasOf(FL.ias,FL.alt);FL.gs=FL.ground?FL.ias:FL.tas;FL.mach=FL.tas/sos(FL.alt);
@@ -499,19 +503,25 @@ function step(dt){if(S.tmpy&&typeof ppHoldSync==='function')ppHoldSync(S.tmpy);c
   /* heading (or track) selected: the aircraft rolls at 3 degrees per second to 27 degrees of bank and the turn rate follows the bank
      (g tan(bank) / TAS), so the turn starts slowly; the roll-out starts early enough to level the wings on the selected heading */
   let rate;if(selTurn){const tas=Math.max(80,FL.tas)*0.5144,rOf=b=>9.81*Math.tan(Math.abs(b)*D2R)/tas/D2R,lead=rOf(FL.roll)*Math.abs(FL.roll)/6;
-      const want=Math.sign(dh)*Math.min(27,Math.max(0,Math.abs(dh)-lead)*10);FL.roll+=Math.max(-3*dt,Math.min(3*dt,want-FL.roll));
+      const want=Math.sign(dh)*Math.min(27,Math.max(0,Math.abs(dh)-lead)*10);FL.rollCmd=want;FL.roll+=Math.max(-3*dt,Math.min(3*dt,want-FL.roll));
       rate=Math.sign(FL.roll)*rOf(FL.roll);if(Math.abs(dh)<0.3&&Math.abs(FL.roll)<0.5){rate=dh/Math.max(dt,0.1);FL.roll=0}}
     else rate=Math.max(-3,Math.min(3,dh*0.6));
   FL.trkT=(FL.trkT+rate*dt+360)%360;
   /* wind of the OFP: the guidance flies ground tracks, so the heading carries the drift and the ground speed the head or tail wind */
   FL.wind=FL.ground?{dir:0,spd:0}:windAt(FL.pos,FL.alt,FL.alt-groundElev());{const c=crabOf(FL.trkT,FL.tas,FL.wind);FL.hdgT=c.hdg;if(!FL.ground)FL.gs=c.gs}
-  if(!selTurn){const bank=FL.ground?0:Math.max(-30,Math.min(30,Math.atan(rate*D2R*FL.tas*0.5144/9.81)/D2R));FL.roll+=Math.max(-5*dt,Math.min(5*dt,bank-FL.roll))}
+  if(!selTurn){const bank=FL.ground?0:Math.max(-30,Math.min(30,Math.atan(rate*D2R*FL.tas*0.5144/9.81)/D2R));FL.rollCmd=bank;FL.roll+=Math.max(-5*dt,Math.min(5*dt,bank-FL.roll))}
   FL.pos=dst(FL.pos,FL.trkT,FL.gs*KT2NMS*dt);
   if(FL.stage==='AIR'){const fpa=Math.atan2(FL.vs,Math.max(60,FL.gs)*101.27)/D2R,aoa=FL.conf==='0'?2.5:FL.conf==='FULL'?4:3.5;
-    /* flare: from 10 ft radio height the pitch goes up to 7.5 degrees, reached at 5 ft and held to the touchdown */
-    const ra=agl();if(FL.ver==='FLARE'&&ra<=10){if(FL.p10==null)FL.p10=FL.pitch;FL.pitch=FL.p10+(7.5-FL.p10)*Math.min(1,Math.max(0,(10-ra)/5))}
+    /* flare: from the flare engagement (40 ft) the pitch eases up to 6 degrees along an S curve in height (slow start, faster in the middle,
+       slow end), reached at 5 ft and held to the touchdown, never faster than 1.5 degrees per second */
+    const ra=agl();if(FL.ver==='FLARE'){if(FL.p10==null){FL.p10=FL.pitch;FL.raF=Math.max(ra,10)}
+      const x=Math.min(1,Math.max(0,(FL.raF-ra)/Math.max(1,FL.raF-5))),tgt=FL.p10+(6-FL.p10)*x*x*(3-2*x);FL.pitch+=Math.max(-1.5*dt,Math.min(1.5*dt,tgt-FL.pitch))}
     else{if(FL.ver!=='FLARE')FL.p10=null;const pr=FL.ver==='SRS'&&S.phase!=='GA'?3:2;   /* rotation: 3 degrees per second, 0 to 15 degrees in 5 s */
-    FL.pitch+=Math.max(-2*dt,Math.min(pr*dt,(FL.ver==='SRS'?15:fpa+aoa)-FL.pitch))}}
+    FL.pitch+=Math.max(-2*dt,Math.min(pr*dt,(FL.ver==='SRS'?15:fpa+aoa)-FL.pitch))}
+    /* flight director pitch command: the pitch of the vertical speed asked for (not the one reached yet), so the bar leads and the
+       aircraft pitch follows it and meets it */
+    {const fpaC=Math.atan2(FL.vsCmd??FL.vs,Math.max(60,FL.gs)*101.27)/D2R;FL.pitchCmd=FL.ver==='SRS'?15:FL.ver==='FLARE'?6:fpaC+aoa}}
+  else{FL.pitchCmd=null;FL.rollCmd=FL.ground?0:FL.rollCmd}
   const ff=FL.stage==='ROLL'||FL.thr==='TO'?5.6:CLIMBING.includes(FL.ver)||FL.ver==='SRS'?3.2:DESCENDING.includes(FL.ver)?0.7:FL.ground?0.4:FL.alt>20000?PM.ff(I().crz,I().ci)*PM.wf(gwNowF()):2.4;
   FL.fob=Math.max(0,FL.fob-ff*dt/3600);FL.t+=dt;
   /* speed trend (kt/s), smoothed, for the PFD trend arrow */

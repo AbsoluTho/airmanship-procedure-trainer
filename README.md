@@ -4,7 +4,7 @@ An unofficial A320 **procedure** trainer that runs in the browser (iPad first). 
 
 Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator manuals. The navigation data was typed from charts for training only and must never be used for navigation.
 
-## Status: Phase 3 prototype (v0.25.9)
+## Status: Phase 3 prototype (v0.25.11)
 
 - **MCDU** (Thales FMS2 layout, per FCOM DSC-22): keyboard and scratchpad, INIT A, F-PLN with TMPY (ERASE/INSERT), LAT REV, DEPARTURE, AIRWAYS (with airway-to-airway intersection), ARRIVAL, waypoint insertion, CLR of waypoints and discontinuities.
 - **Exercise** OEJN to OETB: RWY 16C MIGD2E, L677 WEJ, V54 TBK, ILS 31 via D179O, ALTN OEMA, FL340, CI 20, with automatic progress checks.
@@ -19,6 +19,14 @@ Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator
   - 11 approaches: ILS 16L (IMBF 111.7), 16R (IWSR 108.1), 34L (IWMR 108.9), 34R (IABF 110.7); RNP 16L, 16R, 34L, 34R; VOR 16R, 34L and 34R (KFA 112.3, the 34R final offset on 326°). Vias from the IAFs of the KFA 14 DME arc (LOPOD, RESAN, KEBAP, LOSAX, DASLA, KFA; DAXAR and KAVIV for the 16 runways) and from DF603, DF604 and RESAN for the RNP approaches; published missed approaches to the RESAN and LOSAX holds.
   - 32 RNAV SIDs: EMUSA, MIBRA, PUSRA, TAYMA 2E/2F/2G/2H and LADNA, METLA, ROTEL, RYDAN 1E/2E, 1F/2F, 1G/2G, 1H/2H (one set per runway).
   - Fix positions from KFA radial/DME, the extended centrelines and the chart tracks and distances; the same fix reached by different procedures agrees within 0.6 NM (36 cross-checks printed by the generator).
+- **v0.25.11**: gentler OP DES / climb entries, gear-down climb, moving FD bars, smoother flare.
+  - OP DES, DES, EXP DES, OP CLB, CLB and EXP CLB start and change their vertical speed gently, about 0.07 g: at most 250 ft/min per second, built up at 150 ft/min per second per second (it was 700 and 500, about 0.35 g). OP DES from level at 250 kt reaches -3000 ft/min in about 13 s. ALT*, G/S*, V/S and FPA keep the quicker rate.
+  - Gear down in the climb: 35 % less climb rate and acceleration (it was 50 %). SRS with the gear down climbs at about 1560 ft/min (was 1200), 2400 once the gear is up.
+  - FD bars move: the roll bar shows the bank asked for against the bank (2 px per degree), so in a turn it goes to the side of the turn and comes back to the centre as the aircraft reaches the bank; the pitch bar shows the pitch of the vertical speed asked for against the pitch, so it moves up or down first and the aircraft pitch follows it and meets it. They used to stay in the centre.
+  - Flare: from the flare engagement (40 ft) the pitch eases up to 6 degrees (was 7.5 from 10 ft) along an S curve in height, at most 1.5 degrees per second, reached at 5 ft and held to the touchdown (1.0 at 31 ft, 2.2 at 23, 3.7 at 17, 5.1 at 12, 5.8 at 8, 6.0 at 4). After the touchdown the nose comes down to 0 in 3 s, eased at both ends.
+- **v0.25.10**: cockpit sound restarted after leaving the app; SOUND OFF then ON is a full reset.
+  - After the app has been left (another app, Home screen, lock), iPad Safari can keep reporting its sound as running while it plays nothing, so nothing was done when coming back. Now the first touch after coming back restarts the whole sound whatever it reports: new audio context, new keep-alive and spare players, sounds decoded again.
+  - SOUND OFF closes the sound completely and SOUND ON sets it all up again from the start, so pressing OFF then ON is a full sound reset.
 - **v0.25.9**: cockpit sound back after loading a flight plan.
   - On iPad the sound could stop for good after a long task (loading a flight plan) or after leaving the app, and SOUND ON pressed again only tried to resume it. Now any touch, SOUND ON and CABIN CALL replace a stopped audio context at once inside that touch, and the sounds are decoded again (a sound asked for meanwhile is played as soon as it is ready).
   - The sound is also resumed by itself as soon as the system lets it (when an interruption ends).

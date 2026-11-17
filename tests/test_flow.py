@@ -624,7 +624,7 @@ async def run(url,b):
     assert r['a']['fma0'][:2]==[None,None] and r['a']['fma0'][2] and r['a']['fma1']==['SRS','RWY'],f'take-off FMA: armed modes only until FLX/TOGA, then SRS and RWY: {r["a"]}'
     assert r['a']['lineup']==['LINEUP',0] and r['a']['n1']==50,f'lined up, still until the thrust levers move; 50% N1: {r["a"]}'
     assert r['a']['thr']=='LVR' and r['a']['thr2']=='CL','LVR CLB until the thrust levers are set to CL'
-    assert 0.35<r['a']['climb']/r['b']['climb']<0.7,f'gear left down: about half the climb: {r["a"]["climb"]} vs {r["b"]["climb"]}'
+    assert 0.55<r['a']['climb']/r['b']['climb']<0.8,f'gear left down: about 65 % of the climb: {r["a"]["climb"]} vs {r["b"]["climb"]}'
     assert r['a']['conf']=='1' and r['a']['ias']<=227,f'flaps 1 not retracted: speed held below VFE 230: {r["a"]}'
     assert r['ret'][0]=='OEJN' and r['dt']=='tp,dest',f'immediate return: SEC with NEW DEST OEJN activated in flight, DIR TO OEJN: {r}'
     # ---- CO RTE, ROUTE selection, INIT REQUEST, STORED ROUTES, MCDU MENU (fresh MCDU) ----
@@ -720,6 +720,18 @@ async def check_audio(url,b):
       return a.concat([audioContexts.at(-1)!==d,audioContexts.at(-1).state,startedSounds.length-m]);
     }""")
     assert r==[1,'running','closed',1,True,'running',1],('stopped context replaced at the next touch, and by SOUND ON; sounds decoded again',r)
+    # back from another app: the context still says running, yet the first touch restarts the whole sound
+    r=await pg.evaluate("""async () => {
+      const c=audioContexts.at(-1),st0=c.state;
+      Object.defineProperty(document,'hidden',{value:true,configurable:true});document.dispatchEvent(new Event('visibilitychange'));
+      Object.defineProperty(document,'hidden',{value:false,configurable:true});document.dispatchEvent(new Event('visibilitychange'));
+      const stale=cockpitAudio.state().stale;
+      document.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true}));await new Promise(r=>setTimeout(r,400));
+      delete document.hidden;
+      const n=startedSounds.length;cockpitAudio.play('cabin');await new Promise(r=>setTimeout(r,300));
+      return [st0,stale,audioContexts.at(-1)!==c,c.state,audioContexts.at(-1).state,cockpitAudio.state().stale,startedSounds.length-n];
+    }""")
+    assert r==['running',True,True,'closed','running',False,1],('first touch after the app was hidden restarts the sound, and it plays',r)
     result=await pg.evaluate("""async () => {
       const finish = async () => {
         const last = startedSounds.at(-1);
@@ -761,7 +773,7 @@ async def check_audio(url,b):
       await finish();
       return counts;
     }""")
-    assert result==[4,4,5,5,5,6,7,8,9], result   # two more sounds before: the stopped-context checks
+    assert result==[5,5,6,6,6,7,8,9,10], result   # three more sounds before: the stopped-context and back-from-another-app checks
     await pg.click('#cockpitSound')
     assert await pg.evaluate("document.querySelector('#cockpitSound').getAttribute('aria-pressed')")=='false'
     n=await pg.evaluate('startedSounds.length')
