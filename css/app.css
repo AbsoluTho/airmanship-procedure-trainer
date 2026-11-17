@@ -318,3 +318,14 @@ body.pop-body{margin:0;background:#06090c;overflow:hidden;min-height:0}
 .kp svg{display:block;pointer-events:none}
 /* cockpit controls: a touch never selects their labels */
 .fcu,.efis,.mcdu,.lv-panel,.lg-panel,.flight .fb,.lv-btns{-webkit-touch-callout:none;user-select:none;-webkit-user-select:none}
+
+/* knob pad at 75 % of its former size */
+.knobpad{width:min(210px,calc(100vw - 16px));padding:8px;gap:6px;border-radius:10px}
+.kp-h{gap:8px}.kp-h b{font-size:12px}.kp-h span{font-size:10px}.kp-x{font-size:13px;padding:1px 4px}
+.kp-r{gap:6px}
+.kp{padding:9px 6px;font-size:11px;border-radius:7px;gap:2px}
+.kp small{font-size:8px}
+.kp.sm{padding:6px;font-size:10px}
+.kp.kp-turn{padding:7px 6px}
+.kp svg{width:20px;height:20px}
+.kp-cap{font-size:9px}

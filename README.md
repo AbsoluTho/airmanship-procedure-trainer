@@ -19,9 +19,11 @@ Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator
   - 11 approaches: ILS 16L (IMBF 111.7), 16R (IWSR 108.1), 34L (IWMR 108.9), 34R (IABF 110.7); RNP 16L, 16R, 34L, 34R; VOR 16R, 34L and 34R (KFA 112.3, the 34R final offset on 326°). Vias from the IAFs of the KFA 14 DME arc (LOPOD, RESAN, KEBAP, LOSAX, DASLA, KFA; DAXAR and KAVIV for the 16 runways) and from DF603, DF604 and RESAN for the RNP approaches; published missed approaches to the RESAN and LOSAX holds.
   - 32 RNAV SIDs: EMUSA, MIBRA, PUSRA, TAYMA 2E/2F/2G/2H and LADNA, METLA, ROTEL, RYDAN 1E/2E, 1F/2F, 1G/2G, 1H/2H (one set per runway).
   - Fix positions from KFA radial/DME, the extended centrelines and the chart tracks and distances; the same fix reached by different procedures agrees within 0.6 NM (36 cross-checks printed by the generator).
-- **v0.25.8**: FCU knob pad without text selection.
+- **v0.25.8**: FCU knob pad without text selection and smaller; ECP only with its button.
   - Turn keys: a small TURN caption above two large keys with drawn − and + symbols (no text on the keys).
+  - The knob pad is 75 % of its former size (210 instead of 280 units wide, smaller keys and text).
   - Nothing on the knob pad can be selected: a touch, a long press (which repeats the turn) or a double tap no longer selects the word or symbol and no longer opens the copy / translate menu. The same applies to the FCU, EFIS panel, MCDU, levers, landing gear panel and the simulator bar buttons.
+  - ECAM: showing the ECAM (MCDU / ECAM button) no longer opens the ECP over the ND; it opens only with its ECP button. Back to the MCDU still closes it.
 - **v0.25.7**: cockpit sound always on.
   - SOUND ON / SOUND OFF button in place of COCKPIT SOUND. The choice is kept from one visit to the next; SOUND ON by default.
   - With SOUND ON the audio starts by itself at the first touch or key anywhere in the page (browsers only let a page start sound from a tap). CABIN CALL stays as the sound check.

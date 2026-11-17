@@ -321,6 +321,8 @@ async def run(url,b):
     # ---- ECAM behind the MCDU ----
     await pg.click('#duToggle');assert await pg.evaluate("document.querySelector('#mcduHome').classList.contains('ecam-on')&&getComputedStyle(document.querySelector('#mcdu')).display==='none'"),'ECAM replaces the MCDU'
     assert await pg.evaluate("window.__ecam.page()")=='wheel','SD on the ground: WHEEL'
+    assert await pg.evaluate("document.querySelector('#ecp').hidden"),'the ECP does not open by itself with the ECAM'
+    await pg.click('#ecpBtn');assert await pg.evaluate("!document.querySelector('#ecp').hidden"),'ECP opened with its button'
     await pg.click('[data-ecp="fuel"]');assert await pg.evaluate("window.__ecam.page()")=='fuel','SD FUEL key'
     await pg.click('[data-ecp="fuel"]');assert await pg.evaluate("window.__ecam.page()")=='wheel','second press: back to the automatic page'
     for key in ['eng','bleed','press','elec','hyd','apu','cond','door','fctl','sts','all','rcl','emer']: await pg.click(f'[data-ecp="{key}"]')

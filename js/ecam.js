@@ -250,7 +250,8 @@ function ecpPress(k){
   else if(k==='all'){EC.page=SD_ORDER[EC.allIx%SD_ORDER.length];EC.allIx++}
   else EC.page=EC.page===k?null:k;
   drawEcam()}
-function ecamShow(on){EC.on=on;EC.ecp=on;const h=$('#mcduHome');if(h)h.classList.toggle('ecam-on',on);const b=$('#duToggle');if(b){b.textContent=on?'MCDU':'ECAM';b.setAttribute('aria-pressed',String(on))}drawEcam();ecamUI()}
+function ecamShow(on){EC.on=on;if(!on)EC.ecp=false;   /* the ECP opens only with its ECP button, not when the ECAM is shown */
+  const h=$('#mcduHome');if(h)h.classList.toggle('ecam-on',on);const b=$('#duToggle');if(b){b.textContent=on?'MCDU':'ECAM';b.setAttribute('aria-pressed',String(on))}drawEcam();ecamUI()}
 /* the ECAM is drawn when it is shown in the page, or when one of its displays is in its own window */
 function drawEcam(){const pw=typeof POP!=='undefined'?POP.wins:{},e=EC.on||!!pw.ewd,s=EC.on||!!pw.sd;
   if(e||s){const a=$('#ewd'),b=$('#sd');if(e&&a&&a.width)drawEWD(a);if(s&&b&&b.width)drawSD(b);if(!e)engStep()}else engStep();ecamUI()}
