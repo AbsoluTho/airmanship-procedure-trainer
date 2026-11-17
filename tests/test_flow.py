@@ -103,11 +103,13 @@ async def run(url,b):
     assert cr==['EGREP KSA MUSRI KFA DEMKA HSA ODBAX ODBAX',False,'ITSE1H','MA443 OBTOX CF35 FF35 D060P GERIR',469,'OEJNOEAH1',64,0],f'OFP company routes, Dammam SIDs, OFP positions: {cr}'
     # FLIGHT PLANS tab, OFP winds, CO RTES list, ALTN F-PLN, short approach names, arrow scrolling
     fp=await pg.evaluate("""(()=>{const A0=S.active,I0=clone(S.init),pg0=S.page,ar0=S.arr,out={};document.querySelector('.tab[data-v="ofp"]').click();
-      out.list=[...document.querySelectorAll('.ofp-item .od')].map(x=>x.textContent).slice(0,2).join();document.querySelector('[data-ofp="FAD225"]').click();
+      OV.from=null;OV.flt=null;ofpRender();out.froms=[...document.querySelectorAll('[data-ofp-from]')].map(x=>x.dataset.ofpFrom).join();
+      document.querySelector('[data-ofp-from="OERK"]').click();out.list=[...document.querySelectorAll('.ofp-item .od')].map(x=>x.textContent).join();document.querySelector('[data-ofp="FAD225"]').click();
       const t=document.querySelector('#ofpView').textContent;out.detail=['OERK - OEMA','OERKOEMA1','FL340 / -44','51.7 / 2','HD027','SISUD B544 NOMDA','PEGUR Z712 WEJ V54 TBK','325/017'].filter(x=>!t.includes(x));
       out.all=OFPS.map(o=>{OV.flt=o.flt;ofpRender();const n=document.querySelectorAll('#ofpView .sec').length,t=document.querySelector('#ofpView').textContent;return n===4+o.altn.length&&!/undefined|NaN|null|could not/.test(t)?'':o.flt}).filter(Boolean).join();OV.flt='FAD225';ofpRender();
       const sb=document.querySelector('[data-sec="initb"]');sb.querySelector('.sec-t').click();out.sec=[sb.classList.contains('shut'),sb.querySelector('.sec-t').textContent,getComputedStyle(sb.querySelector('.sec-b')).display];sb.querySelector('.sec-t').click();out.sec.push(sb.classList.contains('shut'),document.querySelectorAll('#ofpView .sec').length);
-      document.querySelector('[data-ofp-back]').click();document.querySelector('.tab[data-v="mcdu"]').click();
+      document.querySelector('[data-ofp-back]').click();out.back=[...document.querySelectorAll('.ofp-item .od')].length+':'+!!document.querySelector('[data-ofp-froms]');document.querySelector('[data-ofp-froms]').click();out.back+=':'+document.querySelectorAll('[data-ofp-from]').length;
+      document.querySelector('.tab[data-v="mcdu"]').click();
       WX.on=true;applyRoute('OERKOEMA1',CO_RTES.OERKOEMA1);out.alt=altRte().wpts.join(' ')+'/'+altRte().via.RBG+'/'+fplnRows(S.active).filter(r=>r.k==='altwpt').length;
       const w=windAt(DB.wpt.GIDUV,34000,30000,'CRZ'),c=crabOf(267+3,449,w);out.wind=[Math.round(w.dir),Math.round(w.spd),Math.round(c.gs),Math.round(trkOfHdg(c.hdg,449,w))];
       const o=DB.apt.OERK,d=DB.apt.OEMA,lo=windAt(o.pos,o.elev+500,500,'TAKEOFF'),ld=windAt(d.pos,d.elev+500,500,'APPR');
@@ -118,7 +120,7 @@ async def run(url,b):
       out.up=wxUplink()&&[S.wind.clb.length,S.wind.crz.map(x=>x.alt/100).join(),S.wind.des[0].alt];
       S.arrAlt=false;S.arr={list:'APPR',off:0};S.page='ARR';out.appr=P.ARR.items()[0].txt;P.ARR.slew(1);out.off=S.arr.off;
       S.wind={clb:[],crz:[],des:[]};S.active=A0;S.init=I0;S.tmpy=null;S.coRte=null;S.page=pg0;S.arr=ar0;WX.flt=null;WX.on=false;WX.surface={};render();return out})()""")
-    assert fp=={'list':'OEJN - OERK,OERK - OEJN','detail':[],'alt':'SISUD ASLAD RBG NOMDA/B544/4','wind':[278,32,417,270],'calm':[True]*6,'up':[5,'300,320,340,360',39000],'appr':'<ILS17','off':1,'sec':[True,'+','none',False,6],'all':''},f'FLIGHT PLANS tab and OFP winds: {fp}'
+    assert fp=={'froms':'OEJN,OERK,OEAB,OEAH,OEDF,OEMA,OETB','list':'OERK - OEJN,OERK - OEMA','back':'2:true:7','detail':[],'alt':'SISUD ASLAD RBG NOMDA/B544/4','wind':[278,32,417,270],'calm':[True]*6,'up':[5,'300,320,340,360',39000],'appr':'<ILS17','off':1,'sec':[True,'+','none',False,6],'all':''},f'FLIGHT PLANS tab and OFP winds: {fp}'
     # v0.22: PROG TO a runway, airways through VORs on the ND, ALTN LAT REV and airways, ALTN route in PLAN only, random ZFWCG
     v22=await pg.evaluate("""(()=>{const A0=S.active,I0=clone(S.init),pg0=S.page,sp0=S.sp,pr0=S.prog.to,off0=S.fpOff,out={};
       S.page='PROG';S.sp='OEDF34R';P.PROG.lsk('R',4);out.prog=[S.prog.to,Math.round(gc(anyPos('OEDF34R'),DB.apt.OEDF.rwy['34R'].pos)*10)];S.sp='OEDF99';P.PROG.lsk('R',4);out.bad=S.prog.to;S.sp='';

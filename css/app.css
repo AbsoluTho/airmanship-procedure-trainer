@@ -243,6 +243,7 @@ body.fs .app{min-height:100vh;display:flex;flex-direction:column;justify-content
 .ofp-item:hover,.ofp-item:focus-visible{border-color:var(--accent);outline:none}
 .ofp-item .od{font:700 24px/1 var(--f-display);letter-spacing:.08em}
 .ofp-item .meta{font:500 12px/1.4 var(--f-mono);color:var(--ink2)}
+.ofp-item .city{font:600 14px/1.2 var(--f-display);letter-spacing:.06em;text-transform:uppercase;color:var(--accent)}
 .ofp-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .ofp-grid .wide{grid-column:1/-1}
 @media(max-width:760px){.ofp-grid{grid-template-columns:1fr}}
