@@ -548,7 +548,7 @@ async def run(url,b):
         if(S.phase==='CRZ'&&!o.f){FCU.alt=36000;o.f=1}if(n%10===0)msgTick();if(hasMsg('STEP AHEAD'))o.ahead=1;
         if(o.f&&FL.ver==='CLB'&&!o.at)o.at=S.active.legs[FL.fromIx].id;if(o.at&&FL.ver==='ALT'&&Math.abs(FL.alt-36000)<30)break}
       return{at:o.at,ahead:!!o.ahead,crz:I().crz,left:S.active.legs.some(l=>l.step!=null),alt:Math.round(FL.alt)}})()""")
-    assert r=={'at':'LABUN','ahead':True,'crz':360,'left':False,'alt':36000},f'step climb at LABUN to FL360: {r}'
+    assert abs(r.pop('alt')-36000)<=5 and r=={'at':'LABUN','ahead':True,'crz':360,'left':False},f'step climb at LABUN to FL360: {r}'   # within 5 ft at ALT (smoothed vertical speed)
     # DIR TO with the keys: the key beside a waypoint of the list selects that waypoint
     await P('DIR');i=await pg.evaluate("dirList().findIndex(x=>x.l.id==='TBK')");assert 0<=i<4,i
     await P('L'+str(3+i));assert await pg.evaluate("window.__S().dirTo")=='TBK','DIR TO: the key beside TBK selects TBK'
