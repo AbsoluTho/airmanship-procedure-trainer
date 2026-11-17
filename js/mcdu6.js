@@ -18,6 +18,8 @@ const CO_RTES={
   OEDFOEJN1:{from:'OEDF',to:'OEJN',altn:'OEMA',rwy:'34L',route:[['DCT','KFA'],['H732','OTISU'],['N112','GETOT'],['Q212','KSA'],['G782','VEMEM']],star:'VEME1A',appr:'ILS34L',via:'ITUXI'},
   OEJNOEAB1:{from:'OEJN',to:'OEAB',altn:'OEMA',rwy:'34C',sid:'EGPO2W',route:[['V31','BHA'],['V40','ABH']],appr:'ILS13',via:'ABH'},
   OEABOEJN1:{from:'OEAB',to:'OEJN',altn:'OEMA',rwy:'13',sid:'RWYHDG',route:[['DCT','ABH'],['B544','BOSUT']],star:'BOSU2R',appr:'ILS16RY',via:'SOGER'},
+  OERKOEAB1:{from:'OERK',to:'OEAB',altn:'OEJN',rwy:'15L',sid:'MERV2E',route:[['Z414','EMEKO'],['V40','ABH']],appr:'ILS13',via:'ABH'},
+  OEABOERK1:{from:'OEAB',to:'OERK',altn:'OEMA',rwy:'13',sid:'RWYHDG',route:[['DCT','ABH'],['H75','IRBAB'],['Q313','MOBAG']],star:'MOBA1A',appr:'ILS15LY',via:'RK621',steps:[['ALMIN',33000]]},   /* OFP: FL170 to ALMIN, then FL330 */
   OEJNOEAH1:{from:'OEJN',to:'OEAH',altn:'OEMA',rwy:'16R',sid:'EGRE2F',route:[['T532','KSA'],['H976','MUSRI'],['L604','KFA'],['N687','DEMKA'],['DCT','HSA']],appr:'ILS34Y',via:'HSA'},
   OEAHOEJN1:{from:'OEAH',to:'OEJN',altn:'OEMA',rwy:'34',sid:'RWYHDG',route:[['DCT','HSA'],['DCT','DEMKA'],['N687','KFA'],['A776','OTISU'],['N112','GETOT'],['Q212','KSA'],['G782','VEMEM']],star:'VEME1A',appr:'ILS34L',via:'ITUXI'},
   OETBOEJN1:{from:'OETB',to:'OEJN',altn:'OEMA',rwy:'24',route:[['DCT','TBK'],['V54','WEJ'],['T510','RBG'],['B544','NOMDA']],star:'NOMD1A',appr:'ILS34L',via:'ITUXI'},
@@ -35,6 +37,8 @@ const AOC_OFP={TRN385:{rte:'OEJNOETB1',ci:20,crz:340,temp:-46,tropo:36000},
   FAD310:{rte:'OEDFOEJN1',ci:15,crz:240,temp:-20,tropo:36090},
   FAD341:{rte:'OEJNOEAB1',ci:15,crz:170,temp:-5,tropo:36090},
   FAD342:{rte:'OEABOEJN1',ci:15,crz:240,temp:-21,tropo:36090},
+  FAD13:{rte:'OERKOEAB1',ci:15,crz:320,temp:-40,tropo:36090},
+  FAD14:{rte:'OEABOERK1',ci:15,crz:170,temp:-8,tropo:36090},
   FAD429:{rte:'OEJNOEAH1',ci:15,crz:370,temp:-54,tropo:36090},
   FAD430:{rte:'OEAHOEJN1',ci:15,crz:380,temp:-57,tropo:36090}};
 
@@ -53,7 +57,9 @@ function buildRoute(r){const p=newPlan(r.from,r.to),ap=DB.apt[r.from];
   for(const[via,to]of r.route||[]){if(!fixReg(to))continue;(via&&AWY[via]||[]).forEach(fixReg);const from=p.legs[fi].id,aw=via&&via!=='DCT'&&AWY[via];
     fi=aw&&AWY[via].includes(from)&&AWY[via].includes(to)?insertAwy(p,fi,via,to):insertAwy(p,fi,null,to)}
   if(r.appr&&(APPRS[r.to]||{})[r.appr]){p.appr=r.appr;p.via=r.via||null;p.star=r.star&&(STARS[r.to]||{})[r.star]?r.star:null;buildArr(p)}
-  const di=idxK(p,'dest');p.legs=p.legs.filter((l,i)=>!(l.k==='disc'&&i<di));normalize(p);return p}
+  const di=idxK(p,'dest');p.legs=p.legs.filter((l,i)=>!(l.k==='disc'&&i<di));normalize(p);
+  /* step climbs printed on the OFP (an initial level, then the cruise level from a waypoint): S/C on the F-PLN */
+  (r.steps||[]).forEach(([id,alt])=>{const l=p.legs.find(l=>l.k==='wpt'&&l.seg==='enr'&&l.id===id);if(l)l.step=alt});return p}
 /* active F-PLN to a route (runway, SID, airways and waypoints, approach) for STORED ROUTES */
 function routeOf(p){const r={from:p.legs[0].id,to:p.legs[idxK(p,'dest')].id,altn:I().altn||null,rwy:p.rwy||null,sid:p.sid||null,appr:p.appr||null,via:p.via||null,star:p.star||null,route:[]};
   for(const l of p.legs){if(l.k!=='wpt'||l.seg!=='enr')continue;const v=l.via||'DCT',last=r.route[r.route.length-1];if(last&&last[0]===v&&v!=='DCT')last[1]=l.id;else r.route.push([v,l.id])}

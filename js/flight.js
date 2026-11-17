@@ -418,7 +418,8 @@ function step(dt){if(S.tmpy&&typeof ppHoldSync==='function')ppHoldSync(S.tmpy);c
       else{const lim=spdLim('clb'),dl=spdLim('des'),mmo=iasOf((S.phase==='DES'?mgd.desM():mgd.crzM())*sos(FL.alt),FL.alt);
         /* managed: the target is the programmed speed until it equals the programmed Mach, then the Mach (and the reverse in the descent) */
         if(S.phase==='CLB'||S.phase==='TAKEOFF'){const v=FL.alt<lim.alt?lim.spd:mgd.clb();mm=FL.ver!=='EXP CLB'&&mmo<v;spdT=FL.ver==='EXP CLB'?sp.GD:Math.min(v,mmo)}
-        else if(S.phase==='CRZ'){spdT=mmo;mm=true;const rm=typeof rtaMach==='function'?rtaMach(FL.alt):null;if(rm){spdT=iasOf(rm*sos(FL.alt),FL.alt);mm=true}}
+        else if(S.phase==='CRZ'){spdT=mmo;mm=true;if(mgd.clb()<mmo){spdT=mgd.clb();mm=false}   /* low cruise level (FL170, FL240): the ECON speed, not the Mach (0.77 at FL170 would be 360 kt, above VMO) */
+          const rm=typeof rtaMach==='function'?rtaMach(FL.alt):null;if(rm){spdT=iasOf(rm*sos(FL.alt),FL.alt);mm=true}}
         else if(S.phase==='DES'){const em=iasOf(0.80*sos(FL.alt),FL.alt);/* the speed limit is started early enough to be met at the limit altitude, and kept once started (a level-off on the way does not cancel it) */
           if(FL.alt<dl.alt+Math.max(1000,decelLead(FL.ias-dl.spd)*Math.max(0,-FL.vs)*60/Math.max(100,FL.gs)+300))FL.spdLimOn=true;else if(FL.alt>dl.alt+6000)FL.spdLimOn=false;
           const v=FL.ver==='EXP DES'?340:FL.spdLimOn?dl.spd:mgd.des();

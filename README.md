@@ -4,7 +4,7 @@ An unofficial A320 **procedure** trainer that runs in the browser (iPad first). 
 
 Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator manuals. The navigation data was typed from charts for training only and must never be used for navigation.
 
-## Status: Phase 3 prototype (v0.25.2)
+## Status: Phase 3 prototype (v0.25.3)
 
 - **MCDU** (Thales FMS2 layout, per FCOM DSC-22): keyboard and scratchpad, INIT A, F-PLN with TMPY (ERASE/INSERT), LAT REV, DEPARTURE, AIRWAYS (with airway-to-airway intersection), ARRIVAL, waypoint insertion, CLR of waypoints and discontinuities.
 - **Exercise** OEJN to OETB: RWY 16C MIGD2E, L677 WEJ, V54 TBK, ILS 31 via D179O, ALTN OEMA, FL340, CI 20, with automatic progress checks.
@@ -19,6 +19,12 @@ Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator
   - 11 approaches: ILS 16L (IMBF 111.7), 16R (IWSR 108.1), 34L (IWMR 108.9), 34R (IABF 110.7); RNP 16L, 16R, 34L, 34R; VOR 16R, 34L and 34R (KFA 112.3, the 34R final offset on 326°). Vias from the IAFs of the KFA 14 DME arc (LOPOD, RESAN, KEBAP, LOSAX, DASLA, KFA; DAXAR and KAVIV for the 16 runways) and from DF603, DF604 and RESAN for the RNP approaches; published missed approaches to the RESAN and LOSAX holds.
   - 32 RNAV SIDs: EMUSA, MIBRA, PUSRA, TAYMA 2E/2F/2G/2H and LADNA, METLA, ROTEL, RYDAN 1E/2E, 1F/2F, 1G/2G, 1H/2H (one set per runway).
   - Fix positions from KFA radial/DME, the extended centrelines and the chart tracks and distances; the same fix reached by different procedures agrees within 0.6 NM (36 cross-checks printed by the generator).
+- **v0.25.3**: OFPs FAD13 (OERK-OEAB) and FAD14 (OEAB-OERK), with their airways and waypoints.
+  - FAD13 Riyadh - Abha, FL320, CI 15: MERV2E, Z414 to EMEKO, V40 to ABH, approach ILS 13 via ABH; alternate OEJN. Company route OERKOEAB1.
+  - FAD14 Abha - Riyadh, CI 15: DCT ABH, H75 to IRBAB, Q313 to MOBAG, MOBA1A, ILS 15L Y via RK621; alternate OEMA. FL170 to ALMIN, then FL330 as on the OFP: the company route OEABOERK1 carries the step climb (S/C at ALMIN to FL330; the crew sets FL330 on the FCU). Company routes can now carry the step climbs of their OFP.
+  - Airways Z414 (MERVI ASMIS PUSUM OBSAM RAKLI SENRA EMEKO), H75 (ABH DUMSI IRBAB) and Q313 (IRBAB KATIX ALMIN EGMOT ULDUP DANOM UMRAN MOBAG), in the segments flown; waypoint positions from the OFPs.
+  - Both flights on the FLIGHT PLANS tab (under OERK and OEAB) and as flight-number uplinks.
+  - Managed cruise speed at a low cruise level: the ECON speed (290 kt at CI 15) when the cruise Mach would be faster. At FL170 the Mach 0.77 gave 360 kt, above VMO (FAD14 to ALMIN, FAD341). FAD342 at FL240 is a little slower for the same reason.
 - **v0.25.2**: gear drag, OP CLB / OP DES speed changes, altitude capture, glide slope capture from above, heading turns, flight plans by departure airport.
   - Landing gear down: 30 % more drag. Level deceleration with the gear down: clean or CONF 1 19.5 kt per NM (was 15), CONF 2 23.4 (was 18), CONF 3 or FULL 26 (was 20). The effect of the rate of descent is unchanged.
   - After the touchdown the pitch comes down to 0 in 3 s (was 5 s).

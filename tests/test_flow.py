@@ -120,7 +120,7 @@ async def run(url,b):
       out.up=wxUplink()&&[S.wind.clb.length,S.wind.crz.map(x=>x.alt/100).join(),S.wind.des[0].alt];
       S.arrAlt=false;S.arr={list:'APPR',off:0};S.page='ARR';out.appr=P.ARR.items()[0].txt;P.ARR.slew(1);out.off=S.arr.off;
       S.wind={clb:[],crz:[],des:[]};S.active=A0;S.init=I0;S.tmpy=null;S.coRte=null;S.page=pg0;S.arr=ar0;WX.flt=null;WX.on=false;WX.surface={};render();return out})()""")
-    assert fp=={'froms':'OEJN,OERK,OEAB,OEAH,OEDF,OEMA,OETB','list':'OERK - OEJN,OERK - OEMA','back':'2:true:7','detail':[],'alt':'SISUD ASLAD RBG NOMDA/B544/4','wind':[278,32,417,270],'calm':[True]*6,'up':[5,'300,320,340,360',39000],'appr':'<ILS17','off':1,'sec':[True,'+','none',False,6],'all':''},f'FLIGHT PLANS tab and OFP winds: {fp}'
+    assert fp=={'froms':'OEJN,OERK,OEAB,OEAH,OEDF,OEMA,OETB','list':'OERK - OEAB,OERK - OEJN,OERK - OEMA','back':'3:true:7','detail':[],'alt':'SISUD ASLAD RBG NOMDA/B544/4','wind':[278,32,417,270],'calm':[True]*6,'up':[5,'300,320,340,360',39000],'appr':'<ILS17','off':1,'sec':[True,'+','none',False,6],'all':''},f'FLIGHT PLANS tab and OFP winds: {fp}'
     # v0.22: PROG TO a runway, airways through VORs on the ND, ALTN LAT REV and airways, ALTN route in PLAN only, random ZFWCG
     v22=await pg.evaluate("""(()=>{const A0=S.active,I0=clone(S.init),pg0=S.page,sp0=S.sp,pr0=S.prog.to,off0=S.fpOff,out={};
       S.page='PROG';S.sp='OEDF34R';P.PROG.lsk('R',4);out.prog=[S.prog.to,Math.round(gc(anyPos('OEDF34R'),DB.apt.OEDF.rwy['34R'].pos)*10)];S.sp='OEDF99';P.PROG.lsk('R',4);out.bad=S.prog.to;S.sp='';
@@ -136,7 +136,10 @@ async def run(url,b):
         for(const[c,w]of[['3',50],['3',66],['FULL',50],['FULL',66]]){FL.conf=c;window.gwNowF=()=>w;r.push(Math.round(engTarget().n1))}Object.assign(FL,f0);window.gwNowF=g0;return r})();
       S.active=A0;S.init=I0;S.page=pg0;S.sp=sp0;S.prog.to=pr0;S.fpOff=off0;S.msg='';S.tmpy=null;S.coRte=null;render();return out})()""")
     assert v22=={'prog':['OEDF34R',0],'bad':'OEDF34R','vor':[True,True,3],'lr':'ALTLR','aw':'ALTAWY','alt':'PEGUR SIGRO IVUDA WEJ LABUN NETOL DEMSU TBK|Z712V54','next':'PEGUR WEJ','cg':[True,True],'n1':[45,55,55,63]},f'v0.22 checks: {v22}'
-    assert await pg.evaluate("[!document.querySelector('#v-mcdu .side'),!!document.querySelector('#v-mcdu #deck'),OFPS.length,AOC_OFP.FAD122.rte,buildRoute(CO_RTES.OERKOEJN1).star].join()")=='true,true,12,OEJNOERK1,VEME1A','MCDU tab without the Exercise and How to cards; 12 OFP flights'
+    assert await pg.evaluate("[!document.querySelector('#v-mcdu .side'),!!document.querySelector('#v-mcdu #deck'),OFPS.length,AOC_OFP.FAD122.rte,buildRoute(CO_RTES.OERKOEJN1).star].join()")=='true,true,14,OEJNOERK1,VEME1A','MCDU tab without the Exercise and How to cards; 14 OFP flights'
+    r=await pg.evaluate("""(()=>{const a=buildRoute(CO_RTES.OERKOEAB1),b=buildRoute(CO_RTES.OEABOERK1),w=p=>p.legs.filter(l=>l.k==='wpt'&&l.seg==='enr').map(l=>l.id).join(' ');
+      return[AOC_OFP.FAD13.rte,a.sid,w(a),AOC_OFP.FAD14.rte,w(b),b.star,b.appr,(b.legs.find(l=>l.id==='ALMIN')||{}).step]})()""")
+    assert r==['OERKOEAB1','MERV2E','ASMIS PUSUM OBSAM RAKLI SENRA EMEKO KEDAS','OEABOERK1','ABH DUMSI IRBAB KATIX ALMIN EGMOT ULDUP DANOM UMRAN','MOBA1A','ILS15LY',33000],f'FAD13 / FAD14 Riyadh - Abha: airways Z414, V40, H75, Q313 and the step climb at ALMIN: {r}'
     # idle deceleration rules (kt per NM): gear up 10/5/0, gear down 15/10/5, landing configuration 20/15/10, 5 less for each further 1000 ft/min (the speed increases)
     r=await pg.evaluate("""(()=>{const g=FL.gear,c=FL.conf,o=[];for(const [gear,conf] of [[false,'0'],[false,'2'],[true,'2'],[true,'3'],[true,'FULL']]){FL.gear=gear;FL.conf=conf;
       o.push([0,-1000,-2000,-2500,-3000].map(v=>+idleDecel(v,200).toFixed(1)).join('/'))}
