@@ -145,6 +145,9 @@ async def run(url,b):
       for(const v of [230,215,203.5,202,209,212]){FL.ias=v;const over=FL.ias-FL.spdT;if(over>10&&!FL.thrIdle)FL.thrIdle=true;else if(over<=3)FL.thrIdle=false;o.push(FL.thrIdle?'I':'-')}
       Object.assign(FL,k);return o.join('')})()""")
     assert r=='III--I',('idle logic',r)
+    # take-off: 0 to V1 in 40 s at 69 t, 1 s less per tonne
+    r=await pg.evaluate("""(()=>{const z=S.fuel.zfw,f=FL.fob,o=[];S.fuel.zfw=60;for(const fob of [9,4]){FL.fob=fob;o.push((40-(69-gwNowF())).toFixed(0))}S.fuel.zfw=z;FL.fob=f;return o.join()})()""")
+    assert r=='40,35',('take-off time by weight',r)
     # EWD slats and flaps (FlyByWire Slats.tsx): the surfaces travel to the position of the configuration
     r=await pg.evaluate("""(()=>{const f0=LV.flaps,k={s:SF.s,f:SF.f,t:SF.t,key:SF.key},o=[];LV.flaps=2;SF.s=0;SF.f=0;SF.key='g';
       SF.t=performance.now()/1000-5/(FL.rate||1);sfTick();o.push(Math.round(SF.s),Math.round(SF.f));      // 5 s of travel

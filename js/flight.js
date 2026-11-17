@@ -133,7 +133,7 @@ function flightStart(){const miss=flightReady();if(miss.length)return miss;vFill
   const P=buildPath(),o=DB.apt[orig()],r=o.rwy[S.active.rwy],tr=r.crs+(o.var||0);
   Object.assign(FL,{active:true,running:true,t:0,utc0:Date.now(),path:P,s:0,seg:1,xtk:0,pos:r.pos,hdgT:tr,trkT:tr,roll:0,pitch:0,alt:r.tdze??o.elev,vs:0,ias:0,tas:0,gs:0,mach:0,
     ground:true,lat:'RWY',latArm:FCU.hdgMgd&&!S.active.noSid&&!(S.active.legs[1]&&S.active.legs[1].k==='disc')?'NAV':null,ver:'SRS',verArm:[FCU.lvlch?'CLB':'OP CLB'],thr:'IDLE',conf:['0','1+F','2','3','FULL'][LV.flaps],gear:true,gearPos:1,gaFlap:false,pmGearT:null,pmF3T:null,revDone:false,
-    fob:S.fuel.block-(S.fuel.taxi??0.2),fromIx:0,loT:null,spdLimOn:false,thrIdle:false,eoEng:null,crzDes:false,ldgSeq:0,gearT:null,f3T:null,inHold:null,holdExit:null,hsActive:null,cst:null,acc:0,accT:0,soe:false,opSmall:false,spdIsMach:false,capAlt:null,altHold:null,fmaT:{},loc:false,gsCap:false,tdReached:false,stage:'LINEUP',lvrT:null});LV.thr='IDLE';LV.gear='DOWN';LV.decel=false;LV.m1=LV.m2=true;
+    fob:S.fuel.block-(S.fuel.taxi??0.2),fromIx:0,loT:null,spdLimOn:false,thrIdle:false,toAcc:0,p10:null,tdPitch:null,tdT:null,eoEng:null,crzDes:false,ldgSeq:0,gearT:null,f3T:null,inHold:null,holdExit:null,hsActive:null,cst:null,acc:0,accT:0,soe:false,opSmall:false,spdIsMach:false,capAlt:null,altHold:null,fmaT:{},loc:false,gsCap:false,tdReached:false,stage:'LINEUP',lvrT:null});LV.thr='IDLE';LV.gear='DOWN';LV.decel=false;LV.m1=LV.m2=true;
   FCU.athr=true;FL.td=P.sThr-tdDist();FL.sig=planSig();S.phase='TAKEOFF';setFma();flightTick(0);return[]}
 function q2conf(){const f=S.perf.flaps;return f===1?'1+F':String(f||1)}
 
@@ -325,7 +325,9 @@ function step(dt){if(S.tmpy&&typeof ppHoldSync==='function')ppHoldSync(S.tmpy);c
   for(const pt of P.pts)if(pt.ix!=null&&pt.s<=FL.s+0.05&&pt.ix>FL.fromIx)FL.fromIx=pt.ix;
   if(FL.fromIx!==fi&&S.page==='FPLN'&&!S.secMode)S.fpOff=0;   /* waypoint sequenced: the F-PLN starts again at the FROM line */
 
-  if(FL.stage==='ROLL'){FL.ias+=(LV.thr==='TOGA'?4.94:4.37)*dt;if(FL.ias>=q.vr){FL.pitch=Math.min(15,FL.pitch+3*dt);if(FL.ias>=q.vr+4){FL.ground=false;FL.stage='AIR';FL.loT=FL.t}}}
+  /* take-off roll (measured on the aircraft): 0 to V1 in 40 s at 69 t with FLX thrust, 1 s less per tonne lighter (39 s at 68 t, 30 s at 59 t),
+     at a constant acceleration V1 / time; TOGA 13 % more. The same acceleration continues to VR. */
+  if(FL.stage==='ROLL'){const toT=Math.max(25,Math.min(45,40-(69-gwNowF()))),acc=(q.v1||130)/toT*(LV.thr==='TOGA'?1.13:1);FL.toAcc=acc;FL.ias+=acc*dt;if(FL.ias>=q.vr){FL.pitch=Math.min(15,FL.pitch+3*dt);if(FL.ias>=q.vr+4){FL.ground=false;FL.stage='AIR';FL.loT=FL.t}}}
   const ga=S.phase==='GA',thrRed=ga?(p2.gaThr??defGa()):(q.thr??defRed()),acc=ga?(p2.gaAcc??defGa()):(q.acc??defRed());
   if(FL.thr==='GA SOFT'&&FL.eoEng)FL.thr='TO';
   if((FL.thr==='TO'||FL.thr==='GA SOFT')&&!FL.ground&&FL.alt>=thrRed){FL.thr='LVR';FL.lvrT=FL.t}
@@ -440,11 +442,11 @@ function step(dt){if(S.tmpy&&typeof ppHoldSync==='function')ppHoldSync(S.tmpy);c
     /* the ground: below the runway elevation away from the runway (or gear up there) the flight ends */
     if(FL.alt<gnd-1&&FL.vs<0&&FL.ver!=='FLARE'){const rw=dtg<1.5&&dtg>-1.5&&FL.gearPos>=1;if(rw){FL.ver='FLARE'}else{FL.alt=gnd;FL.vs=0;FL.ias=0;FL.ground=true;FL.stage='STOP';S.phase='GROUND CONTACT';FL.running=false;S.msg='GROUND CONTACT'}}
     if(FL.ver==='FLARE'&&agl()<=1&&FL.vs<=0&&FL.gearPos<1){FL.ground=true;FL.alt=gnd;FL.vs=0;FL.ias=0;FL.stage='STOP';S.phase='GEAR UP LANDING';FL.running=false;S.msg='GEAR NOT DOWN AT TOUCHDOWN'}
-    if(FL.ver==='FLARE'&&agl()<=1&&FL.vs<=0&&FL.gearPos>=1){FL.ground=true;FL.stage='ROLLOUT';FL.ver='ROLL OUT';FL.lat='ROLL OUT';FL.alt=gnd;FL.vs=0;FCU.ap1=FCU.ap2=false;FCU.athr=false}}
+    if(FL.ver==='FLARE'&&agl()<=1&&FL.vs<=0&&FL.gearPos>=1){FL.ground=true;FL.stage='ROLLOUT';FL.ver='ROLL OUT';FL.lat='ROLL OUT';FL.alt=gnd;FL.vs=0;FCU.ap1=FCU.ap2=false;FCU.athr=false;FL.tdPitch=Math.max(0.5,FL.pitch);FL.tdT=FL.t}}
   if(FL.stage==='ROLLOUT'){const idle=['IDLE','REVIDLE','REVMAX'].includes(LV.thr),ab=idle&&LV.askid&&LV.abrk;
     let dec=!idle?0.6:ab?{LO:2.5,MED:3.7,MAX:4.6}[LV.abrk]:LV.askid?(FL.ias>40?3:2.3):1.9;if(ab&&FL.ias<40)dec=Math.min(dec,2.7);   /* gentler roll-out (v0.15.7) */
     if(LV.thr==='REVMAX'&&FL.ias>70)dec+=1.1;else if(LV.thr==='REVIDLE'&&FL.ias>70)dec+=0.3;LV.decel=!!ab&&FL.ias>2;
-    FL.ias=Math.max(0,FL.ias-dec*dt);FL.pitch=Math.max(0,FL.pitch-2*dt);
+    FL.ias=Math.max(0,FL.ias-dec*dt);FL.pitch=Math.max(0,FL.pitch-(FL.tdPitch||7.5)/5*dt);   /* nose down: from the touchdown pitch to 0 in 5 s */
     const lg=locGeo(FL.pos),d=destRwy();trkT=brg(FL.pos,dst(d.r.pos,lg.crs+180,lg.along-1));if(FL.ias<=0){FL.stage='STOP';S.phase='DONE';FL.running=false}}
   if(FL.stage==='ROLL'){const o=DB.apt[orig()],r=o.rwy[S.active.rwy];trkT=r.crs+(o.var||0)}
 
@@ -482,7 +484,9 @@ function step(dt){if(S.tmpy&&typeof ppHoldSync==='function')ppHoldSync(S.tmpy);c
   const bank=FL.ground?0:Math.max(-30,Math.min(30,Math.atan(rate*D2R*FL.tas*0.5144/9.81)/D2R));FL.roll+=Math.max(-5*dt,Math.min(5*dt,bank-FL.roll));
   FL.pos=dst(FL.pos,FL.trkT,FL.gs*KT2NMS*dt);
   if(FL.stage==='AIR'){const fpa=Math.atan2(FL.vs,Math.max(60,FL.gs)*101.27)/D2R,aoa=FL.conf==='0'?2.5:FL.conf==='FULL'?4:3.5;
-    {const pr=FL.ver==='SRS'&&S.phase!=='GA'?3:2;   /* rotation: 3 degrees per second, 0 to 15 degrees in 5 s */
+    /* flare: from 10 ft radio height the pitch goes up to 7.5 degrees, reached at 5 ft and held to the touchdown */
+    const ra=agl();if(FL.ver==='FLARE'&&ra<=10){if(FL.p10==null)FL.p10=FL.pitch;FL.pitch=FL.p10+(7.5-FL.p10)*Math.min(1,Math.max(0,(10-ra)/5))}
+    else{if(FL.ver!=='FLARE')FL.p10=null;const pr=FL.ver==='SRS'&&S.phase!=='GA'?3:2;   /* rotation: 3 degrees per second, 0 to 15 degrees in 5 s */
     FL.pitch+=Math.max(-2*dt,Math.min(pr*dt,(FL.ver==='SRS'?15:fpa+aoa)-FL.pitch))}}
   const ff=FL.stage==='ROLL'||FL.thr==='TO'?5.6:CLIMBING.includes(FL.ver)||FL.ver==='SRS'?3.2:DESCENDING.includes(FL.ver)?0.7:FL.ground?0.4:FL.alt>20000?PM.ff(I().crz,I().ci)*PM.wf(gwNowF()):2.4;
   FL.fob=Math.max(0,FL.fob-ff*dt/3600);FL.t+=dt;
