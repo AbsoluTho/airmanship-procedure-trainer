@@ -122,7 +122,8 @@ P.INIT={render(){const i=I();
   case'L1':return err('NOT IN DATA BASE');
   case'R1':{const m=v.match(/^([A-Z]{4})\/([A-Z]{4})$/);if(!m)return err('FORMAT ERROR');
     if(!DB.apt[m[1]]||!DB.apt[m[2]])return err('NOT IN DATA BASE');
-    i.from=m[1];i.to=m[2];i.altn=null;S.active=newPlan(m[1],m[2]);S.tmpy=null;S.fpOff=0;return ok()}
+    const air=flying()&&!FL.ground;if(air&&S.active&&m[1]!==orig())return err('NOT ALLOWED');   /* in flight: a new destination from the same origin (its runway kept) */
+    const rw=air&&S.active?S.active.legs[0].rwy:null;i.from=m[1];i.to=m[2];i.altn=null;S.active=newPlan(m[1],m[2]);if(rw){S.active.rwy=rw;S.active.legs[0].rwy=rw}S.tmpy=null;S.fpOff=0;if(air)FL.planNew=true;return ok()}
   case'L2':if(!i.to)return err('NOT ALLOWED');if(v==='CLR'){i.altn=null;return ok()}
     if(!/^[A-Z]{4}$/.test(v))return err('FORMAT ERROR');if(!DB.apt[v])return err('NOT IN DATA BASE');i.altn=v;i.altnRwy=null;return ok();
   case'L3':if(!/^[A-Z0-9]{1,8}$/.test(v))return err('FORMAT ERROR');i.flt=v;return ok();

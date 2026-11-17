@@ -140,13 +140,18 @@ async def run(url,b):
     r=await pg.evaluate("""(()=>{const a=buildRoute(CO_RTES.OERKOEAB1),b=buildRoute(CO_RTES.OEABOERK1),w=p=>p.legs.filter(l=>l.k==='wpt'&&l.seg==='enr').map(l=>l.id).join(' ');
       return[AOC_OFP.FAD13.rte,a.sid,w(a),AOC_OFP.FAD14.rte,w(b),b.star,b.appr,(b.legs.find(l=>l.id==='ALMIN')||{}).step]})()""")
     assert r==['OERKOEAB1','MERV2E','ASMIS PUSUM OBSAM RAKLI SENRA EMEKO KEDAS','OEABOERK1','ABH DUMSI IRBAB KATIX ALMIN EGMOT ULDUP DANOM UMRAN','MOBA1A','ILS15LY',33000],f'FAD13 / FAD14 Riyadh - Abha: airways Z414, V40, H75, Q313 and the step climb at ALMIN: {r}'
+    # fixed paths (G/S, FPA, V/S, DES): idle deceleration rules (kt per NM): gear up 10/5/0, gear down 15/10/5, landing configuration 20/15/10, 5 less for each further 1000 ft/min (the speed increases)
+    r=await pg.evaluate("""(()=>{const g=FL.gear,c=FL.conf,o=[];for(const [gear,conf] of [[false,'0'],[false,'2'],[true,'2'],[true,'3'],[true,'FULL']]){FL.gear=gear;FL.conf=conf;
+      o.push([0,-1000,-2000,-2500,-3000].map(v=>+idleDecel(v,200).toFixed(1)).join('/'))}
+      FL.gear=false;FL.conf='0';o.push(+idleDecel(-2385,450).toFixed(1),Math.round(idleVs(5,200)),Math.round(idleVs(0,200)),Math.round(idleVs(-5,200)));FL.gear=g;FL.conf=c;return o.join(' ')})()""")
+    assert r=='10/5/0/-2.5/-5 12/7/2/-0.5/-3 23.4/18.4/13.4/10.9/8.4 26/21/16/13.5/11 26/21/16/13.5/11 3.4 1000 2000 3000',('idle deceleration rules',r)
     # idle descent on speed (64 t, 10000 ft): clean 1300 at green dot to 2200 at 250 kt, CONF 1-2 1300, CONF 3 1500, gear down 2300;
     # level deceleration of the configuration (clean 10, CONF 2 12, gear down x1.3), none at that rate, the speed increasing beyond it
     r=await pg.evaluate("""(()=>{const k={g:FL.gear,c:FL.conf,i:FL.ias,t:FL.tas},g0=window.gwNowF,o=[];window.gwNowF=()=>64;
       const R=(gear,conf,ias)=>{FL.gear=gear;FL.conf=conf;FL.ias=ias;FL.tas=ias*1.16;return Math.round(idleR0())};
       o.push(R(false,'0',213),R(false,'0',250),R(false,'1',190),R(false,'2',190),R(false,'3',150),R(true,'2',190),R(true,'FULL',140));
-      FL.gear=false;FL.conf='0';FL.ias=250;FL.tas=290;o.push(idleDecel(0,250),+idleDecel(-1100,250).toFixed(1),+Math.abs(idleDecel(-2200,250)).toFixed(1),+idleDecel(-3300,250).toFixed(1),Math.round(idleVs(0,250)),Math.round(idleVs(5,250)));
-      FL.conf='2';FL.ias=190;FL.tas=220;o.push(idleDecel(0,190));
+      FL.gear=false;FL.conf='0';FL.ias=250;FL.tas=290;o.push(idleDecelOpen(0,250),+idleDecelOpen(-1100,250).toFixed(1),+Math.abs(idleDecelOpen(-2200,250)).toFixed(1),+idleDecelOpen(-3300,250).toFixed(1),Math.round(idleVsOpen(0,250)),Math.round(idleVsOpen(5,250)));
+      FL.conf='2';FL.ias=190;FL.tas=220;o.push(idleDecelOpen(0,190));
       Object.assign(FL,{gear:k.g,conf:k.c,ias:k.i,tas:k.t});window.gwNowF=g0;return o.join(' ')})()""")
     assert r=='1300 2200 1300 1300 1500 2300 2300 10 5 0 -5 2200 1100 12',('idle descent rates and deceleration',r)
     # speed reduction with the auto-thrust: more than 10 kt, idle until 3 kt are left; 10 kt or less never idle
@@ -185,9 +190,9 @@ async def run(url,b):
     # speed brakes: half 50 % more drag, full 100 % more; full only with the autopilot off; none in CONF FULL
     r=await pg.evaluate("""(()=>{const k={g:FL.gear,c:FL.conf,a:FL.active,gr:FL.ground,ap1:FCU.ap1,ap2:FCU.ap2,sb:LV.spb,i:FL.ias,t:FL.tas},g0=window.gwNowF,o=[];window.gwNowF=()=>64;
       FL.active=true;FL.ground=false;FL.gear=false;FL.conf='0';FL.ias=250;FL.tas=290;FCU.ap2=false;
-      const row=()=>[0,-1100,-2200,-3300,-4400].map(v=>+idleDecel(v,250).toFixed(1)).join('/');
-      LV.spb=0.5;FCU.ap1=true;o.push(row());LV.spb=1;o.push(row());FCU.ap1=false;o.push(row(),Math.round(idleVs(0,250)));
-      FL.conf='FULL';FL.gear=true;FL.ias=140;FL.tas=162;o.push([0,-2300].map(v=>+idleDecel(v,140).toFixed(1)).join('/'));
+      const row=()=>[0,-1100,-2200,-3300,-4400].map(v=>+idleDecelOpen(v,250).toFixed(1)).join('/');
+      LV.spb=0.5;FCU.ap1=true;o.push(row());LV.spb=1;o.push(row());FCU.ap1=false;o.push(row(),Math.round(idleVsOpen(0,250)));
+      FL.conf='FULL';FL.gear=true;FL.ias=140;FL.tas=162;o.push([0,-2300].map(v=>+idleDecelOpen(v,140).toFixed(1)).join('/'));
       FL.gear=k.g;FL.conf=k.c;FL.active=k.a;FL.ground=k.gr;FCU.ap1=k.ap1;FCU.ap2=k.ap2;FL.ias=k.i;FL.tas=k.t;window.gwNowF=g0;
       LV.spb=0;lever('spb','0.7');o.push(LV.spb);lever('spb','1.4');o.push(LV.spb);lever('spb',0.01);o.push(LV.spb);LV.spb=k.sb;return o.join(' ')})()""")
     assert r=='15/10/5/0/-5 15/10/5/0/-5 20/15/10/5/0 4400 26/-0.1 0.7 0.7 0',('speed brake rules',r)   # half 3300, full 4400 ft/min on speed at 250 kt; none in CONF FULL
@@ -416,14 +421,14 @@ async def run(url,b):
       while(FL.stage!=='STOP'&&n<12000){step(0.5);setFma();n++;
         if(!d.ap&&FL.alt-groundElev()>1200){fcuButton('ap1');d.ap=1}
         if(!d.sm&&FL.ver==='ALT'&&Math.abs(FL.alt-7000)<30){FCU.alt=7800;fcuPush('alt',true);d.sm=FL.t}
-        if(d.sm&&!d.smv&&FL.t-d.sm>20&&FL.ver==='OP CLB'){out.small=Math.round(FL.vs);d.smv=1}
+        if(d.sm&&!d.smv&&FL.t-d.sm>9&&FL.ver==='OP CLB'){out.small=Math.round(FL.vs);d.smv=1}   /* OP CLB is never limited: full climb rate even for 800 ft */
         if(d.smv&&!d.big&&FL.ver==='ALT'){FCU.spd=300;FCU.spdMgd=false;FCU.mach=false;FCU.alt=34000;fcuPush('alt',true);d.big=FL.t}
         if(d.big&&!d.mid&&FL.t-d.big>8){out.accVs=Math.round(FL.vs);d.mid=1}   /* accelerating: +250 ft/min */
         if(d.big&&!d.at&&Math.abs(FL.ias-300)<3){out.acc=Math.round(FL.t-d.big);d.at=FL.t}
         if(d.at&&!d.bigv&&FL.t-d.at>=10){out.big=Math.round(FL.vs);out.fma=FL.fma.c1[0][0]+'/'+FL.fma.c2[0][0];d.bigv=1}
         if(d.big&&FCU.mach){out.mach=[FCU.spd,Math.round(FL.alt)];break}}
       window.__flight('reset');FCU.spdMgd=true;FCU.mach=false;return out})()""")
-    assert r.get('small') is not None and 900<=r['small']<=1100,f'OP CLB under 1200 ft: V/S 1000 ({r})'
+    assert r.get('small') is not None and r['small']>=1500,f'OP CLB under 1200 ft: full climb rate, not 1000 ({r})'
     assert r.get('big',0)>1500 and r.get('fma')=='THR CLB/OP CLB',f'OP CLB: climb thrust, speed on elevator ({r})'
     assert r.get('accVs')==250,f'OP CLB accelerating: +250 ft/min ({r})'
     assert r.get('mach') and abs(r['mach'][0]-0.78)<0.03 and 25000<r['mach'][1]<33000,f'selected SPD to MACH at the crossover ({r})'
@@ -551,7 +556,7 @@ async def run(url,b):
     assert r==['OEMA','OEMA','disc',False],f'NEW DEST OEMA after a discontinuity, offset removed: {r}'
     await pg.evaluate("window.__flight('reset');window.__S().active=clone(window.__plan0)")
     # ---- fourth flight: STEP ALTS (step climb at LABUN), RTA at TBK, engine failure (EO), VDEV on PROG ----
-    await pg.evaluate("window.__S().active=clone(window.__plan0);window.__S().tmpy=null;window.__S().sp='';window.__S().msg=null;FCU.alt=34000;window.__S().rta=null")
+    await pg.evaluate("window.__S().active=clone(window.__plan0);window.__S().tmpy=null;window.__S().sp='';window.__S().msg=null;FCU.alt=34000;FCU.hdgMgd=true;window.__S().rta=null")   # NAV on the FCU again (NEW DEST off the route left HDG with NAV armed)
     await P('PERF');await P('R6');await P('R6');await P('R5');assert 'STEP ALTS' in await pg.evaluate("[...document.querySelectorAll('#scr .ln')].map(l=>l.textContent).join(' ')"),'STEP ALTS from PERF CRZ'
     for ch in '360/LABUN': await P(ch)
     await P('L1');assert await pg.evaluate("window.__S().active.legs.find(l=>l.id==='LABUN').step")==36000,'step FL360 at LABUN'
