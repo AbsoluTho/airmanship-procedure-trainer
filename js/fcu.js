@@ -127,11 +127,16 @@ function knobValue(k){const now=Date.now();
 let padKnob=null;
 function openKnob(k,anchor){closeKnob();padKnob=k;const pad=document.createElement('div');pad.className='knobpad';pad.id='knobpad';pad.setAttribute('role','dialog');pad.setAttribute('aria-label',k.toUpperCase()+' knob');
   const nm=k==='baro'?'BARO':k==='hdg'?(FCU.trkFpa?'TRK':'HDG'):k==='vs'?(FCU.trkFpa?'FPA':'V/S'):k==='spd'?(FCU.mach?'MACH':'SPD'):'ALT';
+  /* turn: a caption above two large − / + keys (symbols drawn, not text, so a touch never selects them) */
+  const ico=t=>`<svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path d="${t==='+'?'M5 12h14M12 5v14':'M5 12h14'}" stroke="currentColor" stroke-width="3" stroke-linecap="round" fill="none"/></svg>`;
   pad.innerHTML=`<div class="kp-h"><b>${nm}</b><span id="kpVal"></span><button type="button" class="kp-x" aria-label="Close">✕</button></div>
-   <div class="kp-r"><button type="button" class="kp" data-kt="-1">− turn</button><button type="button" class="kp" data-kt="1">turn +</button></div>
+   <div class="kp-cap">TURN</div>
+   <div class="kp-r"><button type="button" class="kp kp-turn" data-kt="-1" aria-label="Turn left (decrease)">${ico('-')}</button><button type="button" class="kp kp-turn" data-kt="1" aria-label="Turn right (increase)">${ico('+')}</button></div>
    <div class="kp-r"><button type="button" class="kp pp" data-kp="pull">PULL<small>${k==='baro'?'STD':k==='alt'?'open climb/descent':k==='vs'?'V/S selected':k==='hdg'?'heading selected':'speed selected'}</small></button><button type="button" class="kp pp" data-kp="push">PUSH<small>${k==='baro'?'QNH':k==='alt'?'managed climb/descent':k==='vs'?'level off':k==='hdg'?'NAV (managed)':'managed speed'}</small></button></div>
    ${k==='alt'?'<div class="kp-r"><button type="button" class="kp sm" data-ki="100">STEP 100</button><button type="button" class="kp sm" data-ki="1000">STEP 1000</button></div>':''}${k==='baro'?'<div class="kp-r"><button type="button" class="kp sm" data-ku="1">in Hg</button><button type="button" class="kp sm" data-ku="0">hPa</button></div>':''}`;
   const D=anchor.ownerDocument||document,V=D.defaultView||window;   /* the window the knob is in (the page or a pop-out window) */
+  /* a touch on the pad is a key press: no text selection, no copy / translate menu on a long press */
+  ['contextmenu','selectstart','dragstart'].forEach(ev=>pad.addEventListener(ev,e=>e.preventDefault()));
   D.body.appendChild(pad);const r=anchor.getBoundingClientRect(),pw=pad.offsetWidth,ph=pad.offsetHeight;
   let x=r.left+r.width/2-pw/2,y=r.bottom+8;if(y+ph>V.innerHeight-8)y=r.top-ph-8;x=Math.max(8,Math.min(V.innerWidth-pw-8,x));pad.style.left=x+'px';pad.style.top=Math.max(8,y)+'px';
   pad.querySelector('.kp-x').onclick=closeKnob;
