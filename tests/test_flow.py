@@ -151,7 +151,7 @@ async def run(url,b):
       Object.assign(FL,k);return o.join('')})()""")
     assert r=='III--I',('idle logic',r)
     # gear lever UP disarms the take-off AUTO BRK
-    r=await pg.evaluate("""(()=>{const k=[FL.active,FL.ground,LV.gear,LV.abrk];FL.active=true;FL.ground=false;LV.abrk='MAX';lever('gear','UP');const o=[LV.abrk];LV.abrk='MAX';lever('gear','DOWN');o.push(LV.abrk);[FL.active,FL.ground,LV.gear,LV.abrk]=k;return o.join()})()""")
+    r=await pg.evaluate("""(()=>{const k=[FL.active,FL.ground,LV.gear,LV.abrk];FL.active=false;LV.abrk='MAX';lever('gear','UP');const o=[LV.abrk];LV.abrk='MAX';lever('gear','DOWN');o.push(LV.abrk);[FL.active,FL.ground,LV.gear,LV.abrk]=k;return o.join()})()""")
     assert r==',MAX',('AUTO BRK off at gear up only',r)
     # take-off: 0 to V1 in 40 s at 69 t, 1 s less per tonne
     r=await pg.evaluate("""(()=>{const z=S.fuel.zfw,f=FL.fob,o=[];S.fuel.zfw=60;for(const fob of [9,4]){FL.fob=fob;o.push((40-(69-gwNowF())).toFixed(0))}S.fuel.zfw=z;FL.fob=f;return o.join()})()""")
