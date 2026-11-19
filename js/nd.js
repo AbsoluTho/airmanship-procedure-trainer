@@ -89,14 +89,18 @@ function drawND(g,W,H,powered){g.save();g.setTransform(1,0,0,1,0,0);g.fillStyle=
   if(T)geos.push([displayGeo(T,'y',fr),true]);
   if(S.secMode&&S.sec)geos.push([displayGeo(S.sec,'w'),'sec']);
   if(V.m==='PLAN'&&A&&I().altn&&DB.apt[I().altn]){const d=A.legs[idxK(A,'dest')],dp=legPos(d),ap=DB.apt[I().altn].pos,R=typeof altRte==='function'?altRte():{wpts:[],dct:true};const wp=R.wpts.map(id=>DB.wpt[id]).filter(Boolean);line([dp,...wp,...(R.dct?[ap]:[])],'b',[14,10]);
+    R.wpts.forEach(id=>{const q=DB.wpt[id];if(!q)return;const[x,y]=pj(q);if(!inMap(x,y,30))return;diamond(x,y,'b',9);label(id,x+16,y+2,'b',26)});   /* ALTN F-PLN waypoints: cyan diamond and name */
     const[x,y]=pj(ap);star(x,y,'b');label(I().altn,x+16,y+2,'b')}
   /* offset: the original route dashed between the entry point and the rejoin point, the offset path solid */
   const ofR=p=>{if(!p||!p.ofst)return null;const ie=p.legs.findIndex(l=>l.seg==='arr'||l.k==='dest');return[p.ofst.ix0??0,ie]};
   const oA=ofR(A),oT=ofR(T);
+  /* HDG / TRK (NAV not engaged): the active F-PLN dashed and a solid green track line from the aircraft (actual track, wind drift included) */
+  const trkMode=flying()&&!FL.ground&&['HDG','TRK','RWY TRK','GA TRK'].includes(FL.lat);
   for(const[G,tm]of geos){const o=tm===true?oT:tm?null:oA;for(const L of G.lines){const inO=o&&L.ix!=null&&L.ix>o[0]&&L.ix<=o[1];
-    line(L.pts,tm==='sec'?'w':tm?'y':L.col,tm===true||inO?[16,10]:null)}}
+    line(L.pts,tm==='sec'?'w':tm?'y':L.col,tm===true||inO||(!tm&&trkMode)?[16,10]:null)}}
   for(const[pl,c]of[[A,'g'],[T,'y']]){if(!pl||!pl.ofst)continue;let Pp=null;try{Pp=pl===A&&flying()&&FL.path?FL.path:buildPath(pl)}catch(e){}
-    if(Pp&&Pp.ofstStart!=null){const seg=Pp.pts.filter(q=>q.s>=Pp.ofstStart-0.01&&q.s<=Pp.ofstEnd+0.01).map(q=>q.p);if(seg.length>1)line(seg,c,c==='y'?[16,10]:null)}}
+    if(Pp&&Pp.ofstStart!=null){const seg=Pp.pts.filter(q=>q.s>=Pp.ofstStart-0.01&&q.s<=Pp.ofstEnd+0.01).map(q=>q.p);if(seg.length>1)line(seg,c,c==='y'||trkMode?[16,10]:null)}}
+  if(trkMode&&FL.pos)line([FL.pos,dst(FL.pos,FL.trkT,V.nm*2.5)],'g',null,3.5);
   if(typeof ndFixInfo==='function')ndFixInfo(g,pj,V);
   /* one runway only: the departure runway until the departure is flown, then the runway of the approach (FBW) */
   const useDest=flying()&&(FL.ground?['ROLLOUT','STOP'].includes(FL.stage):(['CRZ','DES','APPR','GA','DONE'].includes(S.phase)||(A&&FL.fromIx>=A.legs.reduce((m,l,i)=>l.seg==='dep'||l.k==='orig'?i:m,0))));
@@ -202,7 +206,8 @@ function pseudoWpts(){try{const out=[],crz=I().crz*100;if(!S.active||!S.active.a
     /* level-off arrows: only in NAV, on the route at the distance flown along it to the altitude (the tip touches the route line);
        none in HDG / TRK or any other lateral mode */
     const along=d=>at(s0+d),nav=FL.lat==='NAV';
-    if(!nav){}
+    if(!nav){if(['HDG','TRK','RWY TRK','GA TRK'].includes(FL.lat)&&((climbing&&A>alt0)||(desc&&A<alt0))){   /* HDG / TRK: on the green track line */
+      const d=Math.max(0,(A-alt0)/(FL.vs||1)*60*FL.gs/3600);out.push({k:climbing?'up':'dn',c:A===crz?'w':'b',pos:dst(FL.pos,FL.trkT,d)})}}
     else if(ct!=null){const up=ct>alt0+30||FL.verArm.includes('CLB')&&ct>=alt0-30;
       if(Math.abs(ct-alt0)>30&&Math.abs(FL.vs)>200){const d=Math.max(0,(ct-alt0)/FL.vs*60*FL.gs/3600);out.push({k:up?'up':'dn',c:'m',pos:along(d)})}
       /* start of climb (cyan) or descent (white) again at the constraint waypoint */
