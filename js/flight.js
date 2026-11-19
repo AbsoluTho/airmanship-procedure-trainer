@@ -389,7 +389,8 @@ function step(dt){if(S.tmpy&&typeof ppHoldSync==='function')ppHoldSync(S.tmpy);c
       CK=cstrNow();FL.cst=CK;
     const gp=!FL.ground&&(['TAKEOFF','CLB','GA'].includes(S.phase)||CLIMBING.includes(FL.ver)||FL.ver==='SRS')?1-0.35*(FL.gearPos??1):1;FL.gp=gp;   /* gear drag follows the gear position: 35 % less climb rate and acceleration with the gear down (SRS about 1560 ft/min), full once up and locked, gradual in transit */
     if(FL.ver==='SRS'){const rate=FL.thr==='GA SOFT'?2000:2400;
-      spdT=ga?FL.gaSpd:q.v2+10;vsT=(ga?Math.min(rate,FL.vs+600):rate)*gp;
+      spdT=ga?FL.gaSpd:q.v2+10;if(!FCU.spdMgd&&FCU.spd!=null)spdT=FCU.mach?iasOf(FCU.spd*sos(FL.alt),FL.alt):FCU.spd;   /* a selected speed is followed in SRS too, below the acceleration altitude */
+      vsT=(ga?Math.min(rate,FL.vs+600):rate)*gp;
       if(FL.alt>=acc){FL.opSmall=false;if(A>FL.alt+capBand){FL.ver=FL.verArm.includes('OP CLB')?'OP CLB':'CLB';FL.verArm=['ALT']}else{FL.ver='ALT*';FL.verArm=[]}if(!ga)S.phase='CLB'}}
     FL.soe=false;
     if(CLIMBING.includes(FL.ver)){FL.soe=true;   /* THR CLB, speed on elevator: V/S computed after the speed target; an open climb is never limited (no 1000 ft/min for a small level change) */

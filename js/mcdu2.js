@@ -369,7 +369,7 @@ function directTo(id){if(!flying()||FL.ground)return err('NOT ALLOWED');
   S.tmpy=clone(S.active);const q=S.tmpy,from=FL.fromIx;let ti=q.legs.findIndex((l,ix)=>ix>from&&(l.k==='wpt'||l.k==='dest')&&l.id===id);
   if(ti<0&&!isDest){q.legs.splice(from+1,0,W(id,{seg:'enr'}),{k:'disc'});ti=from+1}
   S.dirByp=q.legs.slice(from+1,Math.max(from+1,ti)).filter(l=>l.k==='wpt'&&DB.wpt[l.id]).map(l=>l.id);   /* bypassed waypoints (WITH ABEAM PTS) */
-  q.legs.splice(from+1,ti-from-1,{k:'tp',id:'T-P',pos:FL.pos.slice(),trk:FL.trkT,gs:FL.gs,seg:'enr'});S.dirTo=id;S.dirRad=null;S.dirAb=false;normalize(q);ok()}
+  q.legs.splice(from+1,ti-from-1,{k:'tp',id:'T-P',pos:FL.pos.slice(),trk:FL.trkT,gs:FL.gs,seg:'enr'});S.dirTo=id;S.dirRad=null;S.dirRadLive=false;S.dirAb=false;normalize(q);ok()}
 /* DIR TO WITH ABEAM PTS (A320 FCOM): each waypoint bypassed by the DIR TO is projected on the direct leg; the abeam point is named AB and the
    first characters of the bypassed waypoint (PAXOS: ABPAX) and inserted between the T-P and the DIR TO waypoint (no constraints). Only the
    points that fall on the direct leg are kept. Selecting it cancels a RADIAL IN, and the reverse. */
@@ -377,7 +377,7 @@ function directTo(id){if(!flying()||FL.ground)return err('NOT ALLOWED');
 const dirTpIx=q=>q.legs.reduce((a,l,i)=>l.k==='tp'?i:a,-1);
 function dirAbeam(on){const q=S.tmpy;if(!q||!S.dirTo)return;q.legs=q.legs.filter(l=>!l.ab);S.dirAb=!!on;
   const ti=dirTpIx(q);if(ti<0||!on){normalize(q);return}
-  if(q.legs[ti].radIn!=null){q.legs[ti]={k:'tp',id:'T-P',pos:FL.pos.slice(),trk:FL.trkT,gs:FL.gs,seg:'enr'};S.dirRad=null}
+  if(q.legs[ti].radIn!=null){q.legs[ti]={k:'tp',id:'T-P',pos:FL.pos.slice(),trk:FL.trkT,gs:FL.gs,seg:'enr'};S.dirRad=null;S.dirRadLive=false}
   const B=DB.wpt[S.dirTo]||legPos(q.legs[ti+1]||{});if(!B){normalize(q);return}
   const arc=dirArc(q,ti),A=arc.length?arc[arc.length-1]:q.legs[ti].pos,L=gc(A,B),c=brg(A,B);
   const ab=[];for(const id of S.dirByp||[]){const P=DB.wpt[id],d=gc(A,P),a=d*Math.cos((brg(A,P)-c)*D2R);if(a<=0.5||a>=L-0.5)continue;
@@ -389,25 +389,34 @@ function dirAbeam(on){const q=S.tmpy;if(!q||!S.dirTo)return;q.legs=q.legs.filter
 function dirRadSuggest(id){const p=S.active,ap=p&&p.appr&&(APPRS[destId()]||{})[p.appr];if(!ap)return null;
   const onFinal=ap.final.some(l=>l.id===id)||Object.values(ap.vias||{}).some(v=>v.length&&v[v.length-1].id===id&&ap.final[0]&&ap.final[0].id===id);
   return onFinal?((ap.crs+180)%360||360):null}
-function dirRadSet(rad){const q=S.tmpy;if(!q||!S.dirTo)return;if(S.dirAb){q.legs=q.legs.filter(l=>!l.ab);S.dirAb=false}const ti=dirTpIx(q);if(ti<0)return;const wp=DB.wpt[S.dirTo]||legPos(q.legs[ti+1]||{});if(!wp)return;
+function dirRadSet(rad,live){S.dirRadLive=!!live;const q=S.tmpy;if(!q||!S.dirTo)return;if(S.dirAb){q.legs=q.legs.filter(l=>!l.ab);S.dirAb=false}const ti=dirTpIx(q);if(ti<0)return;const wp=DB.wpt[S.dirTo]||legPos(q.legs[ti+1]||{});if(!wp)return;
   const vr=(DB.apt[destId()]||{}).var||0,d=Math.max(gc(FL.pos,wp)+40,50);   /* radial drawn well beyond the aircraft, so an intercept heading meets it */
   q.legs[ti]=rad==null?{k:'tp',id:'T-P',pos:FL.pos.slice(),trk:FL.trkT,gs:FL.gs,seg:'enr'}:{k:'tp',id:'IN'+String(rad).padStart(3,'0'),pos:dst(wp,rad+vr,d),seg:'enr',radIn:rad};
   S.dirRad=rad;normalize(q)}
-P.DIR={render(){cput(1,'DIR TO',S.tmpy&&S.dirTo?'y':'w');put(2,1,'DIR TO','w','S');
-  if(S.tmpy&&S.dirTo){put(3,0,'*'+S.dirTo,'y');rput(2,'RADIAL IN','w','S');const sg=dirRadSuggest(S.dirTo);
-    if(S.dirRad!=null)rput(3,String(S.dirRad).padStart(3,'0')+'°','y');else if(sg!=null)rput(3,String(sg).padStart(3,'0')+'°','b','S');else rput(3,'[ ]°','b');put(4,1,'WITH','w','S');if(S.dirAb)put(5,0,' ABEAM PTS','y');else put(5,0,'*ABEAM PTS','b')}else put(3,0,'[     ]','b');
+/* the radial the aircraft is on now (from the DIR TO waypoint), updated as it flies, 1 degree at a time: selected, the radial follows the
+   aircraft until INSERT, so the radial starts where the aircraft is and there is no overshoot */
+function dirRadLive(){if(!flying()||FL.ground||!S.tmpy||!S.dirTo)return null;const q=S.tmpy,ti=dirTpIx(q),wp=DB.wpt[S.dirTo]||(ti>=0?legPos(q.legs[ti+1]||{}):null);if(!wp)return null;
+  const vr=(DB.apt[destId()]||{}).var||0;return Math.round((brg(wp,FL.pos)-vr+720)%360)||360}
+/* final approach course of a fix on the final approach (IF, FAF): the course to track into it on the extended final */
+function dirFinalCrs(id){const p=S.active,ap=p&&p.appr&&(APPRS[destId()]||{})[p.appr];return dirRadSuggest(id)!=null&&ap?(Math.round(ap.crs)%360||360):null}
+P.DIR={render(){if(S.dirRadLive){const lv=dirRadLive();if(lv!=null&&lv!==S.dirRad)dirRadSet(lv,true)}cput(1,'DIR TO',S.tmpy&&S.dirTo?'y':'w');put(2,1,'DIR TO','w','S');
+  if(S.tmpy&&S.dirTo){put(3,0,'*'+S.dirTo,'y');rput(2,'RADIAL IN','w','S');const sg=dirRadSuggest(S.dirTo),fc=dirFinalCrs(S.dirTo),lv=dirRadLive(),f3=v=>String(v).padStart(3,'0')+'°';
+    if(S.dirRad!=null&&(S.dirRadLive||S.dirRad!==sg||fc==null))rput(3,f3(S.dirRad),'y');else if(lv!=null)rput(3,f3(lv),'b','S');else rput(3,'[ ]°','b');   /* the present radial, live */
+    if(fc!=null){rput(4,'FINAL CRS','w','S');rput(5,f3(fc),S.dirRad===sg&&!S.dirRadLive?'y':'b',S.dirRad===sg&&!S.dirRadLive?'L':'S')}   /* IF / FAF: the course of the extended final into the fix */
+put(4,1,'WITH','w','S');if(S.dirAb)put(5,0,' ABEAM PTS','y');else put(5,0,'*ABEAM PTS','b')}else put(3,0,'[     ]','b');
   put(6,1,'F-PLN WPTS','w','S');const L=dirList();for(let j=0;j<dirRows();j++){const x=L[(S.dirOff||0)+j];if(x)put(7+2*j,0,'<'+x.l.id+(x.l.k==='dest'?(x.l.rwy||''):''),'g')}
   if(S.tmpy&&S.dirTo){put(12,1,'DIR TO','a','S');put(13,0,'←ERASE','a');rput(13,'INSERT*','a')}},
  lsk(s,n){const k=s+n;
   if(k==='L1'){const v=S.sp;if(!v)return;if(!/^[A-Z0-9]{2,5}$/.test(v))return err('FORMAT ERROR');return directTo(v)}
   if(s==='L'&&n>=3&&n<3+dirRows()){const x=dirList()[(S.dirOff||0)+n-3];if(!x)return;return directTo(x.l.id)}   /* the waypoint beside the key */
   if(k==='L2'&&S.tmpy&&S.dirTo){if(S.sp==='CLR'){dirAbeam(false);return ok()}if(S.sp)return err('FORMAT ERROR');return dirAbeam(!S.dirAb)}
-  if(k==='R1'&&S.tmpy&&S.dirTo){const v=S.sp;if(!v){const sg=dirRadSuggest(S.dirTo);if(sg==null)return;dirRadSet(sg);return}
+  if(k==='R1'&&S.tmpy&&S.dirTo){const v=S.sp;if(!v){const lv=dirRadLive();if(lv==null)return err('NOT ALLOWED');dirRadSet(lv,true);return}   /* the present radial, kept up to date until INSERT */
     if(v==='CLR'){dirRadSet(null);return ok()}if(!/^\d{1,3}$/.test(v)||+v>360)return err('FORMAT ERROR');dirRadSet(+v%360||360);return ok()}
-  if(k==='L6'&&S.tmpy){S.tmpy=null;S.dirTo=null;S.dirRad=null;S.dirAb=false;return ok()}
+  if(k==='R2'&&S.tmpy&&S.dirTo){const sg=dirRadSuggest(S.dirTo);if(sg==null||S.sp)return err('NOT ALLOWED');dirRadSet(sg);return}   /* FINAL CRS: inbound on the extended final */
+  if(k==='L6'&&S.tmpy){S.tmpy=null;S.dirTo=null;S.dirRad=null;S.dirRadLive=false;S.dirAb=false;return ok()}
   if(k==='R6'&&S.tmpy&&S.dirTo){const tp=S.tmpy.legs[dirTpIx(S.tmpy)];if(tp&&tp.radIn==null&&flying())Object.assign(tp,{pos:FL.pos.slice(),trk:FL.trkT,gs:FL.gs});   /* the turn starts where INSERT is pressed */
-    if(S.dirAb)dirAbeam(true);
-    const rin=S.dirRad!=null;S.active=S.tmpy;S.tmpy=null;S.dirTo=null;S.dirRad=null;S.dirAb=false;
+    if(S.dirAb)dirAbeam(true);if(S.dirRadLive){const lv=dirRadLive();if(lv!=null)dirRadSet(lv,true)}
+    const rin=S.dirRad!=null;S.active=S.tmpy;S.tmpy=null;S.dirTo=null;S.dirRad=null;S.dirRadLive=false;S.dirAb=false;
     if(rin&&flying()){const vr=DB.apt[orig()].var||0;FCU.hdgMgd=false;FCU.hdg=Math.round(((FCU.trkFpa?FL.trkT:FL.hdgT)-vr+360)%360)||360;FL.lat=FCU.trkFpa?'TRK':'HDG';FL.latArm='NAV'}   /* RADIAL IN: present heading, NAV armed */
     else{FCU.hdgMgd=true;if(flying()){FL.lat='NAV';FL.latArm=null}}ok();return go('FPLN')}
   return err('NOT ALLOWED')},
