@@ -113,7 +113,7 @@ function drawPFD(g,W,H,powered){g.save();g.setTransform(1,0,0,1,0,0);g.fillStyle
   const isM=on&&!FL.ground&&FL.ver!=='SRS'&&!!FL.spdIsMach,mTgt=isM?(sel?FCU.spd:FL.ver==='EXP DES'?0.80:S.phase==='DES'?mgd.desM():mgd.crzM()):null;
   if(on&&!FL.ground&&tgt){T(isM?'MACH':'SPEED',87,140,'w',19,'center');T(isM?'.'+String(Math.round(mTgt*100)).padStart(2,'0'):String(tgt),87,166,tc,23,'center')}
   if(tgt){const y=sy(tgt);if(y<182){if(!(on&&!FL.ground))T(String(tgt),120,170,tc,20,'center')}else if(y>497)T(String(tgt),120,510,tc,20,'center');
-    else{g.fillStyle=PC[tc];g.beginPath();g.moveTo(121,y);g.lineTo(135,y-8);g.lineTo(135,y+8);g.closePath();g.fill()}}
+    else{g.strokeStyle=PC[tc];g.lineWidth=3;g.lineJoin='miter';g.beginPath();g.moveTo(115,y);g.lineTo(141,y-11.5);g.lineTo(141,y+11.5);g.closePath();g.stroke();g.lineJoin='round'}}   /* hollow, the yellow speed triangle fits inside it on speed */
   /* speed reference and trend */
   L(47,SY,57,SY,'y',4);L(102,SY,122,SY,'y',3);g.fillStyle=PC.y;g.beginPath();g.moveTo(121,SY);g.lineTo(137,SY-7);g.lineTo(137,SY+7);g.closePath();g.fill();
   /* speed trend: speed in 10 s, shown when it differs by more than 2 kt (takeoff roll and landing roll included) */

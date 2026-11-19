@@ -4,7 +4,7 @@ An unofficial A320 **procedure** trainer that runs in the browser (iPad first). 
 
 Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator manuals. The navigation data was typed from charts for training only and must never be used for navigation.
 
-## Status: Phase 3 prototype (v0.25.15)
+## Status: Phase 3 prototype (v0.25.16)
 
 - **MCDU** (Thales FMS2 layout, per FCOM DSC-22): keyboard and scratchpad, INIT A, F-PLN with TMPY (ERASE/INSERT), LAT REV, DEPARTURE, AIRWAYS (with airway-to-airway intersection), ARRIVAL, waypoint insertion, CLR of waypoints and discontinuities.
 - **Exercise** OEJN to OETB: RWY 16C MIGD2E, L677 WEJ, V54 TBK, ILS 31 via D179O, ALTN OEMA, FL340, CI 20, with automatic progress checks.
@@ -19,6 +19,11 @@ Not affiliated with any airline. Not a substitute for the FCOM, FCTM or operator
   - 11 approaches: ILS 16L (IMBF 111.7), 16R (IWSR 108.1), 34L (IWMR 108.9), 34R (IABF 110.7); RNP 16L, 16R, 34L, 34R; VOR 16R, 34L and 34R (KFA 112.3, the 34R final offset on 326°). Vias from the IAFs of the KFA 14 DME arc (LOPOD, RESAN, KEBAP, LOSAX, DASLA, KFA; DAXAR and KAVIV for the 16 runways) and from DF603, DF604 and RESAN for the RNP approaches; published missed approaches to the RESAN and LOSAX holds.
   - 32 RNAV SIDs: EMUSA, MIBRA, PUSRA, TAYMA 2E/2F/2G/2H and LADNA, METLA, ROTEL, RYDAN 1E/2E, 1F/2F, 1G/2G, 1H/2H (one set per runway).
   - Fix positions from KFA radial/DME, the extended centrelines and the chart tracks and distances; the same fix reached by different procedures agrees within 0.6 NM (36 cross-checks printed by the generator).
+- **v0.25.16**: ND in HDG/TRK, ALTN waypoint names, hollow speed targets.
+  - In HDG, TRK, RWY TRK and GA TRK the active F-PLN is drawn dashed green and a solid green track line runs from the aircraft along its actual track (wind drift included).
+  - In those modes the level-off arrow to the FCU altitude sits on the track line instead of the route.
+  - ALTN F-PLN waypoints show their cyan diamond and name on the ND, so scrolling the alternate route in PLAN shows each one.
+  - PFD speed target: a hollow triangle (magenta managed, cyan selected) large enough for the yellow speed triangle to fit inside it when on speed.
 - **v0.25.15**: Free OP CLB, heading kept on a new F-PLN, path deceleration restored.
   - OP CLB is always climb thrust and never limited: the 1000 ft/min hold for a level change under 1200 ft is gone (7000 to 8000 ft now climbs at about 2700 ft/min). OP DES keeps it.
   - A new active F-PLN in flight (SEC activated or swapped, NEW DEST, ENABLE ALTN, FROM/TO, AOC uplink) never turns the aircraft: in HDG/TRK the selected heading is kept and NAV is armed; in NAV it stays NAV only if the aircraft is on the new active leg, otherwise HDG/TRK at the present heading with NAV armed. NAV captures when the route is reached.
