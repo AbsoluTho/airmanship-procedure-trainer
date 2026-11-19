@@ -328,7 +328,9 @@ function cstTarget(){if(!flying()||FL.ground||!FL.cst)return null;if(FL.ver==='A
 const cstArmed=()=>FL.verArm.length===1&&FL.verArm[0]==='ALT'&&['CLB','DES'].includes(FL.ver)&&cstTarget()!=null;
 
 /* ---------- one simulation step ---------- */
-function step(dt){if(S.tmpy&&typeof ppHoldSync==='function')ppHoldSync(S.tmpy);const ias0=FL.ias;if(FL.sig!==planSig()&&!FL.ground)flightReplan();if(!FL.ground)planNewLat();const P=FL.path,q=S.perf,p2=S.p2,crz=I().crz*100,sp=cfgSpeeds(),gnd=groundElev(),A=FCU.alt;
+function step(dt){if(S.tmpy&&typeof ppHoldSync==='function')ppHoldSync(S.tmpy);const ias0=FL.ias;if(FL.sig!==planSig()&&!FL.ground)flightReplan();if(!FL.ground)planNewLat();
+  /* managed CLB needs NAV: in HDG / TRK (RWY TRK, GA TRK) it reverts to OP CLB (pulling HDG in a managed climb, SRS to climb without NAV, ALT pushed in HDG) */
+  if(!FL.ground&&FL.ver==='CLB'&&['HDG','TRK','RWY TRK','GA TRK'].includes(FL.lat)){FL.ver='OP CLB';FL.verArm=FL.verArm.filter(x=>x!=='CLB');if(!FL.verArm.includes('ALT'))FL.verArm.unshift('ALT')}const P=FL.path,q=S.perf,p2=S.p2,crz=I().crz*100,sp=cfgSpeeds(),gnd=groundElev(),A=FCU.alt;
   const agl=()=>FL.alt-gnd;
   if(PM_AUTO)autoPM(P.sThr-FL.s,sp);lvStep(dt);
   /* LOC, LAND and ROLL OUT never search back along the path (after a go-around the path starts on the final approach) */
